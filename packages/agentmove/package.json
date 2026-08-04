@@ -8,7 +8,17 @@
     "url": "git+https://github.com/wookat/agentmove.git",
     "directory": "packages/agentmove"
   },
-  "keywords": ["agent", "migration", "mcp", "claude-code", "codex", "cursor", "gemini-cli", "openclaw", "hermes"],
+  "keywords": [
+    "agent",
+    "migration",
+    "mcp",
+    "claude-code",
+    "codex",
+    "cursor",
+    "gemini-cli",
+    "openclaw",
+    "hermes"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -18,10 +28,13 @@
   "bin": {
     "agentmove": "./dist/cli.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -32,6 +45,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "@vitest/coverage-v8": "4.1.10",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"
   }

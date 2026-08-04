@@ -9,6 +9,8 @@ Existing migration tools (like `hermes claw migrate`) are one-way doors into a
 single vendor. agentmove is neutral, local-only, and open source: your agent's
 brain belongs to you.
 
+![agentmove demo: doctor, dry-run convert, apply with backups, diff](docs/assets/demo.gif)
+
 ## Quick start
 
 The npm package is **`agentmove-cli`** (the bare `agentmove` name collides with an
@@ -58,6 +60,22 @@ npx agentmove-cli diff claude-code codex
 Every lossy or approximated step is reported as a warning — nothing is silently
 dropped. Likely secrets (env values named `*KEY*`, `*TOKEN*`, …) are replaced
 with `${VAR}` placeholders unless you pass `--include-secrets`.
+
+## What does NOT migrate (honest edition)
+
+- **Cursor memories** live in the app's internal database — cannot be exported or imported.
+- **Claude Code / Codex client-managed memories** are not exported; imported memory is
+  appended to the instructions file (`CLAUDE.md` / `AGENTS.md`) as an *approximation*,
+  not written into the client's own memory store.
+- **Persona** is native only in OpenClaw/Hermes (`SOUL.md`); everywhere else it's appended
+  to instructions and flagged `approximated`.
+- **Skills** have no equivalent in Gemini CLI or Cursor — skipped with a warning.
+- **MCP tool filters** (OpenClaw `toolFilter`, Hermes include/exclude) have no portable
+  equivalent — dropped with a warning.
+- v0.1 migrates **user-level (home) setups only**; project-scoped files are on the
+  [roadmap](ROADMAP.md).
+
+Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 
 ## Supported clients
 
