@@ -28,6 +28,7 @@ export default defineConfig({
             { label: 'Supported clients', slug: 'docs/clients' },
             { label: 'The bundle format', slug: 'docs/bundle' },
             { label: 'Loss reporting & safety', slug: 'docs/safety' },
+            { label: 'Limitations (honest edition)', slug: 'docs/limitations' },
           ],
         },
       ],
