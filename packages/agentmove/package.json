@@ -1,5 +1,5 @@
 {
-  "name": "agentmove",
+  "name": "agentmove-cli",
   "version": "0.1.0",
   "description": "Move your AI agent between clients — config, MCP servers, skills, memory, persona. Any direction, dry-run first, lossless where possible.",
   "license": "Apache-2.0",

@@ -32,7 +32,7 @@ bundle/
   skills/<name>/SKILL.md # skills（SKILL.md 已是事实标准，各家通用）
 ```
 
-### CLI（npm 包名 `agentmove`，已核实可用）
+### CLI（npm 包名 `agentmove-cli`，命令名仍为 `agentmove`；裸名 `agentmove` 因 npm 去连字符判重与 `agent-move` 冲突被 403 拒绝）
 
 ```
 agentmove export <client> [-o bundle]     # 客户端 → bundle
@@ -60,7 +60,7 @@ TypeScript + Node ≥22 + pnpm workspace + vitest + eslint（typescript-eslint�
 | M2 | 脚手架 + CI + core（bundle 模型/diff 引擎） | CI 绿，vitest 通过 |
 | M3 | 6 客户端 adapter + 5 个 CLI 命令 + 测试 fixtures | 每对方向 convert 均有测试；README quick start 真实可运行 |
 | M4 | 文档站上线 pages.dev | 可访问 |
-| M5 | npm 发布 v0.1（待 NPM_TOKEN） | `npx agentmove doctor` 可用 |
+| M5 | npm 发布 v0.1（待 NPM_TOKEN） | `npx agentmove-cli doctor` 可用 |
 
 ## 范围与非目标
 
