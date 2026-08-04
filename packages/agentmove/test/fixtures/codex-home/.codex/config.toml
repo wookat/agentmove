@@ -1,0 +1,10 @@
+model = "gpt-5.2-codex"
+
+[mcp_servers.linear]
+command = "npx"
+args = ["-y", "linear-mcp"]
+
+[mcp_servers.search]
+url = "https://mcp.example.com"
+http_headers = { "X-Api-Key" = "k123" }
+enabled = false

@@ -1,0 +1,138 @@
+export type Transport = "stdio" | "http" | "sse";
+
+export interface McpServer {
+  name: string;
+  transport: Transport;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  cwd?: string;
+  url?: string;
+  headers?: Record<string, string>;
+  enabled?: boolean;
+}
+
+export type MemoryKind = "long-term" | "daily" | "user-profile";
+
+export interface MemoryEntry {
+  content: string;
+  /** Original file the entry came from, relative to the client home. */
+  source: string;
+  kind: MemoryKind;
+  /** ISO date (YYYY-MM-DD) for daily entries. */
+  date?: string;
+}
+
+export interface Skill {
+  name: string;
+  /** Relative path inside the skill directory -> file content. */
+  files: Record<string, string>;
+}
+
+export interface BundleManifest {
+  schemaVersion: 1;
+  exportedFrom?: string;
+  exportedAt?: string;
+}
+
+export interface Bundle {
+  manifest: BundleManifest;
+  /** Normalized config subset; `raw` keeps unmapped client config for reference. */
+  config: { model?: string; raw?: Record<string, unknown> };
+  mcpServers: McpServer[];
+  /** Global instructions (AGENTS.md / CLAUDE.md / GEMINI.md style). */
+  instructions?: string;
+  /** Persona (SOUL.md style). */
+  persona?: string;
+  memory: MemoryEntry[];
+  skills: Skill[];
+}
+
+export function emptyBundle(): Bundle {
+  return {
+    manifest: { schemaVersion: 1 },
+    config: {},
+    mcpServers: [],
+    memory: [],
+    skills: [],
+  };
+}
+
+export type ClientId =
+  | "openclaw"
+  | "hermes"
+  | "claude-code"
+  | "codex"
+  | "cursor"
+  | "gemini";
+
+export const CLIENT_IDS: ClientId[] = [
+  "openclaw",
+  "hermes",
+  "claude-code",
+  "codex",
+  "cursor",
+  "gemini",
+];
+
+export interface ExportResult {
+  bundle: Bundle;
+  warnings: string[];
+}
+
+/** A planned file write, relative to the OS home directory. */
+export interface FilePlan {
+  path: string;
+  content: string;
+}
+
+export interface ImportResult {
+  files: FilePlan[];
+  warnings: string[];
+}
+
+export interface ClientAdapter {
+  id: ClientId;
+  label: string;
+  /** Human-readable default location of the client's data, for docs/doctor. */
+  defaultPath: string;
+  /** Whether the client appears to be configured under the given home dir. */
+  detect(home: string): Promise<boolean>;
+  exportBundle(home: string): Promise<ExportResult>;
+  /**
+   * Plan an import: returns the file writes that would apply the bundle.
+   * Never touches the filesystem for writes; the CLI applies plans.
+   */
+  planImport(bundle: Bundle, home: string): Promise<ImportResult>;
+}
+
+export function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+export function asStringRecord(
+  v: unknown,
+  ctx: string,
+  warnings: string[],
+): Record<string, string> | undefined {
+  if (v === undefined) return undefined;
+  if (!isRecord(v)) {
+    warnings.push(`${ctx}: expected an object of strings; dropped`);
+    return undefined;
+  }
+  const out: Record<string, string> = {};
+  for (const [k, val] of Object.entries(v)) {
+    if (typeof val === "string") out[k] = val;
+    else warnings.push(`${ctx}.${k}: non-string value dropped`);
+  }
+  return out;
+}
+
+export function stringArgs(v: unknown, ctx: string, warnings: string[]): string[] | undefined {
+  if (v === undefined) return undefined;
+  if (!Array.isArray(v)) {
+    warnings.push(`${ctx}: expected an array; dropped`);
+    return undefined;
+  }
+  return v.map(String);
+}

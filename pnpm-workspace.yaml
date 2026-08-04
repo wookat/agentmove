@@ -1,0 +1,5 @@
+packages:
+  - packages/*
+minimumReleaseAgeExclude:
+  - '@rolldown/binding-android-arm64@1.2.2'
+  - '@rolldown/binding-linux-arm64-musl@1.2.2'

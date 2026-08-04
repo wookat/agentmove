@@ -1,0 +1,5 @@
+model: hermes-4
+mcp_servers:
+  docs:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-fetch"]

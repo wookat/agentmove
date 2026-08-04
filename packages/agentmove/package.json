@@ -1,0 +1,38 @@
+{
+  "name": "agentmove",
+  "version": "0.1.0",
+  "description": "Move your AI agent between clients — config, MCP servers, skills, memory, persona. Any direction, dry-run first, lossless where possible.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wookat/agentmove.git",
+    "directory": "packages/agentmove"
+  },
+  "keywords": ["agent", "migration", "mcp", "claude-code", "codex", "cursor", "gemini-cli", "openclaw", "hermes"],
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "agentmove": "./dist/cli.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "json5": "^2.2.3",
+    "smol-toml": "^1.4.2",
+    "yaml": "^2.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}

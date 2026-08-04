@@ -1,0 +1,10 @@
+// OpenClaw config (JSON5)
+{
+  agents: { defaults: { model: "anthropic/claude-4.5-opus", workspace: "~/.openclaw/workspace" } },
+  mcp: {
+    servers: {
+      docs: { command: "npx", args: ["-y", "@modelcontextprotocol/server-fetch"] },
+      remote: { url: "https://example.com/mcp", transport: "streamable-http", headers: { Authorization: "Bearer abc123" } },
+    },
+  },
+}
