@@ -1,0 +1,32 @@
+---
+title: AgentMove
+description: Move your AI agent between clients — any direction, dry-run first, lossless where possible.
+template: splash
+hero:
+  tagline: The pandoc of agent ecosystems — migrate config, MCP servers, skills, memory, and persona between OpenClaw, Hermes, Claude Code, Codex, Cursor, and Gemini CLI.
+  actions:
+    - text: Quick start
+      link: /docs/quick-start/
+      icon: right-arrow
+    - text: GitHub
+      link: https://github.com/wookat/agentmove
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Any direction" icon="random">
+    Not a one-way door into a single vendor. Export from any supported client, import into any other.
+  </Card>
+  <Card title="Dry-run by default" icon="magnifier">
+    `import` and `convert` print a full plan of what would be written. Nothing touches disk without `--apply`.
+  </Card>
+  <Card title="Honest loss reporting" icon="warning">
+    Lossless where possible; every approximation or dropped field is reported as a warning, never silent.
+  </Card>
+  <Card title="Safe by design" icon="seti:lock">
+    Automatic backups before writes; likely secrets redacted to `${VAR}` placeholders unless you opt in.
+  </Card>
+</CardGrid>
