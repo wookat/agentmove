@@ -17,8 +17,22 @@ import { listDir, isDir, readText, readTextTree } from "./fsutil.js";
  *   manifest.json, config.json, mcp-servers.json, instructions.md, persona.md,
  *   memory/memory.json, memory/raw/<source files>, skills/<name>/...
  */
+/** Bundle-owned entries removed before a re-export so no stale layers linger. */
+const BUNDLE_ENTRIES = [
+  "manifest.json",
+  "config.json",
+  "mcp-servers.json",
+  "instructions.md",
+  "persona.md",
+  "memory",
+  "skills",
+];
+
 export async function writeBundle(bundle: Bundle, dir: string): Promise<void> {
   await fs.mkdir(dir, { recursive: true });
+  for (const entry of BUNDLE_ENTRIES) {
+    await fs.rm(path.join(dir, entry), { recursive: true, force: true });
+  }
   const manifest = { ...bundle.manifest, exportedAt: bundle.manifest.exportedAt ?? new Date().toISOString() };
   await fs.writeFile(path.join(dir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
   await fs.writeFile(path.join(dir, "config.json"), JSON.stringify(bundle.config, null, 2) + "\n");
