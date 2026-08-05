@@ -96,6 +96,9 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 
+`import`/`convert`/`diff`/`doctor` accept `--json` for machine-readable output
+(plans, warnings, per-layer summary) — handy in scripts and CI.
+
 ## Safety model
 
 1. **Dry-run by default** — `import`/`convert` print a plan; `--apply` is explicit.

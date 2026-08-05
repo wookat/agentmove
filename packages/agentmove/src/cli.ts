@@ -26,16 +26,44 @@ function printWarnings(warnings: string[]): void {
   for (const w of warnings) console.error(`warning: ${w}`);
 }
 
-async function exportFrom(client: string, includeSecrets: boolean): Promise<Bundle> {
+async function exportFrom(
+  client: string,
+  includeSecrets: boolean,
+  collect?: string[],
+): Promise<Bundle> {
   const adapter = getAdapter(client);
   const { bundle, warnings } = await adapter.exportBundle(home());
-  printWarnings(warnings);
+  if (collect) collect.push(...warnings);
+  else printWarnings(warnings);
   if (includeSecrets) return bundle;
   const { bundle: clean, redacted } = stripSecrets(bundle);
   for (const r of redacted) {
-    console.error(`warning: ${r}: likely secret replaced with a \${VAR} placeholder (use --include-secrets to keep)`);
+    const msg = `${r}: likely secret replaced with a \${VAR} placeholder (use --include-secrets to keep)`;
+    if (collect) collect.push(msg);
+    else console.error(`warning: ${msg}`);
   }
   return clean;
+}
+
+function bundleSummary(bundle: Bundle) {
+  return {
+    mcpServers: bundle.mcpServers.length,
+    skills: bundle.skills.length,
+    memoryEntries: bundle.memory.length,
+    instructions: bundle.instructions !== undefined,
+    persona: bundle.persona !== undefined,
+  };
+}
+
+function summaryLine(bundle: Bundle): string {
+  const s = bundleSummary(bundle);
+  const extras = [s.instructions ? "instructions" : null, s.persona ? "persona" : null]
+    .filter(Boolean)
+    .join(", ");
+  return (
+    `${s.mcpServers} MCP server(s), ${s.skills} skill(s), ${s.memoryEntries} memory entr(ies)` +
+    (extras ? `, ${extras}` : "")
+  );
 }
 
 async function importTo(
@@ -43,10 +71,36 @@ async function importTo(
   bundle: Bundle,
   apply: boolean,
   importOpts: ImportOptions,
+  json: boolean,
+  priorWarnings: string[] = [],
 ): Promise<void> {
   const adapter = getAdapter(client);
   const { files, warnings } = await adapter.planImport(bundle, home(), importOpts);
-  printWarnings(warnings);
+  const allWarnings = [...priorWarnings, ...warnings];
+  if (!json) printWarnings(allWarnings);
+
+  let backupDir: string | undefined;
+  if (apply && files.length) {
+    backupDir = await backupPaths(files, home());
+    await applyPlans(files, home());
+  }
+
+  if (json) {
+    process.stdout.write(
+      JSON.stringify(
+        {
+          applied: apply && files.length > 0,
+          files: files.map((f) => f.path),
+          backupDir: backupDir ?? null,
+          summary: bundleSummary(bundle),
+          warnings: allWarnings,
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+    return;
+  }
   if (!files.length) {
     console.log("nothing to import");
     return;
@@ -56,10 +110,9 @@ async function importTo(
     for (const f of files) console.log(`  ~/${f.path}`);
     return;
   }
-  const backupDir = await backupPaths(files, home());
   if (backupDir) console.log(`backed up existing files to ${backupDir}`);
-  await applyPlans(files, home());
   console.log(`wrote ${files.length} file(s)`);
+  console.log(`migrated: ${summaryLine(bundle)}`);
 }
 
 program
@@ -84,10 +137,16 @@ program
   .option("-i, --in <dir>", "bundle directory", "./agentmove-bundle")
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
-  .action(async (client: string, opts: { in: string; apply: boolean; replaceMcp: boolean }) => {
-    const bundle = await readBundle(opts.in);
-    await importTo(client, bundle, opts.apply, { replaceMcp: opts.replaceMcp });
-  });
+  .option("--json", "machine-readable JSON output", false)
+  .action(
+    async (
+      client: string,
+      opts: { in: string; apply: boolean; replaceMcp: boolean; json: boolean },
+    ) => {
+      const bundle = await readBundle(opts.in);
+      await importTo(client, bundle, opts.apply, { replaceMcp: opts.replaceMcp }, opts.json);
+    },
+  );
 
 program
   .command("convert")
@@ -97,14 +156,16 @@ program
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
+  .option("--json", "machine-readable JSON output", false)
   .action(
     async (
       from: string,
       to: string,
-      opts: { apply: boolean; includeSecrets: boolean; replaceMcp: boolean },
+      opts: { apply: boolean; includeSecrets: boolean; replaceMcp: boolean; json: boolean },
     ) => {
-      const bundle = await exportFrom(from, opts.includeSecrets);
-      await importTo(to, bundle, opts.apply, { replaceMcp: opts.replaceMcp });
+      const collected: string[] = [];
+      const bundle = await exportFrom(from, opts.includeSecrets, opts.json ? collected : undefined);
+      await importTo(to, bundle, opts.apply, { replaceMcp: opts.replaceMcp }, opts.json, collected);
     },
   );
 
@@ -113,7 +174,8 @@ program
   .description("show differences between two clients (or a bundle and a client)")
   .argument("<from>", "source client id or bundle directory (path containing manifest.json)")
   .argument("<to>", "target client id or bundle directory")
-  .action(async (from: string, to: string) => {
+  .option("--json", "machine-readable JSON output", false)
+  .action(async (from: string, to: string, opts: { json: boolean }) => {
     const load = async (ref: string): Promise<Bundle> => {
       try {
         return (await getAdapter(ref).exportBundle(home())).bundle;
@@ -123,15 +185,19 @@ program
       }
     };
     const [a, b] = await Promise.all([load(from), load(to)]);
-    process.stdout.write(formatDiff(diffBundles(a, b)));
+    const items = diffBundles(a, b);
+    if (opts.json) process.stdout.write(JSON.stringify(items, null, 2) + "\n");
+    else process.stdout.write(formatDiff(items));
   });
 
 program
   .command("doctor")
   .description("detect installed clients and inventory what agentmove can migrate")
-  .action(async () => {
+  .option("--json", "machine-readable JSON output", false)
+  .action(async (opts: { json: boolean }) => {
     const reports = await runDoctor(home());
-    process.stdout.write(formatDoctor(reports));
+    if (opts.json) process.stdout.write(JSON.stringify(reports, null, 2) + "\n");
+    else process.stdout.write(formatDoctor(reports));
   });
 
 // Exit-code contract: 0 success, 1 unexpected error, 2 usage error, 3 bad input data.
