@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "files": { "command": "npx", "args": ["-y", "files-mcp"], "env": { "FILES_TOKEN": "tok-123" } },
+    "remote": { "serverUrl": "https://mcp.example.com/mcp", "headers": { "Authorization": "Bearer ws-abc" } }
+  }
+}

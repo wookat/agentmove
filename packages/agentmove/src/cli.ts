@@ -135,7 +135,7 @@ async function importTo(
 program
   .command("export")
   .description("export a client's setup into an agentmove bundle directory")
-  .argument("<client>", "source client (openclaw|hermes|claude-code|codex|cursor|gemini)")
+  .argument("<client>", "source client (openclaw|hermes|claude-code|codex|cursor|gemini|windsurf)")
   .option("-o, --out <dir>", "bundle output directory", "./agentmove-bundle")
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
   .option("--only <layers>", "comma-separated layers to export (mcp,skills,memory,instructions,persona)")

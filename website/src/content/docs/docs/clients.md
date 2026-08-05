@@ -11,6 +11,7 @@ description: What AgentMove reads and writes for each client.
 | Codex CLI | `codex` | `~/.codex/config.toml` (`[mcp_servers.*]`, model), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
 | Cursor | `cursor` | `~/.cursor/mcp.json`; instructions/persona imported as `~/.cursor/rules/agentmove-imported.mdc` |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section) |
+| Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md` |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -20,5 +21,7 @@ description: What AgentMove reads and writes for each client.
   Cursor equivalent.
 - **Gemini CLI** has no `SKILL.md` mechanism; skills are skipped with a warning.
 - **Codex / Claude Code** client-managed memories are not exported in v0.
+- **Windsurf** Cascade memories are app-managed and cannot be migrated; skills
+  have no Windsurf equivalent.
 - OpenClaw `toolFilter` and Hermes `tools.include/exclude` MCP filters have no
   portable equivalent and are dropped with a warning.

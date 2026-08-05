@@ -115,7 +115,8 @@ export type ClientId =
   | "claude-code"
   | "codex"
   | "cursor"
-  | "gemini";
+  | "gemini"
+  | "windsurf";
 
 export const CLIENT_IDS: ClientId[] = [
   "openclaw",
@@ -124,6 +125,7 @@ export const CLIENT_IDS: ClientId[] = [
   "codex",
   "cursor",
   "gemini",
+  "windsurf",
 ];
 
 export interface ExportResult {
