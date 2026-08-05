@@ -1,0 +1,10 @@
+[mcp]
+stdio_servers = [
+  { name = "files", command = "npx", args = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"], env = { API_KEY = "test-not-a-real-key" } }
+]
+shttp_servers = [
+  { url = "https://mcp.example.com/mcp", api_key = "test-not-a-real-token" }
+]
+sse_servers = [
+  "https://sse.example.com/events"
+]

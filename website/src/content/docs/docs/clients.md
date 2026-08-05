@@ -14,6 +14,7 @@ description: What AgentMove reads and writes for each client.
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json` (`mcpServers`, remote servers use `type: streamableHttp`/`sse` + `url`), `~/Documents/Cline/Rules/*.md` |
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`; JSONC, stdio servers require `args`), `~/.config/zed/AGENTS.md` |
+| OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]` with `stdio_servers`/`shttp_servers`/`sse_servers`), `~/.openhands/microagents/*.md` |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -30,5 +31,8 @@ description: What AgentMove reads and writes for each client.
   global rules only. Skills have no Cline equivalent.
 - **Zed** Rules Library entries and Skills are app-managed — not migrated;
   JSONC comments in `settings.json` are not preserved on rewrite (warned).
+- **OpenHands** remote MCP servers only support `api_key` auth — non-Bearer
+  headers are dropped with a warning; per-server `timeout` is not portable.
+  Skills live in repositories (`.openhands/skills`, via `--project`).
 - OpenClaw `toolFilter` and Hermes `tools.include/exclude` MCP filters have no
   portable equivalent and are dropped with a warning.

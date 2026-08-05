@@ -375,6 +375,55 @@ const zedProject: ProjectAdapter = {
   },
 };
 
+const openhandsProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "openhands";
+    const microagentsDir = path.join(dir, ".openhands/microagents");
+    if (await isDir(microagentsDir)) {
+      const parts: string[] = [];
+      for (const name of (await listDir(microagentsDir)).sort()) {
+        if (!name.endsWith(".md")) continue;
+        const content = await readText(path.join(microagentsDir, name));
+        if (content) parts.push(`<!-- .openhands/microagents/${name} -->\n${content.trim()}`);
+      }
+      if (parts.length) {
+        bundle.instructions = parts.join("\n\n") + "\n";
+        warnings.push("openhands repo microagents concatenated into instructions");
+      }
+    }
+    bundle.skills = await readSkillsDir(path.join(dir, ".openhands/skills"), warnings);
+    warnings.push("openhands has no project-scoped MCP config; MCP servers stay user-scoped");
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, _opts) {
+    void dir;
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    if (bundle.mcpServers.length) {
+      warnings.push(
+        "mcp: openhands has no project-scoped MCP config; import without --project to write ~/.openhands/config.toml",
+      );
+    }
+    if (bundle.instructions || bundle.persona) {
+      const body = [
+        ...(bundle.instructions ? [bundle.instructions.trim(), ""] : []),
+        ...(bundle.persona
+          ? ["## Imported by agentmove: persona (SOUL.md)", "", bundle.persona.trim(), ""]
+          : []),
+      ].join("\n");
+      files.push({ path: ".openhands/microagents/agentmove-imported.md", content: body });
+      if (bundle.persona) warnings.push("persona: appended to a repo microagent (approximated)");
+    }
+    files.push(...planSkills(bundle.skills, ".openhands/skills"));
+    if (bundle.memory.length) {
+      warnings.push("memory: openhands has no project-scoped memory store; skipped");
+    }
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -383,6 +432,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   windsurf: windsurfProject,
   cline: clineProject,
   zed: zedProject,
+  openhands: openhandsProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
