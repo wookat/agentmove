@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import os from "node:os";
 import { Command } from "commander";
-import { getAdapter } from "./adapters/index.js";
+import { ADAPTERS, getAdapter } from "./adapters/index.js";
 import { readBundle, stripSecrets, writeBundle } from "./bundle.js";
 import { diffBundles, formatDiff } from "./diff.js";
 import { formatDoctor, runDoctor } from "./doctor.js";
 import { applyPlans, backupPaths } from "./apply.js";
 import { Bundle, CliError, ImportOptions } from "./model.js";
+import { completionScript } from "./completion.js";
 
 const program = new Command();
 
@@ -121,14 +122,25 @@ program
   .argument("<client>", "source client (openclaw|hermes|claude-code|codex|cursor|gemini)")
   .option("-o, --out <dir>", "bundle output directory", "./agentmove-bundle")
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
-  .action(async (client: string, opts: { out: string; includeSecrets: boolean }) => {
-    const bundle = await exportFrom(client, opts.includeSecrets);
-    await writeBundle(bundle, opts.out);
-    console.log(
-      `exported ${bundle.mcpServers.length} MCP server(s), ${bundle.skills.length} skill(s), ` +
-        `${bundle.memory.length} memory entr(ies) to ${opts.out}`,
-    );
-  });
+  .option("--json", "machine-readable JSON output", false)
+  .action(
+    async (client: string, opts: { out: string; includeSecrets: boolean; json: boolean }) => {
+      const collected: string[] = [];
+      const bundle = await exportFrom(client, opts.includeSecrets, opts.json ? collected : undefined);
+      await writeBundle(bundle, opts.out);
+      if (opts.json) {
+        process.stdout.write(
+          JSON.stringify(
+            { out: opts.out, summary: bundleSummary(bundle), warnings: collected },
+            null,
+            2,
+          ) + "\n",
+        );
+        return;
+      }
+      console.log(`exported ${summaryLine(bundle)} to ${opts.out}`);
+    },
+  );
 
 program
   .command("import")
@@ -191,6 +203,22 @@ program
   });
 
 program
+  .command("clients")
+  .description("list supported clients and their default config locations")
+  .option("--json", "machine-readable JSON output", false)
+  .action((opts: { json: boolean }) => {
+    const rows = Object.values(ADAPTERS).map((a) => ({
+      id: a.id,
+      label: a.label,
+      defaultPath: a.defaultPath,
+    }));
+    if (opts.json) process.stdout.write(JSON.stringify(rows, null, 2) + "\n");
+    else {
+      for (const r of rows) console.log(`${r.id.padEnd(12)} ${r.label.padEnd(14)} ${r.defaultPath}`);
+    }
+  });
+
+program
   .command("doctor")
   .description("detect installed clients and inventory what agentmove can migrate")
   .option("--json", "machine-readable JSON output", false)
@@ -200,8 +228,21 @@ program
     else process.stdout.write(formatDoctor(reports));
   });
 
+program
+  .command("completion")
+  .description('generate a shell completion script (enable with: eval "$(agentmove completion bash)")')
+  .argument("<shell>", "bash or zsh")
+  .action((shell: string) => {
+    process.stdout.write(completionScript(shell));
+  });
+
 // Exit-code contract: 0 success, 1 unexpected error, 2 usage error, 3 bad input data.
 program.parseAsync().catch((e: unknown) => {
-  console.error(`error: ${(e as Error).message}`);
+  const err = e as NodeJS.ErrnoException;
+  let message = err.message;
+  if (err.code === "EACCES" || err.code === "EPERM") {
+    message += " (check file/directory permissions, or rerun with a writable --home)";
+  }
+  console.error(`error: ${message}`);
   process.exitCode = e instanceof CliError ? e.exitCode : 1;
 });

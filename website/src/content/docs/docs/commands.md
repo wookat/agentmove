@@ -3,7 +3,7 @@ title: Commands
 description: The five AgentMove commands.
 ---
 
-## `agentmove export <client> [-o dir]`
+## `agentmove export <client> [-o dir] [--json]`
 
 Reads the client's config, MCP servers, instructions, persona, memory, and
 skills into a portable bundle directory (default `./agentmove-bundle`).
@@ -30,6 +30,20 @@ same MCP merge semantics as `import`.
 Layer-by-layer structural comparison between two clients, or between a bundle
 directory and a client. Output uses `+` (added), `-` (removed), `~` (changed).
 
+## `agentmove clients [--json]`
+
+Lists the supported clients with their ids and default config locations
+(like pandoc's `--list-input-formats`).
+
+## `agentmove completion <bash|zsh>`
+
+Prints a shell completion script covering commands, client ids, and flags.
+Enable it with:
+
+```bash
+eval "$(agentmove completion bash)"   # or zsh
+```
+
 ## `agentmove doctor [--json]`
 
 Detects which supported clients are configured on this machine and inventories
@@ -39,7 +53,7 @@ instructions, persona), including any format warnings.
 ## Global options
 
 - `--home <dir>` — override the home directory (useful for testing and staging).
-- `--json` (on `import`, `convert`, `diff`, `doctor`) — machine-readable JSON on
+- `--json` (on `export`, `import`, `convert`, `diff`, `doctor`, `clients`) — machine-readable JSON on
   stdout for scripts and CI: the migration plan, warnings, per-layer summary,
   and backup directory. After `--apply`, the human output also ends with a
   `migrated: …` per-layer summary line.
@@ -49,6 +63,6 @@ instructions, persona), including any format warnings.
 | Code | Meaning |
 |---|---|
 | 0 | success |
-| 1 | unexpected error |
+| 1 | unexpected error (permission errors include remediation guidance) |
 | 2 | usage error (e.g. unknown client) |
 | 3 | bad input data (missing/corrupt bundle or config; the message includes the offending file path) |

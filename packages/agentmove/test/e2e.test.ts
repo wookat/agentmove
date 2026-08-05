@@ -148,6 +148,50 @@ describe("e2e (built CLI, child process)", () => {
     expect(Array.isArray(diff)).toBe(true);
   });
 
+  it("emits --json for export and lists clients", async () => {
+    const home = await cloneFixture("openclaw-home");
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+    const out = JSON.parse(
+      run(["--home", home, "export", "openclaw", "-o", path.join(work, "b"), "--json"], work),
+    ) as { out: string; summary: { mcpServers: number }; warnings: string[] };
+    expect(out.summary.mcpServers).toBe(2);
+
+    const clients = JSON.parse(run(["clients", "--json"], work)) as { id: string }[];
+    expect(clients.map((c) => c.id)).toContain("gemini");
+    expect(run(["clients"], work)).toContain("openclaw");
+  });
+
+  // chmod-based read-only dirs are not enforced on Windows
+  it.skipIf(process.platform === "win32")(
+    "gives permission guidance on EACCES instead of a stack trace",
+    async () => {
+    const home = await cloneFixture("openclaw-home");
+    await fs.chmod(home, 0o555);
+    const r = runFail(["--home", home, "convert", "openclaw", "hermes", "--apply"], home);
+    await fs.chmod(home, 0o755);
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("check file/directory permissions");
+    expect(r.stderr).not.toContain("at ");
+    },
+  );
+
+  it("generates working bash completion and rejects unknown shells with exit 2", async () => {
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+    const script = run(["completion", "bash"], work);
+    expect(script).toContain("complete -F _agentmove agentmove");
+    const probe = spawnSync(
+      "bash",
+      [
+        "-c",
+        `${script}\nCOMP_WORDS=(agentmove convert ge); COMP_CWORD=2; _agentmove; echo "\${COMPREPLY[@]}"`,
+      ],
+      { encoding: "utf8" },
+    );
+    expect(probe.stdout.trim()).toBe("gemini");
+    expect(run(["completion", "zsh"], work)).toContain("bashcompinit");
+    expect(runFail(["completion", "fish"], work).status).toBe(2);
+  });
+
   it("prints a migration summary after --apply", async () => {
     const home = await cloneFixture("openclaw-home");
     const out = run(["--home", home, "convert", "openclaw", "hermes", "--apply"], home);
