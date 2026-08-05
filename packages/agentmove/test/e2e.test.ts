@@ -269,6 +269,24 @@ describe("e2e (built CLI, child process)", () => {
     expect(bad.stderr).toContain('unknown layer "nope"');
   });
 
+  it("re-export into the same directory leaves no stale layer files", async () => {
+    const home = await cloneFixture("openclaw-home");
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+    const bundle = path.join(work, "b");
+    run(["--home", home, "export", "openclaw", "-o", bundle], work);
+    await fs.access(path.join(bundle, "persona.md"));
+    await fs.access(path.join(bundle, "skills"));
+    await fs.writeFile(path.join(work, "b/NOTES.txt"), "user file\n");
+
+    run(["--home", home, "export", "openclaw", "-o", bundle, "--only", "mcp"], work);
+    await expect(fs.access(path.join(bundle, "persona.md"))).rejects.toThrow();
+    await expect(fs.access(path.join(bundle, "instructions.md"))).rejects.toThrow();
+    const skills = await fs.readdir(path.join(bundle, "skills")).catch(() => []);
+    expect(skills).toHaveLength(0);
+    // files agentmove does not own are untouched
+    expect(await fs.readFile(path.join(bundle, "NOTES.txt"), "utf8")).toBe("user file\n");
+  });
+
   it("merges into the target's existing MCP servers instead of replacing them", async () => {
     const claudeHome = await cloneFixture("claude-home");
     const codexHome = await cloneFixture("codex-home");
