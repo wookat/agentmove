@@ -34,6 +34,14 @@ describe("stripSecrets", () => {
     expect(redacted).toEqual(["mcp:notion.env.NOTION_TOKEN"]);
     expect(clean.mcpServers[0]?.env?.NOTION_TOKEN).toBe("${NOTION_TOKEN}");
   });
+
+  it("redacts Authorization headers", async () => {
+    const { bundle } = await ADAPTERS.openclaw.exportBundle(path.join(FIXTURES, "openclaw-home"));
+    const { bundle: clean, redacted } = stripSecrets(bundle);
+    const remote = clean.mcpServers.find((s) => s.name === "remote")!;
+    expect(remote.headers?.Authorization).toBe("${Authorization}");
+    expect(redacted).toContain("mcp:remote.headers.Authorization");
+  });
 });
 
 describe("diff", () => {

@@ -57,7 +57,7 @@ npx agentmove-cli convert claude-code codex --only mcp --apply
 | Config | Default model plus the raw source config preserved in the bundle for reference |
 
 Every lossy or approximated step is reported as a warning — nothing is silently
-dropped. Likely secrets (env values named `*KEY*`, `*TOKEN*`, …) are replaced
+dropped. Likely secrets (env/header values named `*KEY*`, `*TOKEN*`, `*AUTHORIZATION*`, …) are replaced
 with `${VAR}` placeholders unless you pass `--include-secrets`.
 
 ## What does NOT migrate (honest edition)

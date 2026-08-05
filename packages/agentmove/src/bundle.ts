@@ -99,7 +99,7 @@ export async function readBundle(dir: string): Promise<Bundle> {
   return bundle;
 }
 
-const SECRET_KEY_RE = /(key|token|secret|password|credential)/i;
+const SECRET_KEY_RE = /(key|token|secret|password|credential|authorization|cookie)/i;
 
 /** Replace likely-secret env/header values with ${VAR} placeholders unless keeping secrets. */
 export function stripSecrets(bundle: Bundle): { bundle: Bundle; redacted: string[] } {

@@ -30,6 +30,6 @@ telling you what happened and where the data went:
 ## Secrets
 
 Env/header values whose names look like secrets (`*KEY*`, `*TOKEN*`,
-`*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`) are replaced with `${VAR}`
+`*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*AUTHORIZATION*`, `*COOKIE*`) are replaced with `${VAR}`
 placeholders on export. Pass `--include-secrets` to keep real values — only do
 this for bundles that never leave your machine.
