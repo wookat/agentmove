@@ -38,6 +38,28 @@ agentmove convert claude-code codex --only mcp --apply
 
 Unknown layer names fail with exit code 2.
 
+## Project-scoped migration: `--project`
+
+`export`, `import`, and `convert` accept `--project <dir>` to operate on the
+client's **project-scoped** files inside a repository instead of the
+user-scoped config under `$HOME`:
+
+| Client | Project files |
+|---|---|
+| claude-code | `.mcp.json`, `CLAUDE.md`, `.claude/skills/` |
+| codex | `AGENTS.md`, `.agents/skills/` (no project-scoped MCP config — warned) |
+| gemini | `.gemini/settings.json`, `GEMINI.md` |
+| cursor | `.cursor/mcp.json`, `.cursor/rules/*.mdc` |
+
+```bash
+# move a repo's Claude Code setup to Cursor, in place
+agentmove convert claude-code cursor --project . --apply
+```
+
+Backups go to `<dir>/.agentmove/backups/<timestamp>/`. MCP merge semantics and
+secret redaction work the same as user-scoped migration. OpenClaw and Hermes
+have no project-scoped files — `--project` with them is a usage error (exit 2).
+
 ## `agentmove diff <from> <to> [--json]`
 
 Layer-by-layer structural comparison between two clients, or between a bundle
@@ -74,6 +96,8 @@ A global install (`npm i -g agentmove-cli`) also links a man page:
 - `--home <dir>` — override the home directory (useful for testing and staging).
 - `--only <layers>` (on `export`, `import`, `convert`) — migrate only the
   listed layers (`mcp,skills,memory,instructions,persona`).
+- `--project <dir>` (on `export`, `import`, `convert`) — operate on the
+  client's project-scoped files in a repository instead of `$HOME`.
 - `--debug` (or `AGENTMOVE_DEBUG=1`) — print a full stack trace on unexpected
   errors; by default errors are a single readable line.
 - `--json` (on `export`, `import`, `convert`, `diff`, `doctor`, `clients`) — machine-readable JSON on

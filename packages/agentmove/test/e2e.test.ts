@@ -306,6 +306,47 @@ describe("e2e (built CLI, child process)", () => {
     }
   }, 60_000);
 
+  it("migrates project-scoped files with --project (claude-code -> cursor/gemini/codex)", async () => {
+    const project = await cloneFixture("claude-project");
+
+    const out = JSON.parse(
+      run(["convert", "claude-code", "cursor", "--project", project, "--apply", "--json"], project),
+    ) as { applied: boolean; files: string[]; warnings: string[] };
+    expect(out.applied).toBe(true);
+    expect(out.files).toContain(".cursor/mcp.json");
+    expect(out.files).toContain(".cursor/rules/agentmove-imported.mdc");
+    const mcp = JSON.parse(
+      await fs.readFile(path.join(project, ".cursor/mcp.json"), "utf8"),
+    ) as { mcpServers: Record<string, { headers?: Record<string, string> }> };
+    expect(Object.keys(mcp.mcpServers)).toEqual(["search", "api"]);
+    // secrets stay redacted at project scope too
+    expect(mcp.mcpServers.api!.headers?.Authorization).toBe("${Authorization}");
+    const rules = await fs.readFile(
+      path.join(project, ".cursor/rules/agentmove-imported.mdc"),
+      "utf8",
+    );
+    expect(rules).toContain("Use pnpm.");
+
+    const gem = JSON.parse(
+      run(["convert", "claude-code", "gemini", "--project", project, "--json"], project),
+    ) as { files: string[] };
+    expect(gem.files).toContain(".gemini/settings.json");
+    expect(gem.files).toContain("GEMINI.md");
+
+    // codex has no project-scoped MCP: instructions/skills migrate, MCP warns
+    const cdx = JSON.parse(
+      run(["convert", "claude-code", "codex", "--project", project, "--json"], project),
+    ) as { files: string[]; warnings: string[] };
+    expect(cdx.files).toContain("AGENTS.md");
+    expect(cdx.files).toContain(".agents/skills/review/SKILL.md");
+    expect(cdx.warnings.some((w) => w.includes("no project-scoped MCP config"))).toBe(true);
+
+    // clients without project-scoped files are a usage error
+    const bad = runFail(["export", "openclaw", "--project", project], project);
+    expect(bad.status).toBe(2);
+    expect(bad.stderr).toContain("no project-scoped files");
+  });
+
   it("re-export into the same directory leaves no stale layer files", async () => {
     const home = await cloneFixture("openclaw-home");
     const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));

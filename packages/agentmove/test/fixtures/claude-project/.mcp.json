@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "search": { "type": "stdio", "command": "npx", "args": ["-y", "search-mcp"] },
+    "api": { "type": "http", "url": "https://mcp.example.com", "headers": { "Authorization": "Bearer proj-token" } }
+  }
+}

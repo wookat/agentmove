@@ -43,6 +43,9 @@ npx agentmove-cli diff claude-code codex
 
 # Partial migration: only the layers you ask for
 npx agentmove-cli convert claude-code codex --only mcp --apply
+
+# Project-scoped migration: .mcp.json / CLAUDE.md / .cursor/rules / GEMINI.md / AGENTS.md
+npx agentmove-cli convert claude-code cursor --project . --apply
 ```
 
 ## What gets migrated
@@ -71,8 +74,8 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
 - **Skills** have no equivalent in Gemini CLI or Cursor — skipped with a warning.
 - **MCP tool filters** (OpenClaw `toolFilter`, Hermes include/exclude) have no portable
   equivalent — dropped with a warning.
-- v0.1 migrates **user-level (home) setups only**; project-scoped files are on the
-  [roadmap](ROADMAP.md).
+- **OpenClaw / Hermes** have no project-scoped files — `--project` covers
+  claude-code, codex, cursor, and gemini only.
 
 Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 
@@ -94,6 +97,10 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 - `agentmove convert <from> <to> [--apply]` — direct client → client
 - `--only mcp,skills,…` (on export/import/convert) — partial migration of just
   the listed layers (`mcp`, `skills`, `memory`, `instructions`, `persona`)
+- `--project <dir>` (on export/import/convert) — migrate the client's
+  project-scoped files in a repo (`.mcp.json`/`CLAUDE.md`, `AGENTS.md`,
+  `.gemini/settings.json`/`GEMINI.md`, `.cursor/mcp.json`/`.cursor/rules`)
+  instead of user-scoped config; openclaw/hermes have no project scope
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations
