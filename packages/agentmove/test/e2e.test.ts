@@ -220,12 +220,14 @@ describe("e2e (built CLI, child process)", () => {
 
   it("ships a man page wired into package.json", async () => {
     const pkg = JSON.parse(await fs.readFile(path.join(PKG, "package.json"), "utf8")) as {
-      man: string;
+      man: string[];
       files: string[];
     };
-    expect(pkg.man).toBe("./man/agentmove.1");
+    // npm only links man pages whose basename matches the package name,
+    // and (empirically, npm 11) only when "man" is an array
+    expect(pkg.man).toEqual(["./man/agentmove-cli.1"]);
     expect(pkg.files).toContain("man");
-    const page = await fs.readFile(path.join(PKG, "man/agentmove.1"), "utf8");
+    const page = await fs.readFile(path.join(PKG, "man/agentmove-cli.1"), "utf8");
     expect(page).toContain(".TH AGENTMOVE 1");
     for (const cmd of ["export", "import", "convert", "diff", "doctor", "clients", "completion"]) {
       expect(page).toContain(cmd);

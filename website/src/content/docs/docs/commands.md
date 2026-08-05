@@ -51,6 +51,11 @@ Detects which supported clients are configured on this machine and inventories
 what AgentMove can migrate from each (MCP servers, skills, memory entries,
 instructions, persona), including any format warnings.
 
+## Man page
+
+A global install (`npm i -g agentmove-cli`) also links a man page:
+`man agentmove-cli`.
+
 ## Global options
 
 - `--home <dir>` — override the home directory (useful for testing and staging).

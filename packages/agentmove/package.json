@@ -32,7 +32,9 @@
     "dist",
     "man"
   ],
-  "man": "./man/agentmove.1",
+  "man": [
+    "./man/agentmove-cli.1"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
