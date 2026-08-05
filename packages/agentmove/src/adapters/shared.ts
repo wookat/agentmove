@@ -136,3 +136,16 @@ export function appendSections(
   }
   return out.trimStart() === "" ? "" : out.replace(/^\n+/, "") + "\n";
 }
+
+/**
+ * Whether the target's MCP/config file needs rewriting at all: skip the plan
+ * when the import brings no servers, no explicit --replace-mcp, and no other
+ * config change, so a memory/instructions-only import leaves it untouched.
+ */
+export function touchesMcpConfig(
+  serverCount: number,
+  replaceMcp: boolean,
+  otherChanges = false,
+): boolean {
+  return serverCount > 0 || replaceMcp || otherChanges;
+}

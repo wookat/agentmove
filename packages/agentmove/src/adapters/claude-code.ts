@@ -11,14 +11,7 @@ import {
   parseFile,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import {
-  appendSections,
-  mergeMcpRecords,
-  parseCommonMcpEntry,
-  planSkills,
-  readSkillsDir,
-  renderCommonMcpEntry,
-} from "./shared.js";
+import { appendSections, mergeMcpRecords, parseCommonMcpEntry, planSkills, readSkillsDir, renderCommonMcpEntry, touchesMcpConfig } from "./shared.js";
 
 const MCP_REL = ".claude.json";
 
@@ -77,7 +70,9 @@ export const claudeCode: ClientAdapter = {
     }
     const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
     config.mcpServers = mergeMcpRecords(existing, mcpServers, warnings, opts?.replaceMcp ?? false);
-    files.push({ path: MCP_REL, content: JSON.stringify(config, null, 2) + "\n" });
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: MCP_REL, content: JSON.stringify(config, null, 2) + "\n" });
+    }
 
     const sections: { title: string; body: string }[] = [];
     if (bundle.persona) {

@@ -15,7 +15,7 @@ import {
   stringArgs,
 } from "../model.js";
 import { exists, isDir, listDir, readText } from "../fsutil.js";
-import { mergeMcpRecords, mergeSkills, planSkills, readSkillsDir } from "./shared.js";
+import { mergeMcpRecords, mergeSkills, planSkills, readSkillsDir, touchesMcpConfig } from "./shared.js";
 
 const CONFIG_REL = ".openclaw/openclaw.json";
 
@@ -176,7 +176,9 @@ export const openclaw: ClientAdapter = {
       const defaults = isRecord(agents.defaults) ? agents.defaults : {};
       config.agents = { ...agents, defaults: { ...defaults, model: bundle.config.model } };
     }
-    files.push({ path: CONFIG_REL, content: JSON.stringify(config, null, 2) + "\n" });
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false, bundle.config.model !== undefined)) {
+      files.push({ path: CONFIG_REL, content: JSON.stringify(config, null, 2) + "\n" });
+    }
 
     const wsRel = ".openclaw/workspace";
     if (bundle.persona) files.push({ path: `${wsRel}/SOUL.md`, content: bundle.persona });

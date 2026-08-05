@@ -11,7 +11,7 @@ import {
   parseFile,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { mergeMcpRecords, parseCommonMcpEntry, renderCommonMcpEntry } from "./shared.js";
+import { mergeMcpRecords, parseCommonMcpEntry, renderCommonMcpEntry, touchesMcpConfig } from "./shared.js";
 
 const SETTINGS_REL = ".gemini/settings.json";
 const CONTEXT_REL = ".gemini/GEMINI.md";
@@ -99,7 +99,9 @@ export const gemini: ClientAdapter = {
     }
     const existing = isRecord(settings.mcpServers) ? settings.mcpServers : {};
     settings.mcpServers = mergeMcpRecords(existing, mcpServers, warnings, opts?.replaceMcp ?? false);
-    files.push({ path: SETTINGS_REL, content: JSON.stringify(settings, null, 2) + "\n" });
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: SETTINGS_REL, content: JSON.stringify(settings, null, 2) + "\n" });
+    }
 
     const parts: string[] = [];
     if (bundle.instructions) parts.push(bundle.instructions.trim());

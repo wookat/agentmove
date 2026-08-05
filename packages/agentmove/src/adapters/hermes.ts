@@ -16,7 +16,7 @@ import {
   stringArgs,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { mergeMcpRecords, planSkills, readSkillsDir } from "./shared.js";
+import { mergeMcpRecords, planSkills, readSkillsDir, touchesMcpConfig } from "./shared.js";
 
 const CONFIG_REL = ".hermes/config.yaml";
 
@@ -140,7 +140,9 @@ export const hermes: ClientAdapter = {
       opts?.replaceMcp ?? false,
     );
     if (bundle.config.model) config.model = bundle.config.model;
-    files.push({ path: CONFIG_REL, content: stringifyYaml(config) });
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false, bundle.config.model !== undefined)) {
+      files.push({ path: CONFIG_REL, content: stringifyYaml(config) });
+    }
 
     if (bundle.persona) files.push({ path: ".hermes/SOUL.md", content: bundle.persona });
     if (bundle.instructions) files.push({ path: ".hermes/AGENTS.md", content: bundle.instructions });

@@ -14,7 +14,7 @@ import {
   stringArgs,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { appendSections, mergeMcpRecords, planSkills, readSkillsDir } from "./shared.js";
+import { appendSections, mergeMcpRecords, planSkills, readSkillsDir, touchesMcpConfig } from "./shared.js";
 
 const CONFIG_REL = ".codex/config.toml";
 
@@ -105,7 +105,9 @@ export const codex: ClientAdapter = {
     const existing = isRecord(config.mcp_servers) ? config.mcp_servers : {};
     config.mcp_servers = mergeMcpRecords(existing, mcp_servers, warnings, opts?.replaceMcp ?? false);
     if (bundle.config.model) config.model = bundle.config.model;
-    files.push({ path: CONFIG_REL, content: stringifyToml(config) + "\n" });
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false, bundle.config.model !== undefined)) {
+      files.push({ path: CONFIG_REL, content: stringifyToml(config) + "\n" });
+    }
 
     const sections: { title: string; body: string }[] = [];
     if (bundle.persona) {
