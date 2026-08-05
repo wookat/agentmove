@@ -12,6 +12,7 @@ description: What AgentMove reads and writes for each client.
 | Cursor | `cursor` | `~/.cursor/mcp.json`; instructions/persona imported as `~/.cursor/rules/agentmove-imported.mdc` |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section) |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md` |
+| Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json` (`mcpServers`, remote servers use `type: streamableHttp`/`sse` + `url`), `~/Documents/Cline/Rules/*.md` |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -23,5 +24,8 @@ description: What AgentMove reads and writes for each client.
 - **Codex / Claude Code** client-managed memories are not exported in v0.
 - **Windsurf** Cascade memories are app-managed and cannot be migrated; skills
   have no Windsurf equivalent.
+- **Cline** VS Code extension keeps its own MCP settings copy in VS Code
+  globalStorage; AgentMove migrates the CLI settings file (`~/.cline`) and
+  global rules only. Skills have no Cline equivalent.
 - OpenClaw `toolFilter` and Hermes `tools.include/exclude` MCP filters have no
   portable equivalent and are dropped with a warning.

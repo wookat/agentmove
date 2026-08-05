@@ -8,7 +8,7 @@ agentmove \- move your AI agent between clients: config, MCP servers, skills, me
 .SH DESCRIPTION
 .B agentmove
 migrates AI agent setups between OpenClaw, Hermes Agent, Claude Code, Codex
-CLI, Cursor, Gemini CLI, and Windsurf \(em in any direction, through a portable bundle
+CLI, Cursor, Gemini CLI, Windsurf, and Cline \(em in any direction, through a portable bundle
 format. Imports are dry-run by default, existing files are backed up before
 writing, likely secrets are redacted on export, and every lossy mapping is
 reported as a warning.
@@ -57,7 +57,7 @@ Operate on the client's project-scoped files inside \fIdir\fR instead of the
 home directory: \fB.mcp.json\fR/\fBCLAUDE.md\fR (claude-code),
 \fBAGENTS.md\fR (codex), \fB.gemini/settings.json\fR/\fBGEMINI.md\fR (gemini),
 \fB.cursor/mcp.json\fR/\fB.cursor/rules\fR (cursor), \fB.windsurf/rules\fR
-(windsurf). Backups go to
+(windsurf), \fB.clinerules\fR (cline). Backups go to
 \fIdir\fR/.agentmove/backups. openclaw/hermes have no project scope.
 .TP
 .B --mif \fIfile\fR

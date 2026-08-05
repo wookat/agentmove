@@ -262,12 +262,58 @@ const windsurfProject: ProjectAdapter = {
   },
 };
 
+const clineProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "cline";
+    const rulesDir = path.join(dir, ".clinerules");
+    if (await isDir(rulesDir)) {
+      const parts: string[] = [];
+      for (const name of (await listDir(rulesDir)).sort()) {
+        if (!name.endsWith(".md") && !name.endsWith(".txt")) continue;
+        const content = await readText(path.join(rulesDir, name));
+        if (content) parts.push(`<!-- .clinerules/${name} -->\n${content.trim()}`);
+      }
+      if (parts.length) {
+        bundle.instructions = parts.join("\n\n") + "\n";
+        warnings.push("cline workspace rules concatenated into instructions");
+      }
+    }
+    warnings.push("cline has no project-scoped MCP config; MCP servers stay user-scoped");
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, _opts) {
+    void dir;
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    if (bundle.mcpServers.length) {
+      warnings.push(
+        "mcp: cline has no project-scoped MCP config; import without --project to write ~/.cline/data/settings/cline_mcp_settings.json",
+      );
+    }
+    if (bundle.instructions || bundle.persona) {
+      const body = [
+        ...(bundle.instructions ? [bundle.instructions.trim(), ""] : []),
+        ...(bundle.persona
+          ? ["## Imported by agentmove: persona (SOUL.md)", "", bundle.persona.trim(), ""]
+          : []),
+      ].join("\n");
+      files.push({ path: ".clinerules/agentmove-imported.md", content: body });
+    }
+    if (bundle.memory.length) warnings.push("memory: cline has no project-scoped memory store; skipped");
+    if (bundle.skills.length) warnings.push("skills: cline has no SKILL.md mechanism; skipped");
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
   gemini: geminiProject,
   cursor: cursorProject,
   windsurf: windsurfProject,
+  cline: clineProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

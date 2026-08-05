@@ -6,6 +6,7 @@ import { codex } from "./codex.js";
 import { cursor } from "./cursor.js";
 import { gemini } from "./gemini.js";
 import { windsurf } from "./windsurf.js";
+import { cline } from "./cline.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   openclaw,
@@ -15,6 +16,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   cursor,
   gemini,
   windsurf,
+  cline,
 };
 
 export function getAdapter(id: string): ClientAdapter {
@@ -28,4 +30,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline };
