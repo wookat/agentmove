@@ -24,7 +24,8 @@ program
       ) as { version: string }
     ).version,
   )
-  .option("--home <dir>", "override the home directory (mainly for testing)", os.homedir());
+  .option("--home <dir>", "override the home directory (mainly for testing)", os.homedir())
+  .option("--debug", "print a full stack trace on unexpected errors", false);
 
 function home(): string {
   return program.opts<{ home: string }>().home;
@@ -238,7 +239,7 @@ program
 program
   .command("completion")
   .description('generate a shell completion script (enable with: eval "$(agentmove completion bash)")')
-  .argument("<shell>", "bash or zsh")
+  .argument("<shell>", "bash, zsh, or fish")
   .action((shell: string) => {
     process.stdout.write(completionScript(shell));
   });
@@ -246,10 +247,15 @@ program
 // Exit-code contract: 0 success, 1 unexpected error, 2 usage error, 3 bad input data.
 program.parseAsync().catch((e: unknown) => {
   const err = e as NodeJS.ErrnoException;
+  const debug = program.opts<{ debug: boolean }>().debug || process.env.AGENTMOVE_DEBUG === "1";
   let message = err.message;
   if (err.code === "EACCES" || err.code === "EPERM") {
     message += " (check file/directory permissions, or rerun with a writable --home)";
   }
   console.error(`error: ${message}`);
+  if (debug && err.stack) console.error(err.stack);
+  else if (!(e instanceof CliError)) {
+    console.error("(rerun with --debug or AGENTMOVE_DEBUG=1 for a stack trace)");
+  }
   process.exitCode = e instanceof CliError ? e.exitCode : 1;
 });

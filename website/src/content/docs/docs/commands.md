@@ -54,6 +54,8 @@ instructions, persona), including any format warnings.
 ## Global options
 
 - `--home <dir>` — override the home directory (useful for testing and staging).
+- `--debug` (or `AGENTMOVE_DEBUG=1`) — print a full stack trace on unexpected
+  errors; by default errors are a single readable line.
 - `--json` (on `export`, `import`, `convert`, `diff`, `doctor`, `clients`) — machine-readable JSON on
   stdout for scripts and CI: the migration plan, warnings, per-layer summary,
   and backup directory. After `--apply`, the human output also ends with a

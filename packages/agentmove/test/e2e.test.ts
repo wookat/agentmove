@@ -171,7 +171,7 @@ describe("e2e (built CLI, child process)", () => {
     await fs.chmod(home, 0o755);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain("check file/directory permissions");
-    expect(r.stderr).not.toContain("at ");
+    expect(r.stderr).not.toContain("    at ");
     },
   );
 
@@ -200,6 +200,23 @@ describe("e2e (built CLI, child process)", () => {
     ) as { version: string };
     expect(run(["--version"], work).trim()).toBe(pkg.version);
   });
+
+  it.skipIf(process.platform === "win32")(
+    "hides stack traces by default and prints them with --debug",
+    async () => {
+    const home = await cloneFixture("openclaw-home");
+    await fs.chmod(home, 0o555);
+    const plain = runFail(["--home", home, "convert", "openclaw", "hermes", "--apply"], home);
+    const debug = runFail(
+      ["--home", home, "--debug", "convert", "openclaw", "hermes", "--apply"],
+      home,
+    );
+    await fs.chmod(home, 0o755);
+    expect(plain.stderr).toContain("rerun with --debug");
+    expect(plain.stderr).not.toContain("    at ");
+    expect(debug.stderr).toContain("    at ");
+    },
+  );
 
   it("ships a man page wired into package.json", async () => {
     const pkg = JSON.parse(await fs.readFile(path.join(PKG, "package.json"), "utf8")) as {

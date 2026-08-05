@@ -7,7 +7,7 @@
 - [x] A2 覆盖率门禁：核心覆盖率 ≥80% 并在 CI 强制（vitest coverage thresholds）
 - [x] A3 真实环境 e2e：子进程运行已构建 CLI，对真实 home 目录布局做 export → import --apply → 再 export 的 round-trip 校验（含备份、dry-run、secrets redaction）
 - [ ] A4 npm provenance（OIDC trusted publishing）——需 npm org 侧配置
-- [x] A5（部分）健壮性：exit code 契约（0/1/2/3）+ 解析错误带文件路径 + MCP merge 语义（ROUND-1，PR #5）；`--debug` 诊断仍待做
+- [x] A5 健壮性：exit code 契约（0/1/2/3）+ 解析错误带文件路径 + MCP merge 语义（ROUND-1，PR #5）+ `--debug`/`AGENTMOVE_DEBUG=1` 诊断（ROUND-8）
 
 ## B · 文档与诚实边界
 - [x] B1 memory/persona 迁移能力边界如实成文（docs 站 limitations 页 + README「What does NOT migrate」节）
