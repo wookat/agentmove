@@ -20,6 +20,7 @@ import {
   planSkills,
   readSkillsDir,
   renderCommonMcpEntry,
+  touchesMcpConfig,
 } from "./adapters/shared.js";
 
 /**
@@ -84,7 +85,9 @@ const claudeCodeProject: ProjectAdapter = {
       warnings,
       opts?.replaceMcp ?? false,
     );
-    files.push({ path: ".mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
     if (bundle.instructions) files.push({ path: "CLAUDE.md", content: bundle.instructions });
     if (bundle.persona) warnings.push("persona: no project-scoped slot in claude-code; skipped");
     if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in claude-code; skipped");
@@ -143,7 +146,9 @@ const geminiProject: ProjectAdapter = {
       warnings,
       opts?.replaceMcp ?? false,
     );
-    files.push({ path: ".gemini/settings.json", content: JSON.stringify(settings, null, 2) + "\n" });
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".gemini/settings.json", content: JSON.stringify(settings, null, 2) + "\n" });
+    }
     if (bundle.instructions) files.push({ path: "GEMINI.md", content: bundle.instructions });
     if (bundle.persona) warnings.push("persona: no project-scoped slot in gemini; skipped");
     if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in gemini; skipped");
@@ -190,7 +195,9 @@ const cursorProject: ProjectAdapter = {
       rendered[s.name] = renderCommonMcpEntry({ ...s, cwd: undefined }, false);
     }
     config.mcpServers = mergeMcpRecords(existing, rendered, warnings, opts?.replaceMcp ?? false);
-    files.push({ path: ".cursor/mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".cursor/mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
     if (bundle.instructions || bundle.persona) {
       const body = [
         "---",

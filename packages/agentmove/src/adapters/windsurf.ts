@@ -11,7 +11,7 @@ import {
   parseFile,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { mergeMcpRecords, parseCommonMcpEntry, renderCommonMcpEntry } from "./shared.js";
+import { mergeMcpRecords, parseCommonMcpEntry, renderCommonMcpEntry, touchesMcpConfig } from "./shared.js";
 
 const MCP_REL = ".codeium/windsurf/mcp_config.json";
 const RULES_REL = ".codeium/windsurf/memories/global_rules.md";
@@ -90,7 +90,9 @@ export const windsurf: ClientAdapter = {
     }
     const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
     config.mcpServers = mergeMcpRecords(existing, mcpServers, warnings, opts?.replaceMcp ?? false);
-    files.push({ path: MCP_REL, content: JSON.stringify(config, null, 2) + "\n" });
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: MCP_REL, content: JSON.stringify(config, null, 2) + "\n" });
+    }
 
     const parts: string[] = [];
     if (bundle.instructions) parts.push(bundle.instructions.trim());

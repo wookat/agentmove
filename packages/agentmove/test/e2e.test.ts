@@ -405,4 +405,19 @@ describe("e2e (built CLI, child process)", () => {
     expect(bad.status).toBe(3);
     expect(bad.stderr).toContain("not a MIF document");
   });
+
+  it("leaves the target MCP config untouched on a memory/instructions-only import", async () => {
+    const home = await cloneFixture("openclaw-home");
+    const bundle = path.join(home, "b");
+    run(["--home", home, "export", "openclaw", "-o", bundle, "--only", "memory"], home);
+
+    const target = await cloneFixture("gemini-home");
+    const before = await fs.readFile(path.join(target, ".gemini/settings.json"), "utf8");
+    const out = JSON.parse(
+      run(["--home", target, "import", "gemini", "-i", bundle, "--apply", "--json"], target),
+    ) as { files: string[] };
+    expect(out.files).not.toContain(".gemini/settings.json");
+    const after = await fs.readFile(path.join(target, ".gemini/settings.json"), "utf8");
+    expect(after).toBe(before);
+  });
 });
