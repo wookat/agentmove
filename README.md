@@ -42,10 +42,6 @@ npx agentmove-cli import codex -i my-agent --apply
 npx agentmove-cli diff claude-code codex
 ```
 
-> Until the package is published on npm, run from a checkout:
-> `pnpm install && pnpm build`, then use
-> `node packages/agentmove/dist/cli.js` in place of `npx agentmove-cli`.
-
 ## What gets migrated
 
 | Layer | Notes |
@@ -96,12 +92,12 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations
+- `agentmove completion <bash|zsh|fish>` — shell completion script
 
-All commands accept `--json` for machine-readable output (plans, warnings,
-per-layer summary) — handy in scripts and CI.
-
-`import`/`convert`/`diff`/`doctor` accept `--json` for machine-readable output
-(plans, warnings, per-layer summary) — handy in scripts and CI.
+All data commands accept `--json` for machine-readable output (plans,
+warnings, per-layer summary) — handy in scripts and CI. A global install also
+links a man page (`man agentmove-cli`), and `--debug` (or
+`AGENTMOVE_DEBUG=1`) prints a stack trace on unexpected errors.
 
 ## Safety model
 

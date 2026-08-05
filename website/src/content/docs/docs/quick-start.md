@@ -32,8 +32,7 @@ npx agentmove-cli export claude-code -o my-agent
 npx agentmove-cli import codex -i my-agent --apply
 ```
 
-:::note
-Until the package is published on npm, run from a checkout:
-`pnpm install && pnpm build`, then use `node packages/agentmove/dist/cli.js`
-in place of `npx agentmove-cli`.
+:::tip
+Enable tab completion with `eval "$(agentmove completion bash)"` (also `zsh`
+and `fish`), and see `man agentmove-cli` after a global install.
 :::
