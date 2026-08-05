@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "files": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": { "API_KEY": "test-not-a-real-key" },
+      "alwaysAllow": ["read_file"],
+      "disabled": true
+    },
+    "remote": {
+      "type": "streamableHttp",
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer test-not-a-real-token" }
+    },
+    "legacy-sse": {
+      "url": "https://sse.example.com/events"
+    }
+  }
+}
