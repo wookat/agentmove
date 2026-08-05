@@ -71,6 +71,34 @@ export interface Bundle {
   skills: Skill[];
 }
 
+export type Layer = "mcp" | "skills" | "memory" | "instructions" | "persona";
+
+export const LAYERS: Layer[] = ["mcp", "skills", "memory", "instructions", "persona"];
+
+/** Parse a comma-separated `--only` value into layers (usage error on unknowns). */
+export function parseLayers(only: string): Layer[] {
+  const layers = only.split(",").map((l) => l.trim()).filter(Boolean);
+  for (const l of layers) {
+    if (!LAYERS.includes(l as Layer)) {
+      throw new CliError(`unknown layer "${l}" (expected one of: ${LAYERS.join(", ")})`, EXIT_USAGE);
+    }
+  }
+  return layers as Layer[];
+}
+
+/** Keep only the given layers of a bundle (config/model always kept). */
+export function filterBundle(bundle: Bundle, layers: Layer[]): Bundle {
+  const keep = new Set(layers);
+  return {
+    ...bundle,
+    mcpServers: keep.has("mcp") ? bundle.mcpServers : [],
+    skills: keep.has("skills") ? bundle.skills : [],
+    memory: keep.has("memory") ? bundle.memory : [],
+    instructions: keep.has("instructions") ? bundle.instructions : undefined,
+    persona: keep.has("persona") ? bundle.persona : undefined,
+  };
+}
+
 export function emptyBundle(): Bundle {
   return {
     manifest: { schemaVersion: 1 },

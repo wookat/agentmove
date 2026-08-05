@@ -47,6 +47,11 @@ Override the home directory (useful for testing and staging).
 .B --json
 Machine-readable JSON output (plans, warnings, per-layer summary).
 .TP
+.B --only \fIlayers\fR
+Comma-separated subset of layers to migrate:
+\fImcp\fR, \fIskills\fR, \fImemory\fR, \fIinstructions\fR, \fIpersona\fR
+(on \fBexport\fR, \fBimport\fR, and \fBconvert\fR).
+.TP
 .B --debug
 Print a full stack trace on unexpected errors (also enabled by the
 \fBAGENTMOVE_DEBUG=1\fR environment variable).

@@ -240,6 +240,35 @@ describe("e2e (built CLI, child process)", () => {
     expect(out).toMatch(/migrated: \d+ MCP server\(s\), \d+ skill\(s\), \d+ memory entr\(ies\)/);
   });
 
+  it("supports partial migration with --only and rejects unknown layers", async () => {
+    const home = await cloneFixture("openclaw-home");
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+
+    const out = JSON.parse(
+      run(
+        ["--home", home, "export", "openclaw", "-o", path.join(work, "b"), "--only", "mcp", "--json"],
+        work,
+      ),
+    ) as { summary: { mcpServers: number; skills: number; memoryEntries: number } };
+    expect(out.summary.mcpServers).toBe(2);
+    expect(out.summary.skills).toBe(0);
+    expect(out.summary.memoryEntries).toBe(0);
+
+    const convert = JSON.parse(
+      run(
+        ["--home", home, "convert", "openclaw", "hermes", "--only", "skills,persona", "--json"],
+        home,
+      ),
+    ) as { files: string[]; summary: { mcpServers: number; skills: number } };
+    expect(convert.summary.mcpServers).toBe(0);
+    expect(convert.summary.skills).toBeGreaterThan(0);
+    expect(convert.files.some((f) => f.includes("SKILL.md"))).toBe(true);
+
+    const bad = runFail(["--home", home, "export", "openclaw", "--only", "mcp,nope"], home);
+    expect(bad.status).toBe(2);
+    expect(bad.stderr).toContain('unknown layer "nope"');
+  });
+
   it("merges into the target's existing MCP servers instead of replacing them", async () => {
     const claudeHome = await cloneFixture("claude-home");
     const codexHome = await cloneFixture("codex-home");

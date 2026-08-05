@@ -7,7 +7,7 @@ import { readBundle, stripSecrets, writeBundle } from "./bundle.js";
 import { diffBundles, formatDiff } from "./diff.js";
 import { formatDoctor, runDoctor } from "./doctor.js";
 import { applyPlans, backupPaths } from "./apply.js";
-import { Bundle, CliError, ImportOptions } from "./model.js";
+import { Bundle, CliError, ImportOptions, filterBundle, parseLayers } from "./model.js";
 import { completionScript } from "./completion.js";
 
 const program = new Command();
@@ -130,11 +130,16 @@ program
   .argument("<client>", "source client (openclaw|hermes|claude-code|codex|cursor|gemini)")
   .option("-o, --out <dir>", "bundle output directory", "./agentmove-bundle")
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
+  .option("--only <layers>", "comma-separated layers to export (mcp,skills,memory,instructions,persona)")
   .option("--json", "machine-readable JSON output", false)
   .action(
-    async (client: string, opts: { out: string; includeSecrets: boolean; json: boolean }) => {
+    async (
+      client: string,
+      opts: { out: string; includeSecrets: boolean; only?: string; json: boolean },
+    ) => {
       const collected: string[] = [];
-      const bundle = await exportFrom(client, opts.includeSecrets, opts.json ? collected : undefined);
+      let bundle = await exportFrom(client, opts.includeSecrets, opts.json ? collected : undefined);
+      if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
       await writeBundle(bundle, opts.out);
       if (opts.json) {
         process.stdout.write(
@@ -157,13 +162,15 @@ program
   .option("-i, --in <dir>", "bundle directory", "./agentmove-bundle")
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
+  .option("--only <layers>", "comma-separated layers to import (mcp,skills,memory,instructions,persona)")
   .option("--json", "machine-readable JSON output", false)
   .action(
     async (
       client: string,
-      opts: { in: string; apply: boolean; replaceMcp: boolean; json: boolean },
+      opts: { in: string; apply: boolean; replaceMcp: boolean; only?: string; json: boolean },
     ) => {
-      const bundle = await readBundle(opts.in);
+      let bundle = await readBundle(opts.in);
+      if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
       await importTo(client, bundle, opts.apply, { replaceMcp: opts.replaceMcp }, opts.json);
     },
   );
@@ -176,15 +183,23 @@ program
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
+  .option("--only <layers>", "comma-separated layers to migrate (mcp,skills,memory,instructions,persona)")
   .option("--json", "machine-readable JSON output", false)
   .action(
     async (
       from: string,
       to: string,
-      opts: { apply: boolean; includeSecrets: boolean; replaceMcp: boolean; json: boolean },
+      opts: {
+        apply: boolean;
+        includeSecrets: boolean;
+        replaceMcp: boolean;
+        only?: string;
+        json: boolean;
+      },
     ) => {
       const collected: string[] = [];
-      const bundle = await exportFrom(from, opts.includeSecrets, opts.json ? collected : undefined);
+      let bundle = await exportFrom(from, opts.includeSecrets, opts.json ? collected : undefined);
+      if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
       await importTo(to, bundle, opts.apply, { replaceMcp: opts.replaceMcp }, opts.json, collected);
     },
   );
