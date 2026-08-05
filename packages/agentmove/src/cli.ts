@@ -9,6 +9,7 @@ import { formatDoctor, runDoctor } from "./doctor.js";
 import { applyPlans, backupPaths } from "./apply.js";
 import { Bundle, CliError, ImportOptions, filterBundle, parseLayers } from "./model.js";
 import { completionScript } from "./completion.js";
+import { getProjectAdapter } from "./project.js";
 
 const program = new Command();
 
@@ -39,9 +40,12 @@ async function exportFrom(
   client: string,
   includeSecrets: boolean,
   collect?: string[],
+  project?: string,
 ): Promise<Bundle> {
   const adapter = getAdapter(client);
-  const { bundle, warnings } = await adapter.exportBundle(home());
+  const { bundle, warnings } = project
+    ? await getProjectAdapter(adapter.id).exportProject(project)
+    : await adapter.exportBundle(home());
   if (collect) collect.push(...warnings);
   else printWarnings(warnings);
   if (includeSecrets) return bundle;
@@ -82,16 +86,20 @@ async function importTo(
   importOpts: ImportOptions,
   json: boolean,
   priorWarnings: string[] = [],
+  project?: string,
 ): Promise<void> {
   const adapter = getAdapter(client);
-  const { files, warnings } = await adapter.planImport(bundle, home(), importOpts);
+  const base = project ?? home();
+  const { files, warnings } = project
+    ? await getProjectAdapter(adapter.id).planImport(bundle, project, importOpts)
+    : await adapter.planImport(bundle, home(), importOpts);
   const allWarnings = [...priorWarnings, ...warnings];
   if (!json) printWarnings(allWarnings);
 
   let backupDir: string | undefined;
   if (apply && files.length) {
-    backupDir = await backupPaths(files, home());
-    await applyPlans(files, home());
+    backupDir = await backupPaths(files, base);
+    await applyPlans(files, base);
   }
 
   if (json) {
@@ -115,8 +123,8 @@ async function importTo(
     return;
   }
   if (!apply) {
-    console.log(`dry-run: would write ${files.length} file(s) under ${home()} (use --apply to write):`);
-    for (const f of files) console.log(`  ~/${f.path}`);
+    console.log(`dry-run: would write ${files.length} file(s) under ${base} (use --apply to write):`);
+    for (const f of files) console.log(`  ${project ? `${project}/` : "~/"}${f.path}`);
     return;
   }
   if (backupDir) console.log(`backed up existing files to ${backupDir}`);
@@ -131,14 +139,20 @@ program
   .option("-o, --out <dir>", "bundle output directory", "./agentmove-bundle")
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
   .option("--only <layers>", "comma-separated layers to export (mcp,skills,memory,instructions,persona)")
+  .option("--project <dir>", "export the client's project-scoped files from a project directory")
   .option("--json", "machine-readable JSON output", false)
   .action(
     async (
       client: string,
-      opts: { out: string; includeSecrets: boolean; only?: string; json: boolean },
+      opts: { out: string; includeSecrets: boolean; only?: string; project?: string; json: boolean },
     ) => {
       const collected: string[] = [];
-      let bundle = await exportFrom(client, opts.includeSecrets, opts.json ? collected : undefined);
+      let bundle = await exportFrom(
+        client,
+        opts.includeSecrets,
+        opts.json ? collected : undefined,
+        opts.project,
+      );
       if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
       await writeBundle(bundle, opts.out);
       if (opts.json) {
@@ -163,15 +177,31 @@ program
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
   .option("--only <layers>", "comma-separated layers to import (mcp,skills,memory,instructions,persona)")
+  .option("--project <dir>", "import into the client's project-scoped files in a project directory")
   .option("--json", "machine-readable JSON output", false)
   .action(
     async (
       client: string,
-      opts: { in: string; apply: boolean; replaceMcp: boolean; only?: string; json: boolean },
+      opts: {
+        in: string;
+        apply: boolean;
+        replaceMcp: boolean;
+        only?: string;
+        project?: string;
+        json: boolean;
+      },
     ) => {
       let bundle = await readBundle(opts.in);
       if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
-      await importTo(client, bundle, opts.apply, { replaceMcp: opts.replaceMcp }, opts.json);
+      await importTo(
+        client,
+        bundle,
+        opts.apply,
+        { replaceMcp: opts.replaceMcp },
+        opts.json,
+        [],
+        opts.project,
+      );
     },
   );
 
@@ -184,6 +214,7 @@ program
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
   .option("--only <layers>", "comma-separated layers to migrate (mcp,skills,memory,instructions,persona)")
+  .option("--project <dir>", "migrate the clients' project-scoped files in a project directory")
   .option("--json", "machine-readable JSON output", false)
   .action(
     async (
@@ -194,13 +225,27 @@ program
         includeSecrets: boolean;
         replaceMcp: boolean;
         only?: string;
+        project?: string;
         json: boolean;
       },
     ) => {
       const collected: string[] = [];
-      let bundle = await exportFrom(from, opts.includeSecrets, opts.json ? collected : undefined);
+      let bundle = await exportFrom(
+        from,
+        opts.includeSecrets,
+        opts.json ? collected : undefined,
+        opts.project,
+      );
       if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
-      await importTo(to, bundle, opts.apply, { replaceMcp: opts.replaceMcp }, opts.json, collected);
+      await importTo(
+        to,
+        bundle,
+        opts.apply,
+        { replaceMcp: opts.replaceMcp },
+        opts.json,
+        collected,
+        opts.project,
+      );
     },
   );
 

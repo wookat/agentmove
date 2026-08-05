@@ -52,6 +52,13 @@ Comma-separated subset of layers to migrate:
 \fImcp\fR, \fIskills\fR, \fImemory\fR, \fIinstructions\fR, \fIpersona\fR
 (on \fBexport\fR, \fBimport\fR, and \fBconvert\fR).
 .TP
+.B --project \fIdir\fR
+Operate on the client's project-scoped files inside \fIdir\fR instead of the
+home directory: \fB.mcp.json\fR/\fBCLAUDE.md\fR (claude-code),
+\fBAGENTS.md\fR (codex), \fB.gemini/settings.json\fR/\fBGEMINI.md\fR (gemini),
+\fB.cursor/mcp.json\fR/\fB.cursor/rules\fR (cursor). Backups go to
+\fIdir\fR/.agentmove/backups. openclaw/hermes have no project scope.
+.TP
 .B --debug
 Print a full stack trace on unexpected errors (also enabled by the
 \fBAGENTMOVE_DEBUG=1\fR environment variable).

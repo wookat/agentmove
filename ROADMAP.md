@@ -3,10 +3,9 @@
 Short-cycle, demand-driven. Order reflects current priority, not promises.
 
 ## Near term
-- Project-scoped migration (`--project`): `.mcp.json`, `.cursor/rules/*.mdc`,
-  project `AGENTS.md`/`CLAUDE.md`/`GEMINI.md`
-- Robustness: exit-code contract, `--debug`, graceful errors on corrupt configs
-- `--json` output for doctor/diff (CI-friendly)
+- ~~Project-scoped migration (`--project`)~~ — shipped in 0.3.0
+- ~~Robustness: exit-code contract, `--debug`, graceful errors on corrupt configs~~ — shipped
+- ~~`--json` output for doctor/diff (CI-friendly)~~ — shipped
 
 ## Mid term
 - More clients (Windsurf, Cline, Zed, OpenHands) — adapter contributions welcome
