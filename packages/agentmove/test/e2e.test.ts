@@ -269,6 +269,43 @@ describe("e2e (built CLI, child process)", () => {
     expect(bad.stderr).toContain('unknown layer "nope"');
   });
 
+  it("converts every source→target pair (full 6×6 matrix) without errors", async () => {
+    const clients = ["openclaw", "hermes", "claude-code", "codex", "cursor", "gemini"];
+    const fixtures: Record<string, string> = {
+      openclaw: "openclaw-home",
+      hermes: "hermes-home",
+      "claude-code": "claude-home",
+      codex: "codex-home",
+      cursor: "cursor-home",
+      gemini: "gemini-home",
+    };
+    for (const src of clients) {
+      const home = await cloneFixture(fixtures[src]!);
+      for (const dst of clients) {
+        if (src === dst) continue;
+        const out = JSON.parse(run(["--home", home, "convert", src, dst, "--json"], home)) as {
+          files: string[];
+          summary: { mcpServers: number };
+        };
+        expect(out.summary.mcpServers, `${src}→${dst}`).toBeGreaterThan(0);
+        expect(out.files.length, `${src}→${dst}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("applies a full round trip into every target and re-exports it", async () => {
+    const targets = ["openclaw", "hermes", "claude-code", "codex", "cursor", "gemini"];
+    for (const dst of targets) {
+      const home = await cloneFixture("openclaw-home");
+      run(["--home", home, "convert", "openclaw", dst, "--apply"], home);
+      const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+      const out = JSON.parse(
+        run(["--home", home, "export", dst, "-o", path.join(work, "b"), "--json"], work),
+      ) as { summary: { mcpServers: number } };
+      expect(out.summary.mcpServers, `round trip via ${dst}`).toBeGreaterThan(0);
+    }
+  });
+
   it("re-export into the same directory leaves no stale layer files", async () => {
     const home = await cloneFixture("openclaw-home");
     const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
