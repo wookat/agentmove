@@ -201,6 +201,20 @@ describe("e2e (built CLI, child process)", () => {
     expect(run(["--version"], work).trim()).toBe(pkg.version);
   });
 
+  it("ships a man page wired into package.json", async () => {
+    const pkg = JSON.parse(await fs.readFile(path.join(PKG, "package.json"), "utf8")) as {
+      man: string;
+      files: string[];
+    };
+    expect(pkg.man).toBe("./man/agentmove.1");
+    expect(pkg.files).toContain("man");
+    const page = await fs.readFile(path.join(PKG, "man/agentmove.1"), "utf8");
+    expect(page).toContain(".TH AGENTMOVE 1");
+    for (const cmd of ["export", "import", "convert", "diff", "doctor", "clients", "completion"]) {
+      expect(page).toContain(cmd);
+    }
+  });
+
   it("prints a migration summary after --apply", async () => {
     const home = await cloneFixture("openclaw-home");
     const out = run(["--home", home, "convert", "openclaw", "hermes", "--apply"], home);

@@ -1,0 +1,70 @@
+.TH AGENTMOVE 1 "2026-08-05" "agentmove-cli" "User Commands"
+.SH NAME
+agentmove \- move your AI agent between clients: config, MCP servers, skills, memory, persona
+.SH SYNOPSIS
+.B agentmove
+[\fB--home\fR \fIdir\fR]
+\fIcommand\fR [\fIoptions\fR]
+.SH DESCRIPTION
+.B agentmove
+migrates AI agent setups between OpenClaw, Hermes Agent, Claude Code, Codex
+CLI, Cursor, and Gemini CLI \(em in any direction, through a portable bundle
+format. Imports are dry-run by default, existing files are backed up before
+writing, likely secrets are redacted on export, and every lossy mapping is
+reported as a warning.
+.SH COMMANDS
+.TP
+.B export \fIclient\fR [\fB-o\fR \fIdir\fR] [\fB--include-secrets\fR] [\fB--json\fR]
+Export a client's setup into a portable bundle directory (default
+\fI./agentmove-bundle\fR).
+.TP
+.B import \fIclient\fR [\fB-i\fR \fIdir\fR] [\fB--apply\fR] [\fB--replace-mcp\fR] [\fB--json\fR]
+Import a bundle into a client. Dry-run by default; \fB--apply\fR writes files
+after backing up existing ones to \fI~/.agentmove/backups/<timestamp>/\fR.
+Imported MCP servers are merged into the target's existing list;
+\fB--replace-mcp\fR replaces it entirely.
+.TP
+.B convert \fIfrom\fR \fIto\fR [\fB--apply\fR] [\fB--include-secrets\fR] [\fB--replace-mcp\fR] [\fB--json\fR]
+Export + import in one step, without leaving a bundle on disk.
+.TP
+.B diff \fIfrom\fR \fIto\fR [\fB--json\fR]
+Layer-by-layer structural comparison between two clients, or between a bundle
+directory and a client.
+.TP
+.B doctor [\fB--json\fR]
+Detect installed clients and inventory what agentmove can migrate from each.
+.TP
+.B clients [\fB--json\fR]
+List supported clients and their default config locations.
+.TP
+.B completion \fIbash\fR|\fIzsh\fR|\fIfish\fR
+Print a shell completion script.
+.SH OPTIONS
+.TP
+.B --home \fIdir\fR
+Override the home directory (useful for testing and staging).
+.TP
+.B --json
+Machine-readable JSON output (plans, warnings, per-layer summary).
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Unexpected error.
+.TP
+.B 2
+Usage error (e.g. unknown client).
+.TP
+.B 3
+Bad input data (missing or corrupt bundle or config; the message includes the
+offending file path).
+.SH FILES
+.TP
+.I ~/.agentmove/backups/
+Automatic backups taken before \fB--apply\fR writes.
+.SH SEE ALSO
+Full documentation at
+.UR https://agentmove.zalize.com
+.UE .
