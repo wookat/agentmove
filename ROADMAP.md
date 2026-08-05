@@ -8,7 +8,7 @@ Short-cycle, demand-driven. Order reflects current priority, not promises.
 - ~~`--json` output for doctor/diff (CI-friendly)~~ — shipped
 
 ## Mid term
-- More clients (Windsurf, Cline, Zed, OpenHands) — adapter contributions welcome
+- More clients (Cline, Zed, OpenHands) — adapter contributions welcome; Windsurf shipped in 0.4.0
 - MIF / PAM import & export for the memory layer
 - npm provenance (OIDC trusted publishing)
 

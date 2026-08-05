@@ -52,7 +52,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all six clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all seven clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -75,7 +75,9 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
 - **MCP tool filters** (OpenClaw `toolFilter`, Hermes include/exclude) have no portable
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
-  claude-code, codex, cursor, and gemini only.
+  claude-code, codex, cursor, gemini, and windsurf only.
+- **Windsurf Cascade memories** are app-managed — cannot be exported or imported;
+  durable rules live in `global_rules.md` (migrated as instructions).
 
 Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 
@@ -89,6 +91,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Codex CLI | `codex` | `~/.codex/config.toml`, `~/.codex/AGENTS.md`, `~/.agents/skills/` |
 | Cursor | `cursor` | `~/.cursor/mcp.json` (rules/memories are project/app-scoped) |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json`, `~/.gemini/GEMINI.md` |
+| Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json`, `~/.codeium/windsurf/memories/global_rules.md` |
 
 ## Commands
 
@@ -99,8 +102,9 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   the listed layers (`mcp`, `skills`, `memory`, `instructions`, `persona`)
 - `--project <dir>` (on export/import/convert) — migrate the client's
   project-scoped files in a repo (`.mcp.json`/`CLAUDE.md`, `AGENTS.md`,
-  `.gemini/settings.json`/`GEMINI.md`, `.cursor/mcp.json`/`.cursor/rules`)
-  instead of user-scoped config; openclaw/hermes have no project scope
+  `.gemini/settings.json`/`GEMINI.md`, `.cursor/mcp.json`/`.cursor/rules`,
+  `.windsurf/rules`) instead of user-scoped config; openclaw/hermes have no
+  project scope
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations
