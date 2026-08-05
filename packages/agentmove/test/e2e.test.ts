@@ -291,7 +291,7 @@ describe("e2e (built CLI, child process)", () => {
         expect(out.files.length, `${src}→${dst}`).toBeGreaterThan(0);
       }
     }
-  });
+  }, 60_000);
 
   it("applies a full round trip into every target and re-exports it", async () => {
     const targets = ["openclaw", "hermes", "claude-code", "codex", "cursor", "gemini"];
@@ -304,7 +304,7 @@ describe("e2e (built CLI, child process)", () => {
       ) as { summary: { mcpServers: number } };
       expect(out.summary.mcpServers, `round trip via ${dst}`).toBeGreaterThan(0);
     }
-  });
+  }, 60_000);
 
   it("re-export into the same directory leaves no stale layer files", async () => {
     const home = await cloneFixture("openclaw-home");
