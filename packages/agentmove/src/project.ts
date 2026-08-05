@@ -1,4 +1,5 @@
 import path from "node:path";
+import JSON5 from "json5";
 import {
   Bundle,
   ClientId,
@@ -307,6 +308,73 @@ const clineProject: ProjectAdapter = {
   },
 };
 
+const zedProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "zed";
+    const settingsFile = path.join(dir, ".zed/settings.json");
+    const raw = await readText(settingsFile);
+    if (raw !== undefined) {
+      const data = parseFile<unknown>(settingsFile, raw, (s) => JSON5.parse(s) as unknown);
+      const settings = isRecord(data) ? data : {};
+      const serversObj = isRecord(settings.context_servers) ? settings.context_servers : {};
+      for (const [name, entry] of Object.entries(serversObj)) {
+        const s = parseCommonMcpEntry(name, entry, warnings);
+        if (s) bundle.mcpServers.push(s);
+      }
+    }
+    const rules = await readText(path.join(dir, ".rules"));
+    if (rules) {
+      bundle.instructions = rules;
+      warnings.push(".rules exported as instructions");
+    }
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const settingsFile = path.join(dir, ".zed/settings.json");
+    const raw = await readText(settingsFile);
+    let settings: Record<string, unknown> = {};
+    if (raw !== undefined) {
+      const data = parseFile<unknown>(settingsFile, raw, (s) => JSON5.parse(s) as unknown);
+      if (isRecord(data)) settings = data;
+      if (/(^|\s)\/\//.test(raw) || raw.includes("/*")) {
+        warnings.push("zed .zed/settings.json: existing JSONC comments are not preserved on rewrite");
+      }
+    }
+    const rendered: Record<string, unknown> = {};
+    for (const s of bundle.mcpServers) {
+      if (s.enabled === false) {
+        warnings.push(`mcp:${s.name}: zed has no disabled flag; server emitted as enabled`);
+      }
+      if (s.cwd) warnings.push(`mcp:${s.name}: zed does not support cwd; dropped`);
+      const entry = renderCommonMcpEntry({ ...s, cwd: undefined }, false);
+      if (typeof entry.command === "string" && entry.args === undefined) entry.args = [];
+      rendered[s.name] = entry;
+    }
+    const existing = isRecord(settings.context_servers) ? settings.context_servers : {};
+    settings.context_servers = mergeMcpRecords(existing, rendered, warnings, opts?.replaceMcp ?? false);
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".zed/settings.json", content: JSON.stringify(settings, null, 2) + "\n" });
+    }
+    if (bundle.instructions || bundle.persona) {
+      const body = [
+        ...(bundle.instructions ? [bundle.instructions.trim(), ""] : []),
+        ...(bundle.persona
+          ? ["## Imported by agentmove: persona (SOUL.md)", "", bundle.persona.trim(), ""]
+          : []),
+      ].join("\n");
+      files.push({ path: ".rules", content: body });
+      if (bundle.persona) warnings.push("persona: appended to .rules (approximated)");
+    }
+    if (bundle.memory.length) warnings.push("memory: zed has no project-scoped memory store; skipped");
+    if (bundle.skills.length) warnings.push("skills: zed skills are app-managed; skipped");
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -314,6 +382,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   cursor: cursorProject,
   windsurf: windsurfProject,
   cline: clineProject,
+  zed: zedProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

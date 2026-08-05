@@ -1,0 +1,15 @@
+// Zed settings (JSONC)
+{
+  "theme": "One Dark",
+  "context_servers": {
+    "files": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": { "API_KEY": "test-not-a-real-key" }
+    },
+    "remote": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer test-not-a-real-token" }
+    }
+  }
+}

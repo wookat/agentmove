@@ -10,7 +10,7 @@ const homeOf = (name: string) => path.join(FIXTURES, name);
 
 describe("getAdapter", () => {
   it("throws a helpful error for unknown clients", () => {
-    expect(() => getAdapter("zed")).toThrow(/unknown client "zed"/);
+    expect(() => getAdapter("emacs")).toThrow(/unknown client "emacs"/);
   });
 });
 
