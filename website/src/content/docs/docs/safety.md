@@ -33,3 +33,12 @@ Env/header values whose names look like secrets (`*KEY*`, `*TOKEN*`,
 `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*AUTHORIZATION*`, `*COOKIE*`) are replaced with `${VAR}`
 placeholders on export. Pass `--include-secrets` to keep real values — only do
 this for bundles that never leave your machine.
+
+## Encrypted transport
+
+When a bundle has to leave your machine (mail, cloud drives, USB sticks),
+`agentmove pack` seals it into a single `.agentpack` file encrypted with
+AES-256-GCM; the key is derived from the `AGENTMOVE_PASSPHRASE` environment
+variable via scrypt. Tampering or a wrong passphrase fails authentication with
+a data error (exit 3) — a corrupted or forged pack is never partially applied.
+See [Commands](/docs/commands/#encrypted-transport-pack--unpack).
