@@ -6,7 +6,7 @@ import { readBundle, stripSecrets, writeBundle } from "./bundle.js";
 import { diffBundles, formatDiff } from "./diff.js";
 import { formatDoctor, runDoctor } from "./doctor.js";
 import { applyPlans, backupPaths } from "./apply.js";
-import { Bundle } from "./model.js";
+import { Bundle, CliError, ImportOptions } from "./model.js";
 
 const program = new Command();
 
@@ -38,9 +38,14 @@ async function exportFrom(client: string, includeSecrets: boolean): Promise<Bund
   return clean;
 }
 
-async function importTo(client: string, bundle: Bundle, apply: boolean): Promise<void> {
+async function importTo(
+  client: string,
+  bundle: Bundle,
+  apply: boolean,
+  importOpts: ImportOptions,
+): Promise<void> {
   const adapter = getAdapter(client);
-  const { files, warnings } = await adapter.planImport(bundle, home());
+  const { files, warnings } = await adapter.planImport(bundle, home(), importOpts);
   printWarnings(warnings);
   if (!files.length) {
     console.log("nothing to import");
@@ -78,9 +83,10 @@ program
   .argument("<client>", "target client")
   .option("-i, --in <dir>", "bundle directory", "./agentmove-bundle")
   .option("--apply", "actually write files (default is dry-run preview)", false)
-  .action(async (client: string, opts: { in: string; apply: boolean }) => {
+  .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
+  .action(async (client: string, opts: { in: string; apply: boolean; replaceMcp: boolean }) => {
     const bundle = await readBundle(opts.in);
-    await importTo(client, bundle, opts.apply);
+    await importTo(client, bundle, opts.apply, { replaceMcp: opts.replaceMcp });
   });
 
 program
@@ -90,10 +96,17 @@ program
   .argument("<to>", "target client")
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
-  .action(async (from: string, to: string, opts: { apply: boolean; includeSecrets: boolean }) => {
-    const bundle = await exportFrom(from, opts.includeSecrets);
-    await importTo(to, bundle, opts.apply);
-  });
+  .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
+  .action(
+    async (
+      from: string,
+      to: string,
+      opts: { apply: boolean; includeSecrets: boolean; replaceMcp: boolean },
+    ) => {
+      const bundle = await exportFrom(from, opts.includeSecrets);
+      await importTo(to, bundle, opts.apply, { replaceMcp: opts.replaceMcp });
+    },
+  );
 
 program
   .command("diff")
@@ -121,7 +134,8 @@ program
     process.stdout.write(formatDoctor(reports));
   });
 
+// Exit-code contract: 0 success, 1 unexpected error, 2 usage error, 3 bad input data.
 program.parseAsync().catch((e: unknown) => {
   console.error(`error: ${(e as Error).message}`);
-  process.exitCode = 1;
+  process.exitCode = e instanceof CliError ? e.exitCode : 1;
 });

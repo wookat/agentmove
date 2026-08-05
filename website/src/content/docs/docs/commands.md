@@ -9,15 +9,21 @@ Reads the client's config, MCP servers, instructions, persona, memory, and
 skills into a portable bundle directory (default `./agentmove-bundle`).
 Likely secrets are redacted to `${VAR}` placeholders unless `--include-secrets`.
 
-## `agentmove import <client> [-i dir] [--apply]`
+## `agentmove import <client> [-i dir] [--apply] [--replace-mcp]`
 
 Plans the file writes needed to apply a bundle to a client. Dry-run by
 default: prints each file that would be written. With `--apply`, existing
 files are first backed up to `~/.agentmove/backups/<timestamp>/`.
 
-## `agentmove convert <from> <to> [--apply]`
+Imported MCP servers are **merged** into the target's existing server list
+(like the official `mcp add` commands) — servers the target already has are
+never removed. Same-name conflicts are won by the imported entry, with a
+warning. Pass `--replace-mcp` to replace the list entirely instead.
 
-`export` + `import` in one step, without leaving a bundle on disk.
+## `agentmove convert <from> <to> [--apply] [--replace-mcp]`
+
+`export` + `import` in one step, without leaving a bundle on disk. Uses the
+same MCP merge semantics as `import`.
 
 ## `agentmove diff <from> <to>`
 
@@ -33,3 +39,12 @@ instructions, persona), including any format warnings.
 ## Global options
 
 - `--home <dir>` — override the home directory (useful for testing and staging).
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | success |
+| 1 | unexpected error |
+| 2 | usage error (e.g. unknown client) |
+| 3 | bad input data (missing/corrupt bundle or config; the message includes the offending file path) |

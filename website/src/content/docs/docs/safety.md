@@ -12,6 +12,12 @@ description: How AgentMove keeps migrations honest and reversible.
 Before applying, every file that would be overwritten is copied to
 `~/.agentmove/backups/<timestamp>/`, preserving relative paths.
 
+## Merge, don't clobber
+
+Imports merge MCP servers into the target's existing list — servers already
+configured on the target are never removed (use `--replace-mcp` to opt into
+replacement). Unrelated keys in the target's config files are preserved.
+
 ## Honest loss reporting
 
 Adapters never drop data silently. Every incompatibility produces a warning

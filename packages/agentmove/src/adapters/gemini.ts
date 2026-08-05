@@ -8,9 +8,10 @@ import {
   ImportResult,
   isRecord,
   McpServer,
+  parseFile,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { parseCommonMcpEntry, renderCommonMcpEntry } from "./shared.js";
+import { mergeMcpRecords, parseCommonMcpEntry, renderCommonMcpEntry } from "./shared.js";
 
 const SETTINGS_REL = ".gemini/settings.json";
 const CONTEXT_REL = ".gemini/GEMINI.md";
@@ -46,10 +47,11 @@ export const gemini: ClientAdapter = {
     const bundle: Bundle = emptyBundle();
     bundle.manifest.exportedFrom = "gemini";
 
-    const raw = await readText(path.join(home, SETTINGS_REL));
+    const settingsFile = path.join(home, SETTINGS_REL);
+    const raw = await readText(settingsFile);
     let settings: Record<string, unknown> = {};
     if (raw !== undefined) {
-      const data: unknown = JSON.parse(raw);
+      const data = parseFile<unknown>(settingsFile, raw, JSON.parse);
       if (isRecord(data)) settings = data;
     }
     bundle.config.raw = settings;
@@ -77,14 +79,15 @@ export const gemini: ClientAdapter = {
     return { bundle, warnings };
   },
 
-  async planImport(bundle, home): Promise<ImportResult> {
+  async planImport(bundle, home, opts): Promise<ImportResult> {
     const warnings: string[] = [];
     const files: FilePlan[] = [];
 
-    const raw = await readText(path.join(home, SETTINGS_REL));
+    const settingsFile = path.join(home, SETTINGS_REL);
+    const raw = await readText(settingsFile);
     let settings: Record<string, unknown> = {};
     if (raw !== undefined) {
-      const data: unknown = JSON.parse(raw);
+      const data = parseFile<unknown>(settingsFile, raw, JSON.parse);
       if (isRecord(data)) settings = data;
     }
     const mcpServers: Record<string, unknown> = {};
@@ -94,7 +97,8 @@ export const gemini: ClientAdapter = {
       }
       mcpServers[s.name] = renderCommonMcpEntry(s, false);
     }
-    settings.mcpServers = mcpServers;
+    const existing = isRecord(settings.mcpServers) ? settings.mcpServers : {};
+    settings.mcpServers = mergeMcpRecords(existing, mcpServers, warnings, opts?.replaceMcp ?? false);
     files.push({ path: SETTINGS_REL, content: JSON.stringify(settings, null, 2) + "\n" });
 
     const parts: string[] = [];

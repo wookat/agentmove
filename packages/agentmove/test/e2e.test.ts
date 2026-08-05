@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -16,6 +16,11 @@ const FIXTURES = path.join(PKG, "test/fixtures");
 
 function run(args: string[], cwd: string): string {
   return execFileSync(process.execPath, [CLI, ...args], { cwd, encoding: "utf8" });
+}
+
+function runFail(args: string[], cwd: string): { status: number; stderr: string } {
+  const res = spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: "utf8" });
+  return { status: res.status ?? -1, stderr: res.stderr };
 }
 
 async function cloneFixture(name: string): Promise<string> {
@@ -107,5 +112,29 @@ describe("e2e (built CLI, child process)", () => {
   it("fails with a clean error for unknown clients", async () => {
     const home = await cloneFixture("openclaw-home");
     expect(() => run(["--home", home, "export", "nope"], home)).toThrow(/unknown client/);
+  });
+
+  it("honors the exit-code contract (2 usage, 3 bad data) with file-path context", async () => {
+    const home = await cloneFixture("openclaw-home");
+    expect(runFail(["--home", home, "export", "nope"], home).status).toBe(2);
+    expect(runFail(["--home", home, "import", "codex", "-i", "/nonexistent"], home).status).toBe(3);
+
+    await fs.writeFile(path.join(home, ".claude.json"), "{ broken");
+    const r = runFail(["--home", home, "export", "claude-code"], home);
+    expect(r.status).toBe(3);
+    expect(r.stderr).toContain(".claude.json");
+  });
+
+  it("merges into the target's existing MCP servers instead of replacing them", async () => {
+    const claudeHome = await cloneFixture("claude-home");
+    const codexHome = await cloneFixture("codex-home");
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+    const bundle = path.join(work, "bundle");
+    run(["--home", claudeHome, "export", "claude-code", "-o", bundle], work);
+    run(["--home", codexHome, "import", "codex", "-i", bundle, "--apply"], work);
+    const toml = await fs.readFile(path.join(codexHome, ".codex/config.toml"), "utf8");
+    // codex-home's own servers survive alongside the imported ones
+    expect(toml).toContain("linear");
+    expect(toml).toContain("notion");
   });
 });

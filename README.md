@@ -101,8 +101,14 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 1. **Dry-run by default** — `import`/`convert` print a plan; `--apply` is explicit.
 2. **Automatic backups** — every file that would be overwritten is copied to
    `~/.agentmove/backups/<timestamp>/` first.
-3. **Secrets stay put** — redacted to `${VAR}` placeholders unless
+3. **Merge, don't clobber** — imported MCP servers merge into the target's
+   existing list (like the official `mcp add` commands); nothing the target
+   already has is removed unless you pass `--replace-mcp`.
+4. **Secrets stay put** — redacted to `${VAR}` placeholders unless
    `--include-secrets` is passed.
+
+Exit codes: `0` success · `1` unexpected error · `2` usage error · `3` bad
+input data (messages include the offending file path).
 
 ## Development
 

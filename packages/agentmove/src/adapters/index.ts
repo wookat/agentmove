@@ -1,4 +1,4 @@
-import { ClientAdapter, ClientId } from "../model.js";
+import { ClientAdapter, ClientId, CliError, EXIT_USAGE } from "../model.js";
 import { openclaw } from "./openclaw.js";
 import { hermes } from "./hermes.js";
 import { claudeCode } from "./claude-code.js";
@@ -18,7 +18,10 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
 export function getAdapter(id: string): ClientAdapter {
   const adapter = (ADAPTERS as Record<string, ClientAdapter>)[id];
   if (!adapter) {
-    throw new Error(`unknown client "${id}" (expected one of: ${Object.keys(ADAPTERS).join(", ")})`);
+    throw new CliError(
+      `unknown client "${id}" (expected one of: ${Object.keys(ADAPTERS).join(", ")})`,
+      EXIT_USAGE,
+    );
   }
   return adapter;
 }

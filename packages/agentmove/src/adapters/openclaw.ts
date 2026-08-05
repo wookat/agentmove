@@ -11,10 +11,11 @@ import {
   isRecord,
   McpServer,
   MemoryEntry,
+  parseFile,
   stringArgs,
 } from "../model.js";
 import { exists, isDir, listDir, readText } from "../fsutil.js";
-import { mergeSkills, planSkills, readSkillsDir } from "./shared.js";
+import { mergeMcpRecords, mergeSkills, planSkills, readSkillsDir } from "./shared.js";
 
 const CONFIG_REL = ".openclaw/openclaw.json";
 
@@ -30,9 +31,10 @@ async function findWorkspace(home: string, config: Record<string, unknown>): Pro
 }
 
 async function readConfig(home: string): Promise<Record<string, unknown>> {
-  const raw = await readText(path.join(home, CONFIG_REL));
+  const file = path.join(home, CONFIG_REL);
+  const raw = await readText(file);
   if (raw === undefined) return {};
-  const data: unknown = JSON5.parse(raw);
+  const data = parseFile<unknown>(file, raw, (s) => JSON5.parse(s) as unknown);
   return isRecord(data) ? data : {};
 }
 
@@ -144,23 +146,31 @@ export const openclaw: ClientAdapter = {
     return { bundle, warnings };
   },
 
-  async planImport(bundle, home): Promise<ImportResult> {
+  async planImport(bundle, home, opts): Promise<ImportResult> {
     const warnings: string[] = [];
     const files: FilePlan[] = [];
 
-    const existingRaw = await readText(path.join(home, CONFIG_REL));
+    const configFile = path.join(home, CONFIG_REL);
+    const existingRaw = await readText(configFile);
     let config: Record<string, unknown> = {};
     if (existingRaw !== undefined) {
-      config = (() => {
-        const parsed: unknown = JSON5.parse(existingRaw);
-        return isRecord(parsed) ? parsed : {};
-      })();
+      const parsed = parseFile<unknown>(configFile, existingRaw, (s) => JSON5.parse(s) as unknown);
+      if (isRecord(parsed)) config = parsed;
       if (/(^|\s)\/\//.test(existingRaw) || existingRaw.includes("/*")) {
         warnings.push("openclaw.json: existing JSON5 comments are not preserved on rewrite");
       }
     }
     const mcp = isRecord(config.mcp) ? config.mcp : {};
-    config.mcp = { ...mcp, servers: renderMcp(bundle.mcpServers) };
+    const existingServers = isRecord(mcp.servers) ? mcp.servers : {};
+    config.mcp = {
+      ...mcp,
+      servers: mergeMcpRecords(
+        existingServers,
+        renderMcp(bundle.mcpServers),
+        warnings,
+        opts?.replaceMcp ?? false,
+      ),
+    };
     if (bundle.config.model) {
       const agents = isRecord(config.agents) ? config.agents : {};
       const defaults = isRecord(agents.defaults) ? agents.defaults : {};

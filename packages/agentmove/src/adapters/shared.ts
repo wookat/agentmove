@@ -65,6 +65,34 @@ export function renderCommonMcpEntry(s: McpServer, withType: boolean): Record<st
   return out;
 }
 
+/**
+ * Merge imported server entries into the target's existing map (official
+ * `mcp add` semantics: never remove servers the target already has).
+ * Same-name conflicts are won by the imported entry, with a warning.
+ * With `replace`, the imported map replaces the existing one entirely.
+ */
+export function mergeMcpRecords(
+  existing: Record<string, unknown>,
+  imported: Record<string, unknown>,
+  warnings: string[],
+  replace: boolean,
+): Record<string, unknown> {
+  if (replace) {
+    for (const name of Object.keys(existing)) {
+      if (!(name in imported)) warnings.push(`mcp:${name}: removed by --replace-mcp`);
+    }
+    return imported;
+  }
+  const out: Record<string, unknown> = { ...existing };
+  for (const [name, entry] of Object.entries(imported)) {
+    if (name in existing && JSON.stringify(existing[name]) !== JSON.stringify(entry)) {
+      warnings.push(`mcp:${name}: existing server with the same name overwritten by import`);
+    }
+    out[name] = entry;
+  }
+  return out;
+}
+
 /** Read every skill directory (containing SKILL.md or any files) under a root. */
 export async function readSkillsDir(root: string, warnings: string[]): Promise<Skill[]> {
   const skills: Skill[] = [];

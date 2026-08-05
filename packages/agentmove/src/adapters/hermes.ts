@@ -12,10 +12,11 @@ import {
   McpServer,
   MemoryEntry,
   MemoryKind,
+  parseFile,
   stringArgs,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { planSkills, readSkillsDir } from "./shared.js";
+import { mergeMcpRecords, planSkills, readSkillsDir } from "./shared.js";
 
 const CONFIG_REL = ".hermes/config.yaml";
 
@@ -33,9 +34,10 @@ function renderEntries(entries: MemoryEntry[]): string {
 }
 
 async function readConfig(home: string): Promise<Record<string, unknown>> {
-  const raw = await readText(path.join(home, CONFIG_REL));
+  const file = path.join(home, CONFIG_REL);
+  const raw = await readText(file);
   if (raw === undefined) return {};
-  const data: unknown = parseYaml(raw);
+  const data = parseFile<unknown>(file, raw, parseYaml);
   return isRecord(data) ? data : {};
 }
 
@@ -125,12 +127,18 @@ export const hermes: ClientAdapter = {
     return { bundle, warnings };
   },
 
-  async planImport(bundle, home): Promise<ImportResult> {
+  async planImport(bundle, home, opts): Promise<ImportResult> {
     const warnings: string[] = [];
     const files: FilePlan[] = [];
 
     const config = await readConfig(home);
-    config.mcp_servers = renderMcp(bundle.mcpServers, warnings);
+    const existing = isRecord(config.mcp_servers) ? config.mcp_servers : {};
+    config.mcp_servers = mergeMcpRecords(
+      existing,
+      renderMcp(bundle.mcpServers, warnings),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
     if (bundle.config.model) config.model = bundle.config.model;
     files.push({ path: CONFIG_REL, content: stringifyYaml(config) });
 
