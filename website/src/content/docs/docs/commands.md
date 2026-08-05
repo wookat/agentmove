@@ -77,6 +77,29 @@ agentmove import gemini --mif memories.mif.json --apply
 MIF fields with no portable equivalent (embeddings, knowledge-graph data) are
 dropped with a warning; a non-MIF file is a data error (exit 3).
 
+## Encrypted transport: `pack` / `unpack`
+
+`pack <bundle> [-o file]` encrypts a bundle directory into a single portable
+`.agentpack` file (AES-256-GCM, key derived from the `AGENTMOVE_PASSPHRASE`
+environment variable via scrypt) so an agent can be carried across machines
+safely — including through untrusted channels like mail or cloud drives.
+`unpack <file> [-o dir]` decrypts it back into a bundle directory, and
+`import -i` accepts an `.agentpack` file directly:
+
+```bash
+AGENTMOVE_PASSPHRASE='...' agentmove export openclaw -o bundle
+AGENTMOVE_PASSPHRASE='...' agentmove pack bundle -o agent.agentpack
+# on the other machine
+AGENTMOVE_PASSPHRASE='...' agentmove import claude-code -i agent.agentpack --apply
+```
+
+A missing passphrase is a usage error (exit 2); a wrong passphrase or tampered
+file fails authentication and is a data error (exit 3). Note that exported
+bundles redact likely secrets by default — encryption is for everything else
+(instructions, memory, persona, server lists). If you pack a bundle exported
+with `--include-secrets`, the ciphertext protects them in transit, but treat
+the passphrase accordingly.
+
 ## `agentmove diff <from> <to> [--json]`
 
 Layer-by-layer structural comparison between two clients, or between a bundle
@@ -119,7 +142,7 @@ A global install (`npm i -g agentmove-cli`) also links a man page:
   MIF v2 document.
 - `--debug` (or `AGENTMOVE_DEBUG=1`) — print a full stack trace on unexpected
   errors; by default errors are a single readable line.
-- `--json` (on `export`, `import`, `convert`, `diff`, `doctor`, `clients`) — machine-readable JSON on
+- `--json` (on `export`, `import`, `convert`, `diff`, `pack`, `unpack`, `doctor`, `clients`) — machine-readable JSON on
   stdout for scripts and CI: the migration plan, warnings, per-layer summary,
   and backup directory. After `--apply`, the human output also ends with a
   `migrated: …` per-layer summary line.

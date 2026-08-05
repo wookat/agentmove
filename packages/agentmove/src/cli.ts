@@ -19,6 +19,7 @@ import {
 import { completionScript } from "./completion.js";
 import { getProjectAdapter } from "./project.js";
 import { fromMif, toMif } from "./mif.js";
+import { decryptBundle, encryptBundle, isPackFile, requirePassphrase } from "./pack.js";
 import fs from "node:fs/promises";
 
 const program = new Command();
@@ -226,6 +227,9 @@ program
       if (opts.mif) {
         bundle = emptyBundle();
         bundle.memory = fromMif(opts.mif, await fs.readFile(opts.mif, "utf8"), mifWarnings);
+      } else if (await isPackFile(opts.in)) {
+        const passphrase = requirePassphrase(process.env.AGENTMOVE_PASSPHRASE);
+        bundle = decryptBundle(await fs.readFile(opts.in), passphrase, opts.in);
       } else {
         bundle = await readBundle(opts.in);
       }
@@ -305,6 +309,44 @@ program
     const items = diffBundles(a, b);
     if (opts.json) process.stdout.write(JSON.stringify(items, null, 2) + "\n");
     else process.stdout.write(formatDiff(items));
+  });
+
+program
+  .command("pack")
+  .description("encrypt a bundle directory into a single portable file (AES-256-GCM)")
+  .argument("<bundle>", "bundle directory to pack")
+  .option("-o, --out <file>", "output file", "./agent.agentpack")
+  .option("--json", "machine-readable JSON output", false)
+  .action(async (bundleDir: string, opts: { out: string; json: boolean }) => {
+    const passphrase = requirePassphrase(process.env.AGENTMOVE_PASSPHRASE);
+    const bundle = await readBundle(bundleDir);
+    await fs.writeFile(opts.out, encryptBundle(bundle, passphrase));
+    if (opts.json) {
+      process.stdout.write(
+        JSON.stringify({ out: opts.out, summary: bundleSummary(bundle) }, null, 2) + "\n",
+      );
+    } else {
+      console.log(`packed ${bundleDir} -> ${opts.out} (${summaryLine(bundle)})`);
+    }
+  });
+
+program
+  .command("unpack")
+  .description("decrypt an agentpack file back into a bundle directory")
+  .argument("<file>", "agentpack file to unpack")
+  .option("-o, --out <dir>", "bundle output directory", "./agentmove-bundle")
+  .option("--json", "machine-readable JSON output", false)
+  .action(async (file: string, opts: { out: string; json: boolean }) => {
+    const passphrase = requirePassphrase(process.env.AGENTMOVE_PASSPHRASE);
+    const bundle = decryptBundle(await fs.readFile(file), passphrase, file);
+    await writeBundle(bundle, opts.out);
+    if (opts.json) {
+      process.stdout.write(
+        JSON.stringify({ out: opts.out, summary: bundleSummary(bundle) }, null, 2) + "\n",
+      );
+    } else {
+      console.log(`unpacked ${file} -> ${opts.out} (${summaryLine(bundle)})`);
+    }
   });
 
 program
