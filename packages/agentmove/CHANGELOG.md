@@ -1,5 +1,22 @@
 # agentmove-cli
 
+## 0.4.0
+
+### Minor Changes
+
+- 18111c7: New client: Windsurf (`windsurf`). Migrates MCP servers via
+  `~/.codeium/windsurf/mcp_config.json` (remote servers normalized between
+  `serverUrl` and the portable `url`) and global rules via
+  `~/.codeium/windsurf/memories/global_rules.md` (instructions layer).
+  `--project` migrates `.windsurf/rules/*.md`. Cascade memories are app-managed
+  and cannot be migrated; skills have no Windsurf equivalent — both are skipped
+  with warnings.
+- d0f7f55: Memory interchange via MIF v2: `export --mif <file>` writes the memory layer
+  as a vendor-neutral MIF document, and `import <client> --mif <file>` imports
+  memories from a MIF document instead of a bundle. Non-portable MIF fields
+  (embeddings, knowledge-graph data) are dropped with warnings; non-MIF input
+  is a data error (exit 3).
+
 ## 0.3.0
 
 ### Minor Changes
