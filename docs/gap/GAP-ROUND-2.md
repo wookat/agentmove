@@ -17,7 +17,7 @@
 
 1. `doctor --json` / `diff --json` / `import --json` / `convert --json`（计划、警告、摘要、backupDir 全量 JSON；stderr 不再混入 warning）。
 2. `--apply` 后输出 `migrated: N MCP server(s), N skill(s), N memory entr(ies)[, instructions][, persona]` 摘要。
-3. engines 降到 `>=20`，CI 矩阵 Node 20 + 22 双跑。
+3. engines 降到 `>=20`；CI 在 Node 22 上构建（pnpm 11 自身要求 Node >=22），再用 Node 20 以最终用户方式运行已构建 CLI 做冒烟验证。
 4. 性能实测（合成真实规模 home：100 MCP servers + 100 skills + 366 天 daily memory + 200KB MEMORY.md，共 3.5MB）：
    - `export openclaw` ≈ **137ms**
    - `convert openclaw hermes --apply`（写 103 文件+备份）≈ **117ms**

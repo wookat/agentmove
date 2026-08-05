@@ -10,19 +10,27 @@ permissions:
 
 jobs:
   ci:
-    strategy:
-      matrix:
-        node: [20, 22]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm --filter agentmove-cli test:coverage
+      # pnpm 11 itself needs Node >=22, so the LTS check runs the *built* CLI
+      # on Node 20 the way an end user would.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - name: smoke-test built CLI on Node 20
+        run: |
+          node --version
+          node packages/agentmove/dist/cli.js --version
+          node packages/agentmove/dist/cli.js --home packages/agentmove/test/fixtures/openclaw-home doctor --json
+          node packages/agentmove/dist/cli.js --home packages/agentmove/test/fixtures/openclaw-home convert openclaw hermes
