@@ -7,6 +7,7 @@ import { diffBundles, formatDiff } from "./diff.js";
 import { formatDoctor, runDoctor } from "./doctor.js";
 import { applyPlans, backupPaths } from "./apply.js";
 import { Bundle, CliError, ImportOptions } from "./model.js";
+import { completionScript } from "./completion.js";
 
 const program = new Command();
 
@@ -225,6 +226,14 @@ program
     const reports = await runDoctor(home());
     if (opts.json) process.stdout.write(JSON.stringify(reports, null, 2) + "\n");
     else process.stdout.write(formatDoctor(reports));
+  });
+
+program
+  .command("completion")
+  .description('generate a shell completion script (enable with: eval "$(agentmove completion bash)")')
+  .argument("<shell>", "bash or zsh")
+  .action((shell: string) => {
+    process.stdout.write(completionScript(shell));
   });
 
 // Exit-code contract: 0 success, 1 unexpected error, 2 usage error, 3 bad input data.

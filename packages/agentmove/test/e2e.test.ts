@@ -171,6 +171,23 @@ describe("e2e (built CLI, child process)", () => {
     expect(r.stderr).not.toContain("at ");
   });
 
+  it("generates working bash completion and rejects unknown shells with exit 2", async () => {
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+    const script = run(["completion", "bash"], work);
+    expect(script).toContain("complete -F _agentmove agentmove");
+    const probe = spawnSync(
+      "bash",
+      [
+        "-c",
+        `${script}\nCOMP_WORDS=(agentmove convert ge); COMP_CWORD=2; _agentmove; echo "\${COMPREPLY[@]}"`,
+      ],
+      { encoding: "utf8" },
+    );
+    expect(probe.stdout.trim()).toBe("gemini");
+    expect(run(["completion", "zsh"], work)).toContain("bashcompinit");
+    expect(runFail(["completion", "fish"], work).status).toBe(2);
+  });
+
   it("prints a migration summary after --apply", async () => {
     const home = await cloneFixture("openclaw-home");
     const out = run(["--home", home, "convert", "openclaw", "hermes", "--apply"], home);

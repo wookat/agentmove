@@ -35,6 +35,15 @@ directory and a client. Output uses `+` (added), `-` (removed), `~` (changed).
 Lists the supported clients with their ids and default config locations
 (like pandoc's `--list-input-formats`).
 
+## `agentmove completion <bash|zsh>`
+
+Prints a shell completion script covering commands, client ids, and flags.
+Enable it with:
+
+```bash
+eval "$(agentmove completion bash)"   # or zsh
+```
+
 ## `agentmove doctor [--json]`
 
 Detects which supported clients are configured on this machine and inventories
