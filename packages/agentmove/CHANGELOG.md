@@ -1,5 +1,25 @@
 # agentmove-cli
 
+## 0.5.0
+
+### Minor Changes
+
+- 6ed683b: New client: Cline (`cline`). Migrates MCP servers via
+  `~/.cline/data/settings/cline_mcp_settings.json` (remote transports normalized
+  between Cline's `type: streamableHttp`/`sse` and the portable model, `disabled`
+  flag mapped to the portable enabled state) and global rules via
+  `~/Documents/Cline/Rules/*.md` (instructions layer). `--project` migrates
+  `.clinerules/*.md`. The VS Code extension's own MCP settings copy in VS Code
+  globalStorage is not touched; skills have no Cline equivalent — skipped with
+  warnings.
+
+### Patch Changes
+
+- b2d3710: A memory/instructions-only import (e.g. `--only memory` or `--mif`) no longer
+  rewrites the target client's MCP/config file when the import brings no MCP
+  servers, no `--replace-mcp`, and no model change — the file is now left
+  completely untouched instead of being re-serialized.
+
 ## 0.4.0
 
 ### Minor Changes
