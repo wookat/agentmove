@@ -13,7 +13,7 @@
 - [x] B1 memory/persona 迁移能力边界如实成文（docs 站 limitations 页 + README「What does NOT migrate」节）
 - [x] B2 演示 GIF（终端录制）入 README 与官网
 - [x] B3 文档搜索已有（Pagefind）；SEO/OG 卡片（og.png + og:image/twitter:card meta，ROUND-16）
-- [ ] B4 无障碍与 Lighthouse ≥90
+- [x] B4 无障碍与 Lighthouse ≥90（ROUND-17 实测四页 performance/accessibility/best-practices/seo 全 100；补缺失 favicon.svg）
 
 ## C · 社区治理与增长
 - [x] C1 治理文件：CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / SUPPORT / GOVERNANCE / ROADMAP、issue & PR 模板
