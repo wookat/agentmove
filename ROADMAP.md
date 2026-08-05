@@ -9,7 +9,7 @@ Short-cycle, demand-driven. Order reflects current priority, not promises.
 
 ## Mid term
 - More clients (Cline, Zed, OpenHands) — adapter contributions welcome; Windsurf shipped in 0.4.0
-- MIF / PAM import & export for the memory layer
+- ~~MIF import & export for the memory layer~~ — shipped (`--mif`); PAM (crypto-signed artifacts) still open
 - npm provenance (OIDC trusted publishing)
 
 ## Long term

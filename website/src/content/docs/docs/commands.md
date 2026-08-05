@@ -61,6 +61,22 @@ Backups go to `<dir>/.agentmove/backups/<timestamp>/`. MCP merge semantics and
 secret redaction work the same as user-scoped migration. OpenClaw and Hermes
 have no project-scoped files — `--project` with them is a usage error (exit 2).
 
+## Memory interchange: `--mif`
+
+`export --mif <file>` additionally writes the memory layer as a vendor-neutral
+[MIF v2](https://github.com/varun29ankuS/mif-spec) document (`mif_version`,
+`memories[]` with `id`/`content`/`created_at`), so memories can be handed to
+any MIF-speaking memory system. `import <client> --mif <file>` imports the
+memory layer from a MIF document instead of a bundle:
+
+```bash
+agentmove export openclaw -o bundle --mif memories.mif.json
+agentmove import gemini --mif memories.mif.json --apply
+```
+
+MIF fields with no portable equivalent (embeddings, knowledge-graph data) are
+dropped with a warning; a non-MIF file is a data error (exit 3).
+
 ## `agentmove diff <from> <to> [--json]`
 
 Layer-by-layer structural comparison between two clients, or between a bundle
@@ -99,6 +115,8 @@ A global install (`npm i -g agentmove-cli`) also links a man page:
   listed layers (`mcp,skills,memory,instructions,persona`).
 - `--project <dir>` (on `export`, `import`, `convert`) — operate on the
   client's project-scoped files in a repository instead of `$HOME`.
+- `--mif <file>` (on `export`, `import`) — exchange the memory layer as a
+  MIF v2 document.
 - `--debug` (or `AGENTMOVE_DEBUG=1`) — print a full stack trace on unexpected
   errors; by default errors are a single readable line.
 - `--json` (on `export`, `import`, `convert`, `diff`, `doctor`, `clients`) — machine-readable JSON on

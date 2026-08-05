@@ -60,6 +60,11 @@ home directory: \fB.mcp.json\fR/\fBCLAUDE.md\fR (claude-code),
 (windsurf). Backups go to
 \fIdir\fR/.agentmove/backups. openclaw/hermes have no project scope.
 .TP
+.B --mif \fIfile\fR
+On \fBexport\fR, additionally write the memory layer as a vendor-neutral MIF v2
+document. On \fBimport\fR, import the memory layer from a MIF document instead
+of a bundle.
+.TP
 .B --debug
 Print a full stack trace on unexpected errors (also enabled by the
 \fBAGENTMOVE_DEBUG=1\fR environment variable).

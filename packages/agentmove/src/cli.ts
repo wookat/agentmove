@@ -7,9 +7,11 @@ import { readBundle, stripSecrets, writeBundle } from "./bundle.js";
 import { diffBundles, formatDiff } from "./diff.js";
 import { formatDoctor, runDoctor } from "./doctor.js";
 import { applyPlans, backupPaths } from "./apply.js";
-import { Bundle, CliError, ImportOptions, filterBundle, parseLayers } from "./model.js";
+import { Bundle, CliError, ImportOptions, emptyBundle, filterBundle, parseLayers } from "./model.js";
 import { completionScript } from "./completion.js";
 import { getProjectAdapter } from "./project.js";
+import { fromMif, toMif } from "./mif.js";
+import fs from "node:fs/promises";
 
 const program = new Command();
 
@@ -140,11 +142,19 @@ program
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
   .option("--only <layers>", "comma-separated layers to export (mcp,skills,memory,instructions,persona)")
   .option("--project <dir>", "export the client's project-scoped files from a project directory")
+  .option("--mif <file>", "also write the memory layer as a MIF v2 document (.mif.json)")
   .option("--json", "machine-readable JSON output", false)
   .action(
     async (
       client: string,
-      opts: { out: string; includeSecrets: boolean; only?: string; project?: string; json: boolean },
+      opts: {
+        out: string;
+        includeSecrets: boolean;
+        only?: string;
+        project?: string;
+        mif?: string;
+        json: boolean;
+      },
     ) => {
       const collected: string[] = [];
       let bundle = await exportFrom(
@@ -155,10 +165,19 @@ program
       );
       if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
       await writeBundle(bundle, opts.out);
+      if (opts.mif) {
+        const doc = toMif(bundle.memory, bundle.manifest.exportedAt ?? new Date().toISOString());
+        await fs.writeFile(opts.mif, JSON.stringify(doc, null, 2) + "\n");
+      }
       if (opts.json) {
         process.stdout.write(
           JSON.stringify(
-            { out: opts.out, summary: bundleSummary(bundle), warnings: collected },
+            {
+              out: opts.out,
+              mif: opts.mif ?? null,
+              summary: bundleSummary(bundle),
+              warnings: collected,
+            },
             null,
             2,
           ) + "\n",
@@ -166,6 +185,7 @@ program
         return;
       }
       console.log(`exported ${summaryLine(bundle)} to ${opts.out}`);
+      if (opts.mif) console.log(`wrote ${bundle.memory.length} memory entr(ies) as MIF to ${opts.mif}`);
     },
   );
 
@@ -178,6 +198,7 @@ program
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
   .option("--only <layers>", "comma-separated layers to import (mcp,skills,memory,instructions,persona)")
   .option("--project <dir>", "import into the client's project-scoped files in a project directory")
+  .option("--mif <file>", "import the memory layer from a MIF v2 document instead of a bundle")
   .option("--json", "machine-readable JSON output", false)
   .action(
     async (
@@ -188,10 +209,18 @@ program
         replaceMcp: boolean;
         only?: string;
         project?: string;
+        mif?: string;
         json: boolean;
       },
     ) => {
-      let bundle = await readBundle(opts.in);
+      const mifWarnings: string[] = [];
+      let bundle: Bundle;
+      if (opts.mif) {
+        bundle = emptyBundle();
+        bundle.memory = fromMif(opts.mif, await fs.readFile(opts.mif, "utf8"), mifWarnings);
+      } else {
+        bundle = await readBundle(opts.in);
+      }
       if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
       await importTo(
         client,
@@ -199,7 +228,7 @@ program
         opts.apply,
         { replaceMcp: opts.replaceMcp },
         opts.json,
-        [],
+        mifWarnings,
         opts.project,
       );
     },
