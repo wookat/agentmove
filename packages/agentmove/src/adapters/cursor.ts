@@ -8,9 +8,10 @@ import {
   ImportResult,
   isRecord,
   McpServer,
+  parseFile,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { parseCommonMcpEntry, renderCommonMcpEntry } from "./shared.js";
+import { mergeMcpRecords, parseCommonMcpEntry, renderCommonMcpEntry } from "./shared.js";
 
 const MCP_REL = ".cursor/mcp.json";
 
@@ -28,9 +29,10 @@ export const cursor: ClientAdapter = {
     const bundle: Bundle = emptyBundle();
     bundle.manifest.exportedFrom = "cursor";
 
-    const raw = await readText(path.join(home, MCP_REL));
+    const file = path.join(home, MCP_REL);
+    const raw = await readText(file);
     if (raw !== undefined) {
-      const data: unknown = JSON.parse(raw);
+      const data = parseFile<unknown>(file, raw, JSON.parse);
       const serversObj = isRecord(data) && isRecord(data.mcpServers) ? data.mcpServers : {};
       const servers: McpServer[] = [];
       for (const [name, entry] of Object.entries(serversObj)) {
@@ -46,10 +48,17 @@ export const cursor: ClientAdapter = {
     return { bundle, warnings };
   },
 
-  async planImport(bundle, _home): Promise<ImportResult> {
+  async planImport(bundle, home, opts): Promise<ImportResult> {
     const warnings: string[] = [];
     const files: FilePlan[] = [];
 
+    const file = path.join(home, MCP_REL);
+    const raw = await readText(file);
+    let existingConfig: Record<string, unknown> = {};
+    if (raw !== undefined) {
+      const data = parseFile<unknown>(file, raw, JSON.parse);
+      if (isRecord(data)) existingConfig = data;
+    }
     const mcpServers: Record<string, unknown> = {};
     for (const s of bundle.mcpServers) {
       if (s.enabled === false) {
@@ -58,7 +67,9 @@ export const cursor: ClientAdapter = {
       if (s.cwd) warnings.push(`mcp:${s.name}: cursor does not support cwd; dropped`);
       mcpServers[s.name] = renderCommonMcpEntry({ ...s, cwd: undefined }, false);
     }
-    files.push({ path: MCP_REL, content: JSON.stringify({ mcpServers }, null, 2) + "\n" });
+    const existing = isRecord(existingConfig.mcpServers) ? existingConfig.mcpServers : {};
+    existingConfig.mcpServers = mergeMcpRecords(existing, mcpServers, warnings, opts?.replaceMcp ?? false);
+    files.push({ path: MCP_REL, content: JSON.stringify(existingConfig, null, 2) + "\n" });
 
     if (bundle.instructions || bundle.persona) {
       const body = [

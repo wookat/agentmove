@@ -1,5 +1,28 @@
 export type Transport = "stdio" | "http" | "sse";
 
+/** Exit-code contract: 0 success, 2 usage error, 3 bad input data. */
+export const EXIT_USAGE = 2;
+export const EXIT_DATA = 3;
+
+export class CliError extends Error {
+  constructor(
+    message: string,
+    readonly exitCode: number,
+  ) {
+    super(message);
+    this.name = "CliError";
+  }
+}
+
+/** Parse file contents, wrapping parser errors with the file path for context. */
+export function parseFile<T>(file: string, raw: string, parse: (s: string) => T): T {
+  try {
+    return parse(raw);
+  } catch (e) {
+    throw new CliError(`${file}: ${(e as Error).message}`, EXIT_DATA);
+  }
+}
+
 export interface McpServer {
   name: string;
   transport: Transport;
@@ -91,6 +114,11 @@ export interface ImportResult {
   warnings: string[];
 }
 
+export interface ImportOptions {
+  /** Replace the target's MCP server list instead of merging into it. */
+  replaceMcp?: boolean;
+}
+
 export interface ClientAdapter {
   id: ClientId;
   label: string;
@@ -103,7 +131,7 @@ export interface ClientAdapter {
    * Plan an import: returns the file writes that would apply the bundle.
    * Never touches the filesystem for writes; the CLI applies plans.
    */
-  planImport(bundle: Bundle, home: string): Promise<ImportResult>;
+  planImport(bundle: Bundle, home: string, opts?: ImportOptions): Promise<ImportResult>;
 }
 
 export function isRecord(v: unknown): v is Record<string, unknown> {

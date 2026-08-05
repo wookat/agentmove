@@ -1,6 +1,15 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { Bundle, emptyBundle, isRecord, MemoryEntry, Skill } from "./model.js";
+import {
+  Bundle,
+  CliError,
+  emptyBundle,
+  EXIT_DATA,
+  isRecord,
+  MemoryEntry,
+  parseFile,
+  Skill,
+} from "./model.js";
 import { listDir, isDir, readText, readTextTree } from "./fsutil.js";
 
 /**
@@ -44,10 +53,12 @@ export async function writeBundle(bundle: Bundle, dir: string): Promise<void> {
 export async function readBundle(dir: string): Promise<Bundle> {
   const bundle = emptyBundle();
   const manifestRaw = await readText(path.join(dir, "manifest.json"));
-  if (manifestRaw === undefined) throw new Error(`${dir}: not an agentmove bundle (missing manifest.json)`);
-  const manifest: unknown = JSON.parse(manifestRaw);
+  if (manifestRaw === undefined) {
+    throw new CliError(`${dir}: not an agentmove bundle (missing manifest.json)`, EXIT_DATA);
+  }
+  const manifest = parseFile<unknown>(path.join(dir, "manifest.json"), manifestRaw, JSON.parse);
   if (!isRecord(manifest) || manifest.schemaVersion !== 1) {
-    throw new Error(`${dir}: unsupported bundle schema (expected schemaVersion 1)`);
+    throw new CliError(`${dir}: unsupported bundle schema (expected schemaVersion 1)`, EXIT_DATA);
   }
   bundle.manifest = {
     schemaVersion: 1,
@@ -57,12 +68,12 @@ export async function readBundle(dir: string): Promise<Bundle> {
 
   const configRaw = await readText(path.join(dir, "config.json"));
   if (configRaw !== undefined) {
-    const config: unknown = JSON.parse(configRaw);
+    const config = parseFile<unknown>(path.join(dir, "config.json"), configRaw, JSON.parse);
     if (isRecord(config)) bundle.config = config as Bundle["config"];
   }
   const mcpRaw = await readText(path.join(dir, "mcp-servers.json"));
   if (mcpRaw !== undefined) {
-    const servers: unknown = JSON.parse(mcpRaw);
+    const servers = parseFile<unknown>(path.join(dir, "mcp-servers.json"), mcpRaw, JSON.parse);
     if (Array.isArray(servers)) bundle.mcpServers = servers as Bundle["mcpServers"];
   }
   bundle.instructions = await readText(path.join(dir, "instructions.md"));
@@ -70,7 +81,7 @@ export async function readBundle(dir: string): Promise<Bundle> {
 
   const memoryRaw = await readText(path.join(dir, "memory/memory.json"));
   if (memoryRaw !== undefined) {
-    const memory: unknown = JSON.parse(memoryRaw);
+    const memory = parseFile<unknown>(path.join(dir, "memory/memory.json"), memoryRaw, JSON.parse);
     if (Array.isArray(memory)) bundle.memory = memory as MemoryEntry[];
   }
 

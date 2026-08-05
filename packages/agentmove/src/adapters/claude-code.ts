@@ -8,10 +8,12 @@ import {
   ImportResult,
   isRecord,
   McpServer,
+  parseFile,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
 import {
   appendSections,
+  mergeMcpRecords,
   parseCommonMcpEntry,
   planSkills,
   readSkillsDir,
@@ -21,9 +23,10 @@ import {
 const MCP_REL = ".claude.json";
 
 async function readUserConfig(home: string): Promise<Record<string, unknown>> {
-  const raw = await readText(path.join(home, MCP_REL));
+  const file = path.join(home, MCP_REL);
+  const raw = await readText(file);
   if (raw === undefined) return {};
-  const data: unknown = JSON.parse(raw);
+  const data = parseFile<unknown>(file, raw, JSON.parse);
   return isRecord(data) ? data : {};
 }
 
@@ -60,7 +63,7 @@ export const claudeCode: ClientAdapter = {
     return { bundle, warnings };
   },
 
-  async planImport(bundle, home): Promise<ImportResult> {
+  async planImport(bundle, home, opts): Promise<ImportResult> {
     const warnings: string[] = [];
     const files: FilePlan[] = [];
 
@@ -72,7 +75,8 @@ export const claudeCode: ClientAdapter = {
       }
       mcpServers[s.name] = renderCommonMcpEntry(s, true);
     }
-    config.mcpServers = mcpServers;
+    const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
+    config.mcpServers = mergeMcpRecords(existing, mcpServers, warnings, opts?.replaceMcp ?? false);
     files.push({ path: MCP_REL, content: JSON.stringify(config, null, 2) + "\n" });
 
     const sections: { title: string; body: string }[] = [];

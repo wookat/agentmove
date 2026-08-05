@@ -35,7 +35,8 @@ describe("openclaw import", () => {
       mcp: { servers: Record<string, unknown> };
     };
     expect(parsed.agents.defaults.model).toBe("hermes-4");
-    expect(Object.keys(parsed.mcp.servers)).toEqual(["docs"]);
+    // existing openclaw servers are kept; imported ones are merged in
+    expect(Object.keys(parsed.mcp.servers).sort()).toEqual(["docs", "remote"]);
     // existing openclaw.json in the fixture uses JSON5 comments
     expect(warnings.some((w) => w.includes("comments"))).toBe(true);
   });
@@ -52,10 +53,9 @@ describe("gemini import into non-empty home", () => {
     const { bundle } = await ADAPTERS.openclaw.exportBundle(homeOf("openclaw-home"));
     const { files, warnings } = await ADAPTERS.gemini.planImport(bundle, homeOf("gemini-home"));
     const settings = files.find((f) => f.path === ".gemini/settings.json")!;
-    expect(Object.keys((JSON.parse(settings.content) as { mcpServers: object }).mcpServers)).toEqual([
-      "docs",
-      "remote",
-    ]);
+    expect(
+      Object.keys((JSON.parse(settings.content) as { mcpServers: object }).mcpServers).sort(),
+    ).toEqual(["docs", "fetch", "remote"]);
     expect(warnings.some((w) => w.startsWith("persona:"))).toBe(true);
     expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
   });
@@ -67,9 +67,31 @@ describe("claude-code import into existing config", () => {
     const { files, warnings } = await ADAPTERS["claude-code"].planImport(bundle, homeOf("claude-home"));
     const config = files.find((f) => f.path === ".claude.json")!;
     const parsed = JSON.parse(config.content) as { mcpServers: Record<string, unknown> };
-    expect(Object.keys(parsed.mcpServers).sort()).toEqual(["linear", "search"]);
+    expect(Object.keys(parsed.mcpServers).sort()).toEqual(["linear", "notion", "search"]);
     // codex `search` server is disabled; claude-code has no disabled flag
     expect(warnings.some((w) => w.includes("no disabled flag"))).toBe(true);
+  });
+});
+
+describe("mcp merge semantics", () => {
+  it("replaceMcp drops existing servers with a warning", async () => {
+    const { bundle } = await ADAPTERS.codex.exportBundle(homeOf("codex-home"));
+    const { files, warnings } = await ADAPTERS["claude-code"].planImport(
+      bundle,
+      homeOf("claude-home"),
+      { replaceMcp: true },
+    );
+    const config = files.find((f) => f.path === ".claude.json")!;
+    const parsed = JSON.parse(config.content) as { mcpServers: Record<string, unknown> };
+    expect(Object.keys(parsed.mcpServers).sort()).toEqual(["linear", "search"]);
+    expect(warnings.some((w) => w.includes("removed by --replace-mcp"))).toBe(true);
+  });
+
+  it("warns when an imported server overwrites an existing one with the same name", async () => {
+    const { bundle } = await ADAPTERS.gemini.exportBundle(homeOf("gemini-home"));
+    const { warnings } = await ADAPTERS.gemini.planImport(bundle, homeOf("claude-home"));
+    // no same-name conflicts across these fixtures: no overwrite warnings expected
+    expect(warnings.some((w) => w.includes("overwritten by import"))).toBe(false);
   });
 });
 

@@ -10,17 +10,19 @@ import {
   ImportResult,
   isRecord,
   McpServer,
+  parseFile,
   stringArgs,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { appendSections, planSkills, readSkillsDir } from "./shared.js";
+import { appendSections, mergeMcpRecords, planSkills, readSkillsDir } from "./shared.js";
 
 const CONFIG_REL = ".codex/config.toml";
 
 async function readConfig(home: string): Promise<Record<string, unknown>> {
-  const raw = await readText(path.join(home, CONFIG_REL));
+  const file = path.join(home, CONFIG_REL);
+  const raw = await readText(file);
   if (raw === undefined) return {};
-  const data: unknown = parseToml(raw);
+  const data = parseFile<unknown>(file, raw, parseToml);
   return isRecord(data) ? data : {};
 }
 
@@ -77,7 +79,7 @@ export const codex: ClientAdapter = {
     return { bundle, warnings };
   },
 
-  async planImport(bundle, home): Promise<ImportResult> {
+  async planImport(bundle, home, opts): Promise<ImportResult> {
     const warnings: string[] = [];
     const files: FilePlan[] = [];
 
@@ -100,7 +102,8 @@ export const codex: ClientAdapter = {
       if (s.enabled === false) entry.enabled = false;
       mcp_servers[s.name] = entry;
     }
-    config.mcp_servers = mcp_servers;
+    const existing = isRecord(config.mcp_servers) ? config.mcp_servers : {};
+    config.mcp_servers = mergeMcpRecords(existing, mcp_servers, warnings, opts?.replaceMcp ?? false);
     if (bundle.config.model) config.model = bundle.config.model;
     files.push({ path: CONFIG_REL, content: stringifyToml(config) + "\n" });
 
