@@ -378,4 +378,31 @@ describe("e2e (built CLI, child process)", () => {
     expect(toml).toContain("linear");
     expect(toml).toContain("notion");
   });
+
+  it("exports and imports the memory layer as MIF v2 (--mif)", async () => {
+    const home = await cloneFixture("openclaw-home");
+    const mifFile = path.join(home, "memories.mif.json");
+    run(["--home", home, "export", "openclaw", "-o", path.join(home, "b"), "--mif", mifFile], home);
+
+    const doc = JSON.parse(await fs.readFile(mifFile, "utf8")) as {
+      mif_version: string;
+      memories: { id: string; content: string; created_at: string }[];
+    };
+    expect(doc.mif_version).toBe("2.0");
+    expect(doc.memories.length).toBeGreaterThan(0);
+
+    const target = await cloneFixture("gemini-home");
+    const out = JSON.parse(
+      run(["--home", target, "import", "gemini", "--mif", mifFile, "--apply", "--json"], target),
+    ) as { applied: boolean; files: string[]; summary: { memoryEntries: number } };
+    expect(out.applied).toBe(true);
+    expect(out.summary.memoryEntries).toBe(doc.memories.length);
+    expect(out.files).toContain(".gemini/GEMINI.md");
+
+    const badFile = path.join(home, "bad.json");
+    await fs.writeFile(badFile, '{"nope":true}');
+    const bad = runFail(["--home", target, "import", "gemini", "--mif", badFile], target);
+    expect(bad.status).toBe(3);
+    expect(bad.stderr).toContain("not a MIF document");
+  });
 });

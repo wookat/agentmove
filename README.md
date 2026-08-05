@@ -105,6 +105,9 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   `.gemini/settings.json`/`GEMINI.md`, `.cursor/mcp.json`/`.cursor/rules`,
   `.windsurf/rules`) instead of user-scoped config; openclaw/hermes have no
   project scope
+- `--mif <file>` (on `export`) / `import <client> --mif <file>` — exchange the
+  memory layer as a vendor-neutral [MIF v2](https://github.com/varun29ankuS/mif-spec)
+  document with any MIF-speaking memory system
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations
