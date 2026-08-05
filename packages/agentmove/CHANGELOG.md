@@ -1,5 +1,14 @@
 # agentmove-cli
 
+## 0.2.1
+
+### Patch Changes
+
+- ce5a79e: Security: `Authorization` and `Cookie`-style MCP headers are now redacted to
+  `${VAR}` placeholders on export by default (previously only names matching
+  key/token/secret/password/credential were). Use `--include-secrets` to keep
+  real values.
+
 ## 0.2.0
 
 ### Minor Changes
