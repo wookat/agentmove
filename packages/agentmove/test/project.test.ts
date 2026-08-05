@@ -75,6 +75,41 @@ describe("project-scoped adapters", () => {
     expect(cur.warnings.some((w) => w.startsWith("memory:"))).toBe(true);
   });
 
+  it("cline project import writes .clinerules and warns on MCP/memory/skills", async () => {
+    const { bundle } = await getProjectAdapter("claude-code").exportProject(project);
+    const { files, warnings } = await getProjectAdapter("cline").planImport(bundle, project);
+    const paths = files.map((f) => f.path);
+    expect(paths).toContain(".clinerules/agentmove-imported.md");
+    expect(warnings.some((w) => w.includes("no project-scoped MCP config"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    // export side: .clinerules concatenation on a project without one is empty
+    const back = await getProjectAdapter("cline").exportProject(project);
+    expect(back.bundle.instructions).toBeUndefined();
+    expect(back.warnings.some((w) => w.includes("no project-scoped MCP config"))).toBe(true);
+  });
+
+  it("zed project import writes .zed/settings.json (args required) and .rules", async () => {
+    const { bundle } = await getProjectAdapter("claude-code").exportProject(project);
+    const { files, warnings } = await getProjectAdapter("zed").planImport(bundle, project);
+    const settings = JSON.parse(files.find((f) => f.path === ".zed/settings.json")!.content) as {
+      context_servers: Record<string, { args?: string[]; command?: string }>;
+    };
+    expect(Object.keys(settings.context_servers).sort()).toEqual(["api", "search"]);
+    for (const entry of Object.values(settings.context_servers)) {
+      if (entry.command) expect(Array.isArray(entry.args)).toBe(true);
+    }
+    expect(files.some((f) => f.path === ".rules")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    // export side: no .zed/settings.json or .rules in the fixture project
+    const back = await getProjectAdapter("zed").exportProject(project);
+    expect(back.bundle.mcpServers).toEqual([]);
+    // unrelated-layer import must not plan .zed/settings.json
+    const memOnly = emptyBundle();
+    memOnly.memory = [{ content: "m", source: "s", kind: "long-term" }];
+    const noop = await getProjectAdapter("zed").planImport(memOnly, project);
+    expect(noop.files.some((f) => f.path === ".zed/settings.json")).toBe(false);
+  });
+
   it("rejects clients without project-scoped files", () => {
     for (const id of ["openclaw", "hermes"] as const) {
       expect(() => getProjectAdapter(id)).toThrowError(CliError);

@@ -7,7 +7,15 @@ import { readBundle, stripSecrets, writeBundle } from "./bundle.js";
 import { diffBundles, formatDiff } from "./diff.js";
 import { formatDoctor, runDoctor } from "./doctor.js";
 import { applyPlans, backupPaths } from "./apply.js";
-import { Bundle, CliError, ImportOptions, emptyBundle, filterBundle, parseLayers } from "./model.js";
+import {
+  Bundle,
+  CLIENT_IDS,
+  CliError,
+  ImportOptions,
+  emptyBundle,
+  filterBundle,
+  parseLayers,
+} from "./model.js";
 import { completionScript } from "./completion.js";
 import { getProjectAdapter } from "./project.js";
 import { fromMif, toMif } from "./mif.js";
@@ -137,7 +145,7 @@ async function importTo(
 program
   .command("export")
   .description("export a client's setup into an agentmove bundle directory")
-  .argument("<client>", "source client (openclaw|hermes|claude-code|codex|cursor|gemini|windsurf)")
+  .argument("<client>", `source client (${CLIENT_IDS.join("|")})`)
   .option("-o, --out <dir>", "bundle output directory", "./agentmove-bundle")
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
   .option("--only <layers>", "comma-separated layers to export (mcp,skills,memory,instructions,persona)")

@@ -13,6 +13,7 @@ description: What AgentMove reads and writes for each client.
 | Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section) |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json` (`mcpServers`, remote servers use `type: streamableHttp`/`sse` + `url`), `~/Documents/Cline/Rules/*.md` |
+| Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`; JSONC, stdio servers require `args`), `~/.config/zed/AGENTS.md` |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -27,5 +28,7 @@ description: What AgentMove reads and writes for each client.
 - **Cline** VS Code extension keeps its own MCP settings copy in VS Code
   globalStorage; AgentMove migrates the CLI settings file (`~/.cline`) and
   global rules only. Skills have no Cline equivalent.
+- **Zed** Rules Library entries and Skills are app-managed — not migrated;
+  JSONC comments in `settings.json` are not preserved on rewrite (warned).
 - OpenClaw `toolFilter` and Hermes `tools.include/exclude` MCP filters have no
   portable equivalent and are dropped with a warning.
