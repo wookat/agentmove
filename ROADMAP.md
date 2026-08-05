@@ -14,4 +14,4 @@ Short-cycle, demand-driven. Order reflects current priority, not promises.
 
 ## Long term
 - Watch mode / continuous sync between two clients
-- Bundle encryption for carrying agents across machines safely
+- ~~Bundle encryption for carrying agents across machines safely~~ — shipped (`pack`/`unpack`)

@@ -218,6 +218,53 @@ describe("e2e (built CLI, child process)", () => {
     },
   );
 
+  it("pack/unpack round-trips a bundle and import accepts an agentpack file", async () => {
+    const home = await cloneFixture("openclaw-home");
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+    const env = { ...process.env, AGENTMOVE_PASSPHRASE: "test-passphrase" };
+    run(["--home", home, "export", "openclaw", "-o", path.join(work, "bundle")], work);
+    const packFile = path.join(work, "agent.agentpack");
+    execFileSync(
+      process.execPath,
+      [CLI, "pack", path.join(work, "bundle"), "-o", packFile],
+      { cwd: work, encoding: "utf8", env },
+    );
+    const raw = await fs.readFile(packFile);
+    expect(raw.subarray(0, 8).toString("utf8")).toBe("AMPACK1\n");
+    expect(raw.includes("mcp.example")).toBe(false); // ciphertext, not plaintext
+    execFileSync(
+      process.execPath,
+      [CLI, "unpack", packFile, "-o", path.join(work, "unpacked")],
+      { cwd: work, encoding: "utf8", env },
+    );
+    const manifest = await fs.readFile(path.join(work, "unpacked/manifest.json"), "utf8");
+    expect(manifest).toContain('"exportedFrom": "openclaw"');
+    // import -i accepts the pack file directly
+    const target = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+    const out = execFileSync(
+      process.execPath,
+      [CLI, "--home", target, "import", "hermes", "-i", packFile, "--apply"],
+      { cwd: work, encoding: "utf8", env },
+    );
+    expect(out).toContain("wrote");
+    // missing passphrase is a usage error (exit 2)
+    const noPass = spawnSync(process.execPath, [CLI, "pack", path.join(work, "bundle")], {
+      cwd: work,
+      encoding: "utf8",
+      env: { ...process.env, AGENTMOVE_PASSPHRASE: "" },
+    });
+    expect(noPass.status).toBe(2);
+    expect(noPass.stderr).toContain("AGENTMOVE_PASSPHRASE");
+    // wrong passphrase is a data error (exit 3)
+    const wrong = spawnSync(process.execPath, [CLI, "unpack", packFile, "-o", "x"], {
+      cwd: work,
+      encoding: "utf8",
+      env: { ...process.env, AGENTMOVE_PASSPHRASE: "wrong" },
+    });
+    expect(wrong.status).toBe(3);
+    expect(wrong.stderr).toContain("decryption failed");
+  }, 30_000);
+
   it("ships a man page wired into package.json", async () => {
     const pkg = JSON.parse(await fs.readFile(path.join(PKG, "package.json"), "utf8")) as {
       man: string[];
@@ -229,7 +276,7 @@ describe("e2e (built CLI, child process)", () => {
     expect(pkg.files).toContain("man");
     const page = await fs.readFile(path.join(PKG, "man/agentmove-cli.1"), "utf8");
     expect(page).toContain(".TH AGENTMOVE 1");
-    for (const cmd of ["export", "import", "convert", "diff", "doctor", "clients", "completion"]) {
+    for (const cmd of ["export", "import", "convert", "diff", "pack", "unpack", "doctor", "clients", "completion"]) {
       expect(page).toContain(cmd);
     }
   });

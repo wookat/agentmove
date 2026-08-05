@@ -31,6 +31,15 @@ Export + import in one step, without leaving a bundle on disk.
 Layer-by-layer structural comparison between two clients, or between a bundle
 directory and a client.
 .TP
+.B pack \fIbundle\fR [\fB-o\fR \fIfile\fR] [\fB--json\fR]
+Encrypt a bundle directory into a single portable \fI.agentpack\fR file
+(AES-256-GCM, key derived from the \fBAGENTMOVE_PASSPHRASE\fR environment
+variable via scrypt) for carrying an agent across machines.
+.TP
+.B unpack \fIfile\fR [\fB-o\fR \fIdir\fR] [\fB--json\fR]
+Decrypt an agentpack file back into a bundle directory. \fBimport -i\fR also
+accepts an agentpack file directly.
+.TP
 .B doctor [\fB--json\fR]
 Detect installed clients and inventory what agentmove can migrate from each.
 .TP

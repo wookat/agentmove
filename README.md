@@ -111,6 +111,10 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 - `agentmove export <client> [-o dir]` — client → portable bundle
 - `agentmove import <client> [-i dir] [--apply]` — bundle → client (dry-run by default)
 - `agentmove convert <from> <to> [--apply]` — direct client → client
+- `agentmove pack <bundle> [-o file]` / `agentmove unpack <file>` — encrypt a
+  bundle into a single portable `.agentpack` file (AES-256-GCM, passphrase from
+  `AGENTMOVE_PASSPHRASE`) for carrying an agent across machines; `import -i`
+  accepts `.agentpack` files directly
 - `--only mcp,skills,…` (on export/import/convert) — partial migration of just
   the listed layers (`mcp`, `skills`, `memory`, `instructions`, `persona`)
 - `--project <dir>` (on export/import/convert) — migrate the client's
