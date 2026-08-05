@@ -161,7 +161,10 @@ describe("e2e (built CLI, child process)", () => {
     expect(run(["clients"], work)).toContain("openclaw");
   });
 
-  it("gives permission guidance on EACCES instead of a stack trace", async () => {
+  // chmod-based read-only dirs are not enforced on Windows
+  it.skipIf(process.platform === "win32")(
+    "gives permission guidance on EACCES instead of a stack trace",
+    async () => {
     const home = await cloneFixture("openclaw-home");
     await fs.chmod(home, 0o555);
     const r = runFail(["--home", home, "convert", "openclaw", "hermes", "--apply"], home);
@@ -169,7 +172,8 @@ describe("e2e (built CLI, child process)", () => {
     expect(r.status).toBe(1);
     expect(r.stderr).toContain("check file/directory permissions");
     expect(r.stderr).not.toContain("at ");
-  });
+    },
+  );
 
   it("generates working bash completion and rejects unknown shells with exit 2", async () => {
     const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
