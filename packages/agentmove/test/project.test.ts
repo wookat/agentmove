@@ -110,6 +110,19 @@ describe("project-scoped adapters", () => {
     expect(noop.files.some((f) => f.path === ".zed/settings.json")).toBe(false);
   });
 
+  it("openhands project import writes repo microagent + skills, warns on MCP", async () => {
+    const { bundle } = await getProjectAdapter("claude-code").exportProject(project);
+    const { files, warnings } = await getProjectAdapter("openhands").planImport(bundle, project);
+    const paths = files.map((f) => f.path);
+    expect(paths).toContain(".openhands/microagents/agentmove-imported.md");
+    expect(paths).toContain(".openhands/skills/review/SKILL.md");
+    expect(warnings.some((w) => w.includes("no project-scoped MCP config"))).toBe(true);
+    // export side: nothing project-scoped for openhands in the fixture
+    const back = await getProjectAdapter("openhands").exportProject(project);
+    expect(back.bundle.instructions).toBeUndefined();
+    expect(back.bundle.skills).toEqual([]);
+  });
+
   it("rejects clients without project-scoped files", () => {
     for (const id of ["openclaw", "hermes"] as const) {
       expect(() => getProjectAdapter(id)).toThrowError(CliError);

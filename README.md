@@ -52,7 +52,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all nine clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all ten clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -75,7 +75,7 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
 - **MCP tool filters** (OpenClaw `toolFilter`, Hermes include/exclude) have no portable
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
-  claude-code, codex, cursor, gemini, windsurf, cline, and zed only.
+  claude-code, codex, cursor, gemini, windsurf, cline, zed, and openhands only.
 - **Cline VS Code extension** keeps its own MCP settings copy in VS Code
   globalStorage — only the CLI settings file (`~/.cline`) and global rules are
   migrated.
@@ -84,6 +84,10 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
 - **Zed Rules Library / Skills** are app-managed — not migrated; personal
   instructions live in `~/.config/zed/AGENTS.md`. JSONC comments in Zed's
   `settings.json` are not preserved on rewrite (warned).
+- **OpenHands remote MCP servers** only support `api_key` auth — non-Bearer
+  headers are dropped with a warning; per-server `timeout` has no portable
+  equivalent. User-level skills have no OpenHands home — they live in repos
+  (`--project` migrates `.openhands/skills`).
 
 Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 
@@ -100,6 +104,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json`, `~/.codeium/windsurf/memories/global_rules.md` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json`, `~/Documents/Cline/Rules/` |
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`), `~/.config/zed/AGENTS.md` |
+| OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]`), `~/.openhands/microagents/` |
 
 ## Commands
 
@@ -111,7 +116,8 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 - `--project <dir>` (on export/import/convert) — migrate the client's
   project-scoped files in a repo (`.mcp.json`/`CLAUDE.md`, `AGENTS.md`,
   `.gemini/settings.json`/`GEMINI.md`, `.cursor/mcp.json`/`.cursor/rules`,
-  `.windsurf/rules`, `.clinerules`, `.zed/settings.json`/`.rules`) instead of user-scoped config;
+  `.windsurf/rules`, `.clinerules`, `.zed/settings.json`/`.rules`,
+  `.openhands/microagents`+`.openhands/skills`) instead of user-scoped config;
   openclaw/hermes have no project scope
 - `--mif <file>` (on `export`) / `import <client> --mif <file>` — exchange the
   memory layer as a vendor-neutral [MIF v2](https://github.com/varun29ankuS/mif-spec)
