@@ -9,6 +9,13 @@ export default defineConfig({
       title: 'AgentMove',
       description:
         'Move your AI agent between clients — config, MCP servers, skills, memory, persona. Any direction.',
+      head: [
+        { tag: 'meta', attrs: { property: 'og:image', content: 'https://agentmove.zalize.com/og.png' } },
+        { tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
+        { tag: 'meta', attrs: { property: 'og:image:height', content: '630' } },
+        { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
+        { tag: 'meta', attrs: { name: 'twitter:image', content: 'https://agentmove.zalize.com/og.png' } },
+      ],
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/wookat/agentmove' },
       ],

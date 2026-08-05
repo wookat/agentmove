@@ -12,14 +12,14 @@
 ## B · 文档与诚实边界
 - [x] B1 memory/persona 迁移能力边界如实成文（docs 站 limitations 页 + README「What does NOT migrate」节）
 - [x] B2 演示 GIF（终端录制）入 README 与官网
-- [ ] B3 文档搜索已有（Pagefind）；SEO/OG 卡片待补
+- [x] B3 文档搜索已有（Pagefind）；SEO/OG 卡片（og.png + og:image/twitter:card meta，ROUND-16）
 - [ ] B4 无障碍与 Lighthouse ≥90
 
 ## C · 社区治理与增长
 - [x] C1 治理文件：CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / SUPPORT / GOVERNANCE / ROADMAP、issue & PR 模板
 - [x] C2 发布内容包草稿（docs/launch/：Show HN、Reddit、V2EX——仅草稿，发布动作等总负责人指令）
 - [ ] C3 OpenSSF Best Practices Badge 自评并提交
-- [ ] C4 Dependabot/Renovate、stale bot
+- [x] C4 Dependabot（npm 每周 + github-actions，ROUND-16）；stale bot 暂不加
 
 ## 公共
 - 一切走 PR + CI 绿后合并。
