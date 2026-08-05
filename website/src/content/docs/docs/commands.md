@@ -9,7 +9,7 @@ Reads the client's config, MCP servers, instructions, persona, memory, and
 skills into a portable bundle directory (default `./agentmove-bundle`).
 Likely secrets are redacted to `${VAR}` placeholders unless `--include-secrets`.
 
-## `agentmove import <client> [-i dir] [--apply] [--replace-mcp]`
+## `agentmove import <client> [-i dir] [--apply] [--replace-mcp] [--json]`
 
 Plans the file writes needed to apply a bundle to a client. Dry-run by
 default: prints each file that would be written. With `--apply`, existing
@@ -20,17 +20,17 @@ Imported MCP servers are **merged** into the target's existing server list
 never removed. Same-name conflicts are won by the imported entry, with a
 warning. Pass `--replace-mcp` to replace the list entirely instead.
 
-## `agentmove convert <from> <to> [--apply] [--replace-mcp]`
+## `agentmove convert <from> <to> [--apply] [--replace-mcp] [--json]`
 
 `export` + `import` in one step, without leaving a bundle on disk. Uses the
 same MCP merge semantics as `import`.
 
-## `agentmove diff <from> <to>`
+## `agentmove diff <from> <to> [--json]`
 
 Layer-by-layer structural comparison between two clients, or between a bundle
 directory and a client. Output uses `+` (added), `-` (removed), `~` (changed).
 
-## `agentmove doctor`
+## `agentmove doctor [--json]`
 
 Detects which supported clients are configured on this machine and inventories
 what AgentMove can migrate from each (MCP servers, skills, memory entries,
@@ -39,6 +39,10 @@ instructions, persona), including any format warnings.
 ## Global options
 
 - `--home <dir>` — override the home directory (useful for testing and staging).
+- `--json` (on `import`, `convert`, `diff`, `doctor`) — machine-readable JSON on
+  stdout for scripts and CI: the migration plan, warnings, per-layer summary,
+  and backup directory. After `--apply`, the human output also ends with a
+  `migrated: …` per-layer summary line.
 
 ## Exit codes
 

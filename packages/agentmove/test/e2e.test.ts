@@ -125,6 +125,35 @@ describe("e2e (built CLI, child process)", () => {
     expect(r.stderr).toContain(".claude.json");
   });
 
+  it("emits machine-readable --json for doctor, diff, and convert", async () => {
+    const home = await cloneFixture("openclaw-home");
+
+    const doctor = JSON.parse(run(["--home", home, "doctor", "--json"], home)) as {
+      id: string;
+      detected: boolean;
+    }[];
+    expect(doctor.find((r) => r.id === "openclaw")?.detected).toBe(true);
+
+    const convert = JSON.parse(
+      run(["--home", home, "convert", "openclaw", "hermes", "--json"], home),
+    ) as { applied: boolean; files: string[]; warnings: string[]; summary: { mcpServers: number } };
+    expect(convert.applied).toBe(false);
+    expect(convert.files).toContain(".hermes/config.yaml");
+    expect(convert.summary.mcpServers).toBe(2);
+    expect(convert.warnings.length).toBeGreaterThan(0);
+
+    const diff = JSON.parse(run(["--home", home, "diff", "openclaw", "hermes", "--json"], home)) as {
+      layer: string;
+    }[];
+    expect(Array.isArray(diff)).toBe(true);
+  });
+
+  it("prints a migration summary after --apply", async () => {
+    const home = await cloneFixture("openclaw-home");
+    const out = run(["--home", home, "convert", "openclaw", "hermes", "--apply"], home);
+    expect(out).toMatch(/migrated: \d+ MCP server\(s\), \d+ skill\(s\), \d+ memory entr\(ies\)/);
+  });
+
   it("merges into the target's existing MCP servers instead of replacing them", async () => {
     const claudeHome = await cloneFixture("claude-home");
     const codexHome = await cloneFixture("codex-home");
