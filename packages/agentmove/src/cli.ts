@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import os from "node:os";
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 import { ADAPTERS, getAdapter } from "./adapters/index.js";
 import { readBundle, stripSecrets, writeBundle } from "./bundle.js";
 import { diffBundles, formatDiff } from "./diff.js";
@@ -37,7 +37,21 @@ program
     ).version,
   )
   .option("--home <dir>", "override the home directory (mainly for testing)", os.homedir())
-  .option("--debug", "print a full stack trace on unexpected errors", false);
+  .option("--debug", "print a full stack trace on unexpected errors", false)
+  .exitOverride()
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ agentmove doctor                              see what agentmove can migrate on this machine
+  $ agentmove convert claude-code cursor          preview a migration (dry-run)
+  $ agentmove convert claude-code cursor --apply  actually write it (backups are automatic)
+  $ agentmove export openclaw -o bundle           snapshot a client into a portable bundle
+  $ agentmove import gemini -i bundle --only mcp  import just the MCP servers
+  $ agentmove pack bundle -o agent.agentpack      encrypt a bundle for another machine
+
+Docs: https://agentmove.zalize.com`,
+  );
 
 function home(): string {
   return program.opts<{ home: string }>().home;
@@ -385,6 +399,11 @@ program
 
 // Exit-code contract: 0 success, 1 unexpected error, 2 usage error, 3 bad input data.
 program.parseAsync().catch((e: unknown) => {
+  if (e instanceof CommanderError) {
+    // commander already printed its message; map usage errors to exit 2
+    process.exitCode = e.exitCode === 0 ? 0 : 2;
+    return;
+  }
   const err = e as NodeJS.ErrnoException;
   const debug = program.opts<{ debug: boolean }>().debug || process.env.AGENTMOVE_DEBUG === "1";
   let message = err.message;

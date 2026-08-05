@@ -125,6 +125,20 @@ describe("e2e (built CLI, child process)", () => {
     expect(r.stderr).toContain(".claude.json");
   });
 
+  it("treats mistyped commands/options as usage errors and suggests near-miss clients", async () => {
+    const home = await cloneFixture("openclaw-home");
+    const badCmd = runFail(["exprot"], home);
+    expect(badCmd.status).toBe(2);
+    expect(badCmd.stderr).toContain("Did you mean export?");
+    const badOpt = runFail(["import", "codex", "--aply"], home);
+    expect(badOpt.status).toBe(2);
+    expect(badOpt.stderr).toContain("Did you mean --apply?");
+    const badClient = runFail(["--home", home, "export", "gemni"], home);
+    expect(badClient.status).toBe(2);
+    expect(badClient.stderr).toContain('did you mean "gemini"?');
+    expect(run(["--help"], home)).toContain("Examples:");
+  });
+
   it("emits machine-readable --json for doctor, diff, and convert", async () => {
     const home = await cloneFixture("openclaw-home");
 
