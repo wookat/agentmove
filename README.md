@@ -40,6 +40,9 @@ npx agentmove-cli import codex -i my-agent --apply
 
 # Compare two clients (or a bundle vs a client) layer by layer
 npx agentmove-cli diff claude-code codex
+
+# Partial migration: only the layers you ask for
+npx agentmove-cli convert claude-code codex --only mcp --apply
 ```
 
 ## What gets migrated
@@ -89,6 +92,8 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 - `agentmove export <client> [-o dir]` — client → portable bundle
 - `agentmove import <client> [-i dir] [--apply]` — bundle → client (dry-run by default)
 - `agentmove convert <from> <to> [--apply]` — direct client → client
+- `--only mcp,skills,…` (on export/import/convert) — partial migration of just
+  the listed layers (`mcp`, `skills`, `memory`, `instructions`, `persona`)
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations

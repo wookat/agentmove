@@ -8,6 +8,7 @@ import { readBundle, stripSecrets, writeBundle } from "../src/bundle.js";
 import { diffBundles } from "../src/diff.js";
 import { runDoctor } from "../src/doctor.js";
 import { applyPlans, backupPaths } from "../src/apply.js";
+import { emptyBundle, filterBundle, parseLayers } from "../src/model.js";
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -73,5 +74,41 @@ describe("apply + backup", () => {
     await applyPlans(plans, home);
     expect(await fs.readFile(path.join(home, ".hermes/SOUL.md"), "utf8")).toBe("new persona\n");
     expect(await fs.readFile(path.join(home, ".hermes/AGENTS.md"), "utf8")).toBe("instructions\n");
+  });
+});
+
+describe("layer filtering (--only)", () => {
+  it("parses comma-separated layers and rejects unknowns", () => {
+    expect(parseLayers("mcp, skills")).toEqual(["mcp", "skills"]);
+    expect(parseLayers("memory,instructions,persona")).toEqual([
+      "memory",
+      "instructions",
+      "persona",
+    ]);
+    expect(() => parseLayers("mcp,bogus")).toThrow(/unknown layer "bogus"/);
+  });
+
+  it("keeps only the requested layers", () => {
+    const bundle = {
+      ...emptyBundle(),
+      mcpServers: [{ name: "a", transport: "stdio" as const }],
+      skills: [{ name: "s", files: { "SKILL.md": "x" } }],
+      memory: [{ content: "m", source: "MEMORY.md", kind: "long-term" as const }],
+      instructions: "inst",
+      persona: "soul",
+    };
+    const onlyMcp = filterBundle(bundle, parseLayers("mcp"));
+    expect(onlyMcp.mcpServers).toHaveLength(1);
+    expect(onlyMcp.skills).toHaveLength(0);
+    expect(onlyMcp.memory).toHaveLength(0);
+    expect(onlyMcp.instructions).toBeUndefined();
+    expect(onlyMcp.persona).toBeUndefined();
+
+    const rest = filterBundle(bundle, parseLayers("skills,memory,instructions,persona"));
+    expect(rest.mcpServers).toHaveLength(0);
+    expect(rest.skills).toHaveLength(1);
+    expect(rest.memory).toHaveLength(1);
+    expect(rest.instructions).toBe("inst");
+    expect(rest.persona).toBe("soul");
   });
 });

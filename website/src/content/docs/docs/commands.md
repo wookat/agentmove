@@ -9,7 +9,7 @@ Reads the client's config, MCP servers, instructions, persona, memory, and
 skills into a portable bundle directory (default `./agentmove-bundle`).
 Likely secrets are redacted to `${VAR}` placeholders unless `--include-secrets`.
 
-## `agentmove import <client> [-i dir] [--apply] [--replace-mcp] [--json]`
+## `agentmove import <client> [-i dir] [--apply] [--replace-mcp] [--only layers] [--json]`
 
 Plans the file writes needed to apply a bundle to a client. Dry-run by
 default: prints each file that would be written. With `--apply`, existing
@@ -20,10 +20,23 @@ Imported MCP servers are **merged** into the target's existing server list
 never removed. Same-name conflicts are won by the imported entry, with a
 warning. Pass `--replace-mcp` to replace the list entirely instead.
 
-## `agentmove convert <from> <to> [--apply] [--replace-mcp] [--json]`
+## `agentmove convert <from> <to> [--apply] [--replace-mcp] [--only layers] [--json]`
 
 `export` + `import` in one step, without leaving a bundle on disk. Uses the
 same MCP merge semantics as `import`.
+
+## Partial migration: `--only`
+
+`export`, `import`, and `convert` accept `--only <layers>` — a comma-separated
+subset of `mcp`, `skills`, `memory`, `instructions`, `persona` — to migrate
+only those layers. For example, to copy just the MCP servers from Claude Code
+to Codex without touching instructions or skills:
+
+```bash
+agentmove convert claude-code codex --only mcp --apply
+```
+
+Unknown layer names fail with exit code 2.
 
 ## `agentmove diff <from> <to> [--json]`
 
@@ -59,6 +72,8 @@ A global install (`npm i -g agentmove-cli`) also links a man page:
 ## Global options
 
 - `--home <dir>` — override the home directory (useful for testing and staging).
+- `--only <layers>` (on `export`, `import`, `convert`) — migrate only the
+  listed layers (`mcp,skills,memory,instructions,persona`).
 - `--debug` (or `AGENTMOVE_DEBUG=1`) — print a full stack trace on unexpected
   errors; by default errors are a single readable line.
 - `--json` (on `export`, `import`, `convert`, `diff`, `doctor`, `clients`) — machine-readable JSON on

@@ -3,9 +3,9 @@ import { CliError, EXIT_USAGE } from "./model.js";
 
 const COMMANDS = ["export", "import", "convert", "diff", "doctor", "clients", "completion"];
 const CLIENT_OPTS: Record<string, string[]> = {
-  export: ["-o", "--out", "--include-secrets", "--json"],
-  import: ["-i", "--in", "--apply", "--replace-mcp", "--json"],
-  convert: ["--apply", "--include-secrets", "--replace-mcp", "--json"],
+  export: ["-o", "--out", "--include-secrets", "--only", "--json"],
+  import: ["-i", "--in", "--apply", "--replace-mcp", "--only", "--json"],
+  convert: ["--apply", "--include-secrets", "--replace-mcp", "--only", "--json"],
   diff: ["--json"],
   doctor: ["--json"],
   clients: ["--json"],
