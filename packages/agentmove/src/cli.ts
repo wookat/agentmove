@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
 import os from "node:os";
 import { Command } from "commander";
 import { ADAPTERS, getAdapter } from "./adapters/index.js";
@@ -16,7 +17,13 @@ program
   .description(
     "Move your AI agent between clients — config, MCP servers, skills, memory, persona.",
   )
-  .version("0.1.0")
+  .version(
+    (
+      JSON.parse(
+        readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+      ) as { version: string }
+    ).version,
+  )
   .option("--home <dir>", "override the home directory (mainly for testing)", os.homedir());
 
 function home(): string {

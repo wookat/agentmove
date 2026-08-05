@@ -189,7 +189,16 @@ describe("e2e (built CLI, child process)", () => {
     );
     expect(probe.stdout.trim()).toBe("gemini");
     expect(run(["completion", "zsh"], work)).toContain("bashcompinit");
-    expect(runFail(["completion", "fish"], work).status).toBe(2);
+    expect(run(["completion", "fish"], work)).toContain("__fish_seen_subcommand_from convert");
+    expect(runFail(["completion", "powershell"], work).status).toBe(2);
+  });
+
+  it("reports the package.json version", async () => {
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-e2e-"));
+    const pkg = JSON.parse(
+      await fs.readFile(path.join(PKG, "package.json"), "utf8"),
+    ) as { version: string };
+    expect(run(["--version"], work).trim()).toBe(pkg.version);
   });
 
   it("prints a migration summary after --apply", async () => {

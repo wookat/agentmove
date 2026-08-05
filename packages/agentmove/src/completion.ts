@@ -52,5 +52,27 @@ complete -F _agentmove agentmove
 `;
   if (shell === "bash") return body;
   if (shell === "zsh") return `autoload -Uz +X bashcompinit && bashcompinit\n${body}`;
-  throw new CliError(`unknown shell "${shell}" (expected bash or zsh)`, EXIT_USAGE);
+  if (shell === "fish") return fishScript();
+  throw new CliError(`unknown shell "${shell}" (expected bash, zsh, or fish)`, EXIT_USAGE);
+}
+
+function fishScript(): string {
+  const clients = Object.keys(ADAPTERS).join(" ");
+  const lines: string[] = [
+    `complete -c agentmove -n "__fish_use_subcommand" -a "${COMMANDS.join(" ")}"`,
+    `complete -c agentmove -l home -r -d "override the home directory"`,
+  ];
+  for (const cmd of CLIENT_ARG_COMMANDS) {
+    lines.push(`complete -c agentmove -n "__fish_seen_subcommand_from ${cmd}" -a "${clients}"`);
+  }
+  lines.push(`complete -c agentmove -n "__fish_seen_subcommand_from completion" -a "bash zsh fish"`);
+  for (const [cmd, opts] of Object.entries(CLIENT_OPTS)) {
+    for (const opt of opts) {
+      if (!opt.startsWith("--")) continue;
+      lines.push(
+        `complete -c agentmove -n "__fish_seen_subcommand_from ${cmd}" -l ${opt.slice(2)}`,
+      );
+    }
+  }
+  return lines.join("\n") + "\n";
 }
