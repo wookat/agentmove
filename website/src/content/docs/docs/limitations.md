@@ -21,7 +21,8 @@ user-editable files:
 | Qwen Code | Only the "Qwen Added Memories" section of `QWEN.md` migrates. |
 | goose | Memory-extension files (`~/.config/goose/memory/*.txt`) migrate both directions; category names and `# tag` lines are not portable. |
 | Windsurf | Cascade memories are app-managed. **Cannot be exported or imported.** Durable rules in `global_rules.md` migrate as instructions. |
-| Cline / Zed / OpenHands / Copilot CLI / OpenCode | No durable user-editable memory store — imported memory is approximated into the instructions file (warned). |
+| Amp | No durable memory store — imported memory is appended to `~/AGENTS.md` (approximated, warned). |
+| Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
 | OpenClaw / Hermes | File-based (`MEMORY.md`, daily files, `§` entries) — migrates fully, both directions. |
 
 Practical consequence: **OpenClaw ↔ Hermes ↔ goose memory migration is
@@ -41,12 +42,12 @@ persona, and a later export won't recover it as a separate `persona.md`.
 ## Skills
 
 - `SKILL.md` directories migrate natively between OpenClaw, Hermes, Claude
-  Code, Codex, OpenCode, Qwen Code, and goose (plus project scope for
-  OpenHands).
+  Code, Codex, OpenCode, Qwen Code, goose, Amp, Kiro, Roo Code, Crush, and
+  Antigravity (plus project scope for OpenHands).
 - Gemini CLI has no `SKILL.md` mechanism — skills are **skipped** (a Gemini
   extension would be the manual equivalent).
-- Cursor, Windsurf, Cline, and Zed have no skills directory — **skipped**
-  with a warning.
+- Cursor, Windsurf, Cline, Zed, Copilot CLI, VS Code, Continue, and Claude
+  Desktop have no user-level skills directory — **skipped** with a warning.
 - Binary assets inside skill directories are currently skipped with a warning.
 
 ## MCP servers
@@ -57,7 +58,10 @@ Near-lossless, with these edges:
   equivalent — **dropped with a warning**.
 - HTTP `headers` are not documented for Hermes — dropped when importing there.
 - `disabled` flags don't exist in Claude Code / Cursor / Gemini / Copilot CLI /
-  Qwen Code — servers are emitted enabled, with a warning.
+  Qwen Code / Windsurf / Zed / OpenHands / Amp / VS Code / Continue /
+  Claude Desktop — servers are emitted enabled, with a warning. (Cline,
+  OpenCode, Kiro, Roo Code, Crush, Antigravity, and goose keep the flag
+  natively.)
 - goose builtin/platform extensions are goose-internal — not exported;
   `available_tools` filters and keyring `env_keys` are not portable (warned).
 - JSON5/JSONC comments (`openclaw.json`, Zed `settings.json`,
