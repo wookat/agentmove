@@ -113,6 +113,7 @@ export type ClientId =
   | "openclaw"
   | "hermes"
   | "claude-code"
+  | "claude-desktop"
   | "codex"
   | "cursor"
   | "gemini"
@@ -130,6 +131,7 @@ export const CLIENT_IDS: ClientId[] = [
   "openclaw",
   "hermes",
   "claude-code",
+  "claude-desktop",
   "codex",
   "cursor",
   "gemini",

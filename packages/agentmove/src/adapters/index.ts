@@ -13,12 +13,14 @@ import { copilot } from "./copilot.js";
 import { opencode } from "./opencode.js";
 import { qwen } from "./qwen.js";
 import { amp } from "./amp.js";
+import { claudeDesktop } from "./claude-desktop.js";
 import { goose } from "./goose.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   openclaw,
   hermes,
   "claude-code": claudeCode,
+  "claude-desktop": claudeDesktop,
   codex,
   cursor,
   gemini,
@@ -64,4 +66,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop };
