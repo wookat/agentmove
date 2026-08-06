@@ -26,6 +26,7 @@ import {
 import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
 import { parseGooseMemoryFile } from "./adapters/goose.js";
 import { renderAmpEntry } from "./adapters/amp.js";
+import { parseVscodeServers, renderVscodeServers } from "./adapters/vscode.js";
 
 /**
  * Project-scoped adapters: read/write the per-project files a client looks
@@ -615,6 +616,41 @@ const ampProject: ProjectAdapter = {
   },
 };
 
+const vscodeProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "vscode";
+    const config = await readJsonMap(path.join(dir, ".vscode/mcp.json"));
+    bundle.mcpServers = parseVscodeServers(config, warnings);
+    bundle.instructions = await readText(path.join(dir, ".github/copilot-instructions.md"));
+    warnings.push("skills: vscode has no SKILL.md mechanism; skipped");
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, ".vscode/mcp.json"));
+    const existing = isRecord(config.servers) ? config.servers : {};
+    config.servers = mergeMcpRecords(
+      existing,
+      renderVscodeServers(bundle, warnings),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".vscode/mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    if (bundle.instructions) {
+      files.push({ path: ".github/copilot-instructions.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in vscode; skipped");
+    if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in vscode; skipped");
+    if (bundle.skills.length) warnings.push("skills: vscode has no SKILL.md mechanism; skipped");
+    return { files, warnings };
+  },
+};
+
 const gooseProject: ProjectAdapter = {
   async exportProject(dir) {
     const warnings: string[] = [];
@@ -667,6 +703,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   opencode: opencodeProject,
   qwen: qwenProject,
   amp: ampProject,
+  vscode: vscodeProject,
   goose: gooseProject,
 };
 
