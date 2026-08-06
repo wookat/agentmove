@@ -1,0 +1,4 @@
+# style dark-mode
+The user prefers dark mode.
+
+The project uses pnpm workspaces.
