@@ -1,0 +1,9 @@
+name: Project servers
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: project-db
+    command: npx
+    args:
+      - -y
+      - db-mcp

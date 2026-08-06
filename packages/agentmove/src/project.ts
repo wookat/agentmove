@@ -29,6 +29,13 @@ import { renderAmpEntry } from "./adapters/amp.js";
 import { parseVscodeServers, renderVscodeServers } from "./adapters/vscode.js";
 import { parseKiroServers, renderKiroServers } from "./adapters/kiro.js";
 import { parseRooServers, readRulesDir, renderRooServers } from "./adapters/roo.js";
+import {
+  mergeContinueServers,
+  parseContinueServers,
+  readRulesDir as readContinueRulesDir,
+  renderContinueServers,
+} from "./adapters/continue.js";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 /**
  * Project-scoped adapters: read/write the per-project files a client looks
@@ -780,6 +787,73 @@ const rooProject: ProjectAdapter = {
   },
 };
 
+const continueProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "continue";
+    const blocksDir = path.join(dir, ".continue/mcpServers");
+    const servers = [];
+    if (await isDir(blocksDir)) {
+      for (const f of (await listDir(blocksDir)).sort()) {
+        const file = path.join(blocksDir, f);
+        const raw = await readText(file);
+        if (raw === undefined) continue;
+        let data: unknown;
+        if (f.endsWith(".yaml") || f.endsWith(".yml")) {
+          data = parseFile<unknown>(file, raw, (t) => parseYaml(t) as unknown);
+          if (isRecord(data)) servers.push(...parseContinueServers(data, warnings));
+        } else if (f.endsWith(".json")) {
+          data = parseFile<unknown>(file, raw, JSON.parse);
+          if (isRecord(data) && isRecord(data.mcpServers)) {
+            for (const [name, entry] of Object.entries(data.mcpServers)) {
+              const s = parseCommonMcpEntry(name, entry, warnings);
+              if (s) servers.push(s);
+            }
+          }
+        }
+      }
+    }
+    bundle.mcpServers = servers;
+    bundle.instructions = await readContinueRulesDir(
+      path.join(dir, ".continue/rules"),
+      warnings,
+      "project",
+    );
+    warnings.push("skills: continue has no SKILL.md mechanism; skills not exported");
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    void dir;
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const rendered = renderContinueServers(bundle, warnings);
+    const merged = mergeContinueServers([], rendered, warnings, opts?.replaceMcp ?? false);
+    if (merged.length) {
+      files.push({
+        path: ".continue/mcpServers/agentmove.yaml",
+        content: stringifyYaml({
+          name: "agentmove imported servers",
+          version: "0.0.1",
+          schema: "v1",
+          mcpServers: merged,
+        }),
+      });
+    }
+    if (bundle.instructions) {
+      files.push({ path: ".continue/rules/agentmove.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in continue; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: continue has no project-scoped memory store; skipped");
+    }
+    if (bundle.skills.length) {
+      warnings.push("skills: continue has no SKILL.md mechanism; skills skipped");
+    }
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -796,6 +870,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   vscode: vscodeProject,
   kiro: kiroProject,
   roo: rooProject,
+  continue: continueProject,
   goose: gooseProject,
 };
 

@@ -1,0 +1,19 @@
+name: Local Config
+version: 1.0.0
+schema: v1
+mcpServers:
+  - name: sqlite
+    command: uvx
+    args:
+      - mcp-server-sqlite
+      - --db-path
+      - ./test.db
+    env:
+      DB_TOKEN: test-not-a-real-token
+    connectionTimeout: 5000
+  - name: sentry
+    type: streamable-http
+    url: https://mcp.example.com/mcp
+  - name: legacy
+    type: sse
+    url: https://legacy.example.com/mcp
