@@ -4,7 +4,7 @@ description: An honest list of the capability boundaries of memory and persona m
 ---
 
 AgentMove would rather tell you "no" than pretend. This page is the complete,
-honest list of what does **not** migrate (as of v0.1), and why. Everything here
+honest list of what does **not** migrate, and why. Everything here
 is also surfaced as a runtime warning when it affects your migration.
 
 ## Memory
@@ -18,11 +18,16 @@ user-editable files:
 | Claude Code | Auto-memory is session/project-scoped and client-managed. **Not exported.** Durable notes in `CLAUDE.md` migrate fine (as instructions). |
 | Codex CLI | Client-managed memories are not readable as files. **Not exported.** Imported memory is appended to `~/.codex/AGENTS.md` — the agent will *read* it, but it won't live in Codex's own memory store. |
 | Gemini CLI | Only the "Gemini Added Memories" section of `GEMINI.md` migrates. |
+| Qwen Code | Only the "Qwen Added Memories" section of `QWEN.md` migrates. |
+| goose | Memory-extension files (`~/.config/goose/memory/*.txt`) migrate both directions; category names and `# tag` lines are not portable. |
+| Windsurf | Cascade memories are app-managed. **Cannot be exported or imported.** Durable rules in `global_rules.md` migrate as instructions. |
+| Cline / Zed / OpenHands / Copilot CLI / OpenCode | No durable user-editable memory store — imported memory is approximated into the instructions file (warned). |
 | OpenClaw / Hermes | File-based (`MEMORY.md`, daily files, `§` entries) — migrates fully, both directions. |
 
-Practical consequence: **OpenClaw ↔ Hermes memory migration is lossless;
-migrating memory into Claude Code / Codex / Gemini is an instructions-level
-approximation; migrating memory out of Cursor / Claude Code / Codex is not
+Practical consequence: **OpenClaw ↔ Hermes ↔ goose memory migration is
+file-level; Gemini/Qwen migrate their "Added Memories" sections; migrating
+memory into most other clients is an instructions-level approximation;
+migrating memory out of Cursor / Claude Code / Codex / Windsurf is not
 possible.**
 
 ## Persona
@@ -35,9 +40,13 @@ persona, and a later export won't recover it as a separate `persona.md`.
 
 ## Skills
 
+- `SKILL.md` directories migrate natively between OpenClaw, Hermes, Claude
+  Code, Codex, OpenCode, Qwen Code, and goose (plus project scope for
+  OpenHands).
 - Gemini CLI has no `SKILL.md` mechanism — skills are **skipped** (a Gemini
   extension would be the manual equivalent).
-- Cursor has no skills directory — **skipped** (convert to rules manually).
+- Cursor, Windsurf, Cline, and Zed have no skills directory — **skipped**
+  with a warning.
 - Binary assets inside skill directories are currently skipped with a warning.
 
 ## MCP servers
@@ -47,12 +56,20 @@ Near-lossless, with these edges:
 - OpenClaw `toolFilter` and Hermes tool include/exclude lists have no portable
   equivalent — **dropped with a warning**.
 - HTTP `headers` are not documented for Hermes — dropped when importing there.
-- `disabled` flags don't exist in Claude Code / Cursor / Gemini — servers are
-  emitted enabled, with a warning.
-- JSON5 comments in `openclaw.json` are not preserved on rewrite.
+- `disabled` flags don't exist in Claude Code / Cursor / Gemini / Copilot CLI /
+  Qwen Code — servers are emitted enabled, with a warning.
+- goose builtin/platform extensions are goose-internal — not exported;
+  `available_tools` filters and keyring `env_keys` are not portable (warned).
+- JSON5/JSONC comments (`openclaw.json`, Zed `settings.json`,
+  `opencode.jsonc`) are not preserved on rewrite (warned).
+
+See [Supported clients](/docs/clients/) for the full per-client lossy-edge
+list.
 
 ## Scope
 
-v0.1 migrates **user-level (home directory) setups only**. Project-scoped
-files (`.mcp.json`, `.cursor/rules/*.mdc`, per-repo `AGENTS.md`) are on the
-[roadmap](https://github.com/wookat/agentmove/blob/main/ROADMAP.md).
+By default AgentMove migrates **user-level (home directory) setups**.
+Project-scoped files (`.mcp.json`, `.cursor/rules/*.mdc`, per-repo
+`AGENTS.md`, …) migrate with `--project <dir>` — supported for every client
+except OpenClaw and Hermes, which have no project scope. See
+[Commands](/docs/commands/) for details.
