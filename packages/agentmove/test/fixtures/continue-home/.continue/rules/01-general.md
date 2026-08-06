@@ -1,0 +1,3 @@
+# General
+
+Always use pnpm.
