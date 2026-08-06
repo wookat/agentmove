@@ -2,8 +2,9 @@
 
 **Move your AI agent between clients.** The pandoc of agent ecosystems: migrate
 **config + MCP servers + skills + memory + persona/instructions** between
-OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor, and Gemini CLI — in any
-direction, with dry-run previews, diffs, and honest loss reporting.
+twenty-two clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
+Gemini CLI, VS Code, Cline, Continue, and more (see the full table below) — in
+any direction, with dry-run previews, diffs, and honest loss reporting.
 
 Existing migration tools (like `hermes claw migrate`) are one-way doors into a
 single vendor. agentmove is neutral, local-only, and open source: your agent's
