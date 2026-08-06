@@ -24,6 +24,7 @@ import {
   touchesMcpConfig,
 } from "./adapters/shared.js";
 import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
+import { parseGooseMemoryFile } from "./adapters/goose.js";
 
 /**
  * Project-scoped adapters: read/write the per-project files a client looks
@@ -567,6 +568,45 @@ const qwenProject: ProjectAdapter = {
   },
 };
 
+const gooseProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "goose";
+    bundle.instructions = await readText(path.join(dir, ".goosehints"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".agents/skills"), warnings);
+    const memoryDir = path.join(dir, ".goose/memory");
+    if (await isDir(memoryDir)) {
+      for (const file of (await listDir(memoryDir)).sort()) {
+        if (!file.endsWith(".txt")) continue;
+        const content = await readText(path.join(memoryDir, file));
+        if (content) bundle.memory.push(...parseGooseMemoryFile(content, `goose-memory/${file}`));
+      }
+    }
+    warnings.push("mcp: goose has no project-scoped extension config; skipped");
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    void dir;
+    void opts;
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    if (bundle.mcpServers.length) {
+      warnings.push("mcp: goose has no project-scoped extension config; skipped (import at user scope instead)");
+    }
+    if (bundle.instructions) files.push({ path: ".goosehints", content: bundle.instructions });
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in goose; skipped");
+    if (bundle.memory.length) {
+      files.push({
+        path: ".goose/memory/imported.txt",
+        content: bundle.memory.map((e) => e.content.trim()).join("\n\n") + "\n",
+      });
+    }
+    files.push(...planSkills(bundle.skills, ".agents/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -579,6 +619,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   copilot: copilotProject,
   opencode: opencodeProject,
   qwen: qwenProject,
+  goose: gooseProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

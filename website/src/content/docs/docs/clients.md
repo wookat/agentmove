@@ -18,6 +18,7 @@ description: What AgentMove reads and writes for each client.
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json` (`mcpServers`, stdio servers use `type: local`), `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/*.instructions.md` |
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`; local servers use `type: local` with an argv `command` array + `environment`, remote use `type: remote`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
 | Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`; remote servers use `url` or `httpUrl`), `~/.qwen/QWEN.md` (including the "Qwen Added Memories" section), `~/.qwen/skills/` |
+| goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/` |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -45,5 +46,10 @@ description: What AgentMove reads and writes for each client.
   (warned); JSONC comments in `opencode.json` are not preserved on rewrite.
 - **Qwen Code** has no per-server disabled flag — disabled servers are emitted
   as enabled with a warning.
+- **goose** builtin/platform extensions are goose-internal and not exported;
+  `available_tools` filters, keyring `env_keys`, and non-default per-extension
+  timeouts have no portable equivalent (warned). Extensions are user-scoped
+  only — `--project` covers `.goosehints`, `.goose/memory/`, and
+  `.agents/skills/`.
 - OpenClaw `toolFilter` and Hermes `tools.include/exclude` MCP filters have no
   portable equivalent and are dropped with a warning.

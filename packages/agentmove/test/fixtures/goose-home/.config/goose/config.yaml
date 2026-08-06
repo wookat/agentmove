@@ -1,0 +1,25 @@
+GOOSE_MODE: auto
+extensions:
+  developer:
+    type: builtin
+    name: developer
+    enabled: true
+    bundled: true
+    timeout: 300
+  filesystem:
+    type: stdio
+    name: filesystem
+    enabled: true
+    cmd: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    envs:
+      API_TOKEN: test-not-a-real-token
+    timeout: 300
+  remote-tools:
+    type: streamable_http
+    name: remote-tools
+    enabled: false
+    uri: "https://example.com/mcp"
+    headers:
+      Authorization: "Bearer test-not-a-real-token"
+    timeout: 300
