@@ -25,6 +25,7 @@ import {
 } from "./adapters/shared.js";
 import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
 import { parseGooseMemoryFile } from "./adapters/goose.js";
+import { renderAmpEntry } from "./adapters/amp.js";
 
 /**
  * Project-scoped adapters: read/write the per-project files a client looks
@@ -568,6 +569,52 @@ const qwenProject: ProjectAdapter = {
   },
 };
 
+const ampProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "amp";
+    const settings = await readJsonMap(path.join(dir, ".amp/settings.json"));
+    const serversObj = isRecord(settings["amp.mcpServers"])
+      ? (settings["amp.mcpServers"] as Record<string, unknown>)
+      : {};
+    for (const [name, entry] of Object.entries(serversObj)) {
+      const s = parseCommonMcpEntry(name, entry, warnings);
+      if (s) bundle.mcpServers.push(s);
+    }
+    bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".agents/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const settings = await readJsonMap(path.join(dir, ".amp/settings.json"));
+    const imported: Record<string, unknown> = {};
+    for (const s of bundle.mcpServers) {
+      imported[s.name] = renderAmpEntry(s, warnings);
+    }
+    const existing = isRecord(settings["amp.mcpServers"])
+      ? (settings["amp.mcpServers"] as Record<string, unknown>)
+      : {};
+    settings["amp.mcpServers"] = mergeMcpRecords(
+      existing,
+      imported,
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".amp/settings.json", content: JSON.stringify(settings, null, 2) + "\n" });
+      warnings.push("mcp: amp workspace servers require approval in amp before first use (amp mcp approve)");
+    }
+    if (bundle.instructions) files.push({ path: "AGENTS.md", content: bundle.instructions });
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in amp; skipped");
+    if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in amp; skipped");
+    files.push(...planSkills(bundle.skills, ".agents/skills"));
+    return { files, warnings };
+  },
+};
+
 const gooseProject: ProjectAdapter = {
   async exportProject(dir) {
     const warnings: string[] = [];
@@ -619,6 +666,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   copilot: copilotProject,
   opencode: opencodeProject,
   qwen: qwenProject,
+  amp: ampProject,
   goose: gooseProject,
 };
 

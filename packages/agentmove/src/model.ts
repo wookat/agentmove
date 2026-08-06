@@ -123,6 +123,7 @@ export type ClientId =
   | "copilot"
   | "opencode"
   | "qwen"
+  | "amp"
   | "goose";
 
 export const CLIENT_IDS: ClientId[] = [
@@ -139,6 +140,7 @@ export const CLIENT_IDS: ClientId[] = [
   "copilot",
   "opencode",
   "qwen",
+  "amp",
   "goose",
 ];
 
