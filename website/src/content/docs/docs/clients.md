@@ -24,6 +24,7 @@ description: What AgentMove reads and writes for each client.
 | Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`; stdio entries use `command`/`args`/`env` + native `disabled`, remote use `url`/`headers`), steering markdown in `~/.kiro/steering/` (AGENTS.md standard supported), `~/.kiro/skills/` (Agent Skills standard) |
 | Roo Code | `roo` | VS Code globalStorage `mcp_settings.json` (`mcpServers`; stdio entries use `command`/`args`/`env` + native `disabled`, remote entries require an explicit `type: streamable-http`/`sse` + `url`/`headers`) — `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows); rules markdown in `~/.roo/rules/`, `~/.roo/skills/` (Agent Skills standard) |
 | Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` **list**; each entry carries its own `name`, stdio uses `command`/`args`/`env`/`cwd`, remote uses `type: streamable-http`/`sse` + `url`), rules markdown in `~/.continue/rules/` |
+| Crush | `crush` | `~/.config/crush/crush.json` (`mcp`; `type` is required — `stdio` uses `command`/`args`/`env`, `http`/`sse` use `url`/`headers` — plus a native `disabled` flag), `~/.config/crush/skills/` (Agent Skills standard); context files (CRUSH.md/AGENTS.md) are project-scoped only |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/` |
 
 ## Known lossy edges (always reported as warnings)
@@ -81,6 +82,11 @@ description: What AgentMove reads and writes for each client.
   skills are skipped (warned); memory has no durable store and is skipped on
   import (warned); YAML comments in `config.yaml` are not preserved on rewrite
   (warned). Imported remote headers are written as `requestOptions.headers`.
+- **Crush** `disabled_tools` and `timeout` settings are client-specific and
+  not migrated (warned); context/instructions files (CRUSH.md, AGENTS.md, …)
+  are project-scoped only — user-scope imports report instructions/persona as
+  skipped and `--project` writes `CRUSH.md`; memory has no durable store and is
+  skipped on import (warned).
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
