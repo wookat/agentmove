@@ -52,7 +52,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all eighteen clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all nineteen clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -76,7 +76,7 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
   claude-code, codex, cursor, gemini, windsurf, cline, zed, openhands,
-  copilot, opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
+  copilot, opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), roo (`.roo/mcp.json` + `.roo/rules/` + `.roo/skills/`), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
   goose extensions are user-scoped only).
 - **Cline VS Code extension** keeps its own MCP settings copy in VS Code
   globalStorage — only the CLI settings file (`~/.cline`) and global rules are
@@ -114,6 +114,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
 | VS Code | `vscode` | user-profile `mcp.json` (`servers`; Linux `~/.config/Code/User`, macOS `~/Library/Application Support/Code/User`, Windows `%APPDATA%\Code\User`) |
 | Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`), `~/.kiro/steering/`, `~/.kiro/skills/` |
+| Roo Code | `roo` | VS Code globalStorage `mcp_settings.json` (`mcpServers`), `~/.roo/rules/`, `~/.roo/skills/` |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`), `~/.config/goose/.goosehints`, `~/.config/goose/memory/`, `~/.agents/skills/` |
 
 ## Commands

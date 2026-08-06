@@ -22,6 +22,7 @@ description: What AgentMove reads and writes for each client.
 | Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`; local servers use `command`/`args`/`env`, remote use `url`/`headers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
 | VS Code | `vscode` | user-profile `mcp.json` (`servers`; stdio entries use `command`/`args`/`env`, remote use `type: http`/`sse` + `url`/`headers`); profile folder is `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows) — all three are checked |
 | Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`; stdio entries use `command`/`args`/`env` + native `disabled`, remote use `url`/`headers`), steering markdown in `~/.kiro/steering/` (AGENTS.md standard supported), `~/.kiro/skills/` (Agent Skills standard) |
+| Roo Code | `roo` | VS Code globalStorage `mcp_settings.json` (`mcpServers`; stdio entries use `command`/`args`/`env` + native `disabled`, remote entries require an explicit `type: streamable-http`/`sse` + `url`/`headers`) — `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows); rules markdown in `~/.roo/rules/`, `~/.roo/skills/` (Agent Skills standard) |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/` |
 
 ## Known lossy edges (always reported as warnings)
@@ -68,6 +69,11 @@ description: What AgentMove reads and writes for each client.
   instructions document on export — inclusion-mode front matter is kept
   verbatim but only applies inside Kiro (warned); memory has no durable store
   and is skipped on import (warned).
+- **Roo Code** `alwaysAllow`, `disabledTools`, `timeout`, and `watchPaths`
+  settings are client-specific and not migrated (warned); remote servers are
+  written with the explicit `type: streamable-http` Roo requires; multiple
+  rules files are merged into one instructions document on export (warned);
+  memory has no durable store and is skipped on import (warned).
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped

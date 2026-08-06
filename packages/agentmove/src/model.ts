@@ -127,6 +127,7 @@ export type ClientId =
   | "amp"
   | "vscode"
   | "kiro"
+  | "roo"
   | "goose";
 
 export const CLIENT_IDS: ClientId[] = [
@@ -147,6 +148,7 @@ export const CLIENT_IDS: ClientId[] = [
   "amp",
   "vscode",
   "kiro",
+  "roo",
   "goose",
 ];
 
