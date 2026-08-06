@@ -336,7 +336,7 @@ describe("e2e (built CLI, child process)", () => {
   });
 
   it("converts every source→target pair (full matrix) without errors", async () => {
-    const clients = ["openclaw", "hermes", "claude-code", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands"];
+    const clients = ["openclaw", "hermes", "claude-code", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot"];
     const fixtures: Record<string, string> = {
       openclaw: "openclaw-home",
       hermes: "hermes-home",
@@ -348,6 +348,7 @@ describe("e2e (built CLI, child process)", () => {
       cline: "cline-home",
       zed: "zed-home",
       openhands: "openhands-home",
+      copilot: "copilot-home",
     };
     for (const src of clients) {
       const home = await cloneFixture(fixtures[src]!);
@@ -364,7 +365,7 @@ describe("e2e (built CLI, child process)", () => {
   }, 60_000);
 
   it("applies a full round trip into every target and re-exports it", async () => {
-    const targets = ["openclaw", "hermes", "claude-code", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands"];
+    const targets = ["openclaw", "hermes", "claude-code", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot"];
     for (const dst of targets) {
       const home = await cloneFixture("openclaw-home");
       run(["--home", home, "convert", "openclaw", dst, "--apply"], home);

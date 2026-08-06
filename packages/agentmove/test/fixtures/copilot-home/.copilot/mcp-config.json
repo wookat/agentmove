@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "tools": ["*"]
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer test-not-a-real-token"
+      },
+      "tools": ["get_issue", "list_pull_requests"]
+    }
+  }
+}

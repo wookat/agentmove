@@ -424,6 +424,67 @@ const openhandsProject: ProjectAdapter = {
   },
 };
 
+const copilotProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "copilot";
+    const config = await readJsonMap(path.join(dir, ".mcp.json"));
+    const serversObj = isRecord(config.mcpServers) ? config.mcpServers : {};
+    for (const [name, entry] of Object.entries(serversObj)) {
+      const normalized = isRecord(entry) && entry.type === "local" ? { ...entry, type: "stdio" } : entry;
+      const s = parseCommonMcpEntry(name, normalized, warnings);
+      if (s) bundle.mcpServers.push(s);
+    }
+    const parts: string[] = [];
+    const main = await readText(path.join(dir, ".github/copilot-instructions.md"));
+    if (main?.trim()) parts.push(`<!-- .github/copilot-instructions.md -->\n${main.trim()}`);
+    const instrDir = path.join(dir, ".github/instructions");
+    if (await isDir(instrDir)) {
+      for (const name of (await listDir(instrDir)).sort()) {
+        if (!name.endsWith(".md")) continue;
+        const content = await readText(path.join(instrDir, name));
+        if (content?.trim()) parts.push(`<!-- .github/instructions/${name} -->\n${content.trim()}`);
+      }
+    }
+    if (parts.length) bundle.instructions = parts.join("\n\n") + "\n";
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, ".mcp.json"));
+    const rendered: Record<string, unknown> = {};
+    for (const s of bundle.mcpServers) {
+      if (s.enabled === false) {
+        warnings.push(`mcp:${s.name}: copilot has no disabled flag; server emitted as enabled`);
+      }
+      if (s.cwd) warnings.push(`mcp:${s.name}: copilot does not support cwd; dropped`);
+      const entry = renderCommonMcpEntry({ ...s, cwd: undefined }, false);
+      entry.type = s.transport === "stdio" ? "local" : s.transport;
+      rendered[s.name] = entry;
+    }
+    const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
+    config.mcpServers = mergeMcpRecords(existing, rendered, warnings, opts?.replaceMcp ?? false);
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    if (bundle.instructions || bundle.persona) {
+      const body = [
+        ...(bundle.instructions ? [bundle.instructions.trim(), ""] : []),
+        ...(bundle.persona
+          ? ["## Imported by agentmove: persona (SOUL.md)", "", bundle.persona.trim(), ""]
+          : []),
+      ].join("\n");
+      files.push({ path: ".github/instructions/agentmove-imported.instructions.md", content: body });
+      if (bundle.persona) warnings.push("persona: appended to a repo instructions file (approximated)");
+    }
+    if (bundle.memory.length) warnings.push("memory: copilot has no project-scoped memory store; skipped");
+    if (bundle.skills.length) warnings.push("skills: copilot has no SKILL.md mechanism; skipped");
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -433,6 +494,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   cline: clineProject,
   zed: zedProject,
   openhands: openhandsProject,
+  copilot: copilotProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
