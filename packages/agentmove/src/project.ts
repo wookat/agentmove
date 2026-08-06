@@ -40,6 +40,7 @@ import { parseCrushServers, renderCrushServers } from "./adapters/crush.js";
 import { parseDroidServers, renderDroidServers } from "./adapters/droid.js";
 import { parseAmazonqServers, renderAmazonqServers } from "./adapters/amazonq.js";
 import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/warp.js";
+import { parseJunieServers, renderJunieServers } from "./adapters/junie.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1024,6 +1025,46 @@ const amazonqProject: ProjectAdapter = {
   },
 };
 
+const junieProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "junie";
+    const config = await readJsonMap(path.join(dir, ".junie/mcp/mcp.json"));
+    bundle.mcpServers = parseJunieServers(config, warnings);
+    bundle.instructions =
+      (await readText(path.join(dir, ".junie/AGENTS.md"))) ??
+      (await readText(path.join(dir, "AGENTS.md"))) ??
+      (await readText(path.join(dir, ".junie/guidelines.md")));
+    bundle.skills = await readSkillsDir(path.join(dir, ".junie/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, ".junie/mcp/mcp.json"));
+    const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
+    config.mcpServers = mergeMcpRecords(
+      existing,
+      renderJunieServers(bundle, warnings),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".junie/mcp/mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    if (bundle.instructions) {
+      files.push({ path: ".junie/AGENTS.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in junie; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: junie has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".junie/skills"));
+    return { files, warnings };
+  },
+};
+
 const warpProject: ProjectAdapter = {
   async exportProject(dir) {
     const warnings: string[] = [];
@@ -1089,6 +1130,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   droid: droidProject,
   amazonq: amazonqProject,
   warp: warpProject,
+  junie: junieProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
