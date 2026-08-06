@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "web-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-bravesearch"],
+      "env": { "BRAVE_API_KEY": "test-not-a-real-token" },
+      "autoApprove": ["search"]
+    },
+    "internal": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer test-not-a-real-token" },
+      "disabled": true
+    }
+  }
+}
