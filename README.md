@@ -2,7 +2,7 @@
 
 **Move your AI agent between clients.** The pandoc of agent ecosystems: migrate
 **config + MCP servers + skills + memory + persona/instructions** between
-twenty-six clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
+twenty-seven clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
 Gemini CLI, VS Code, Cline, Continue, and more (see the full table below) — in
 any direction, with dry-run previews, diffs, and honest loss reporting.
 
@@ -53,7 +53,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all twenty-six clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all twenty-seven clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -124,6 +124,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`); project scope: `.amazonq/mcp.json` + `AmazonQ.md` |
 | Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`, no `type` field); project scope: `.warp/.mcp.json` + `AGENTS.md` |
 | Junie | `junie` | `~/.junie/mcp/mcp.json` (`mcpServers`) + `~/.junie/AGENTS.md` + `~/.junie/skills/`; project scope: `.junie/mcp/mcp.json` + `.junie/AGENTS.md` + `.junie/skills/` |
+| LM Studio | `lmstudio` | `~/.lmstudio/mcp.json` (`mcpServers`, Cursor-style notation); MCP servers only — everything else is app-managed |
 
 ## Commands
 

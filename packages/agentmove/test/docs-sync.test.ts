@@ -29,6 +29,10 @@ const COUNT_WORDS: Record<number, string> = {
   24: "twenty-four",
   25: "twenty-five",
   26: "twenty-six",
+  27: "twenty-seven",
+  28: "twenty-eight",
+  29: "twenty-nine",
+  30: "thirty",
 };
 
 describe("website docs stay in sync with adapters", () => {

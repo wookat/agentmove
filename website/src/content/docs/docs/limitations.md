@@ -22,7 +22,7 @@ user-editable files:
 | goose | Memory-extension files (`~/.config/goose/memory/*.txt`) migrate both directions; category names and `# tag` lines are not portable. |
 | Windsurf | Cascade memories are app-managed. **Cannot be exported or imported.** Durable rules in `global_rules.md` migrate as instructions. |
 | Amp | No durable memory store — imported memory is appended to `~/AGENTS.md` (approximated, warned). |
-| Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid / Amazon Q Developer CLI / Warp / Junie | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
+| Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid / Amazon Q Developer CLI / Warp / Junie / LM Studio | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
 | OpenClaw / Hermes | File-based (`MEMORY.md`, daily files, `§` entries) — migrates fully, both directions. |
 
 Practical consequence: **OpenClaw ↔ Hermes ↔ goose memory migration is
@@ -47,8 +47,8 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Gemini CLI has no `SKILL.md` mechanism — skills are **skipped** (a Gemini
   extension would be the manual equivalent).
 - Cursor, Windsurf, Cline, Zed, Copilot CLI, VS Code, Continue, Claude
-  Desktop, Amazon Q Developer CLI, and Warp have no user-level skills
-  directory — **skipped** with a warning.
+  Desktop, Amazon Q Developer CLI, Warp, and LM Studio have no user-level
+  skills directory — **skipped** with a warning.
 - Binary assets inside skill directories are currently skipped with a warning.
 
 ## MCP servers
@@ -60,7 +60,7 @@ Near-lossless, with these edges:
 - HTTP `headers` are not documented for Hermes — dropped when importing there.
 - `disabled` flags don't exist in Claude Code / Cursor / Gemini / Copilot CLI /
   Qwen Code / Windsurf / Zed / OpenHands / Amp / VS Code / Continue /
-  Claude Desktop / Warp / Junie — servers are emitted enabled, with a warning. (Cline,
+  Claude Desktop / Warp / Junie / LM Studio — servers are emitted enabled, with a warning. (Cline,
   OpenCode, Kiro, Roo Code, Crush, Antigravity, Droid, Amazon Q Developer
   CLI, and goose keep the
   flag natively.)
