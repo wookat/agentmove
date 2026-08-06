@@ -1,0 +1,14 @@
+{
+  "general": { "vimMode": false },
+  "mcpServers": {
+    "mainServer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": { "API_TOKEN": "test-not-a-real-token" }
+    },
+    "remoteServer": {
+      "httpUrl": "https://mcp.example.com/http",
+      "headers": { "Authorization": "Bearer test-not-a-real-token" }
+    }
+  }
+}

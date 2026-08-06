@@ -52,7 +52,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all twelve clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all thirteen clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -76,7 +76,7 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
   claude-code, codex, cursor, gemini, windsurf, cline, zed, openhands,
-  copilot, and opencode only.
+  copilot, opencode, and qwen only.
 - **Cline VS Code extension** keeps its own MCP settings copy in VS Code
   globalStorage — only the CLI settings file (`~/.cline`) and global rules are
   migrated.
@@ -108,6 +108,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]`), `~/.openhands/microagents/` |
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json`, `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/` |
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
+| Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`), `~/.qwen/QWEN.md` (incl. "Qwen Added Memories"), `~/.qwen/skills/` |
 
 ## Commands
 
@@ -126,7 +127,8 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   `.windsurf/rules`, `.clinerules`, `.zed/settings.json`/`.rules`,
   `.openhands/microagents`+`.openhands/skills`,
   `.mcp.json`+`.github/copilot-instructions.md` for copilot,
-  `opencode.json`+`AGENTS.md`+`.opencode/skills` for opencode) instead of
+  `opencode.json`+`AGENTS.md`+`.opencode/skills` for opencode,
+  `.qwen/settings.json`+`QWEN.md`+`.qwen/skills` for qwen) instead of
   user-scoped config; openclaw/hermes have no project scope
 - `--mif <file>` (on `export`) / `import <client> --mif <file>` — exchange the
   memory layer as a vendor-neutral [MIF v2](https://github.com/varun29ankuS/mif-spec)

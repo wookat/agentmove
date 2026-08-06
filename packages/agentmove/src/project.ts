@@ -532,6 +532,41 @@ const opencodeProject: ProjectAdapter = {
   },
 };
 
+const qwenProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "qwen";
+    bundle.mcpServers = parseMcpMap(
+      await readJsonMap(path.join(dir, ".qwen/settings.json")),
+      warnings,
+    );
+    bundle.instructions = await readText(path.join(dir, "QWEN.md"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".qwen/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const settings = await readJsonMap(path.join(dir, ".qwen/settings.json"));
+    const existing = isRecord(settings.mcpServers) ? settings.mcpServers : {};
+    settings.mcpServers = mergeMcpRecords(
+      existing,
+      renderMcpMap(bundle, false, warnings),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".qwen/settings.json", content: JSON.stringify(settings, null, 2) + "\n" });
+    }
+    if (bundle.instructions) files.push({ path: "QWEN.md", content: bundle.instructions });
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in qwen; skipped");
+    if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in qwen; skipped");
+    files.push(...planSkills(bundle.skills, ".qwen/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -543,6 +578,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   openhands: openhandsProject,
   copilot: copilotProject,
   opencode: opencodeProject,
+  qwen: qwenProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
