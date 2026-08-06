@@ -22,7 +22,7 @@ user-editable files:
 | goose | Memory-extension files (`~/.config/goose/memory/*.txt`) migrate both directions; category names and `# tag` lines are not portable. |
 | Windsurf | Cascade memories are app-managed. **Cannot be exported or imported.** Durable rules in `global_rules.md` migrate as instructions. |
 | Amp | No durable memory store — imported memory is appended to `~/AGENTS.md` (approximated, warned). |
-| Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
+| Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid / Amazon Q Developer CLI | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
 | OpenClaw / Hermes | File-based (`MEMORY.md`, daily files, `§` entries) — migrates fully, both directions. |
 
 Practical consequence: **OpenClaw ↔ Hermes ↔ goose memory migration is
@@ -60,7 +60,8 @@ Near-lossless, with these edges:
 - `disabled` flags don't exist in Claude Code / Cursor / Gemini / Copilot CLI /
   Qwen Code / Windsurf / Zed / OpenHands / Amp / VS Code / Continue /
   Claude Desktop — servers are emitted enabled, with a warning. (Cline,
-  OpenCode, Kiro, Roo Code, Crush, Antigravity, Droid, and goose keep the
+  OpenCode, Kiro, Roo Code, Crush, Antigravity, Droid, Amazon Q Developer
+  CLI, and goose keep the
   flag natively.)
 - goose builtin/platform extensions are goose-internal — not exported;
   `available_tools` filters and keyring `env_keys` are not portable (warned).

@@ -28,6 +28,7 @@ description: What AgentMove reads and writes for each client.
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/` |
 | Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`; stdio uses `command`/`args`/`env`/`cwd`, remote servers require `serverUrl` — legacy `url`/`httpUrl` are not supported — plus `headers`, and a native `disabled` flag), `~/.gemini/config/skills/` (Agent Skills standard); global rules live in `~/.gemini/GEMINI.md`, shared with Gemini CLI |
 | Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`; `type` is `stdio`/`http`/`sse` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag), `~/.factory/AGENTS.md` (personal instructions), `~/.factory/skills/` (Agent Skills standard) |
+| Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`; `type` is `stdio` or `http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag); the built-in default agent loads it via `useLegacyMcpJson` |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -100,6 +101,12 @@ description: What AgentMove reads and writes for each client.
   system keyring and are never exported; memory has no durable store and is
   skipped on import (warned). `--project` covers `.factory/mcp.json`,
   `AGENTS.md`, and `.factory/skills/`.
+- **Amazon Q Developer CLI** `timeout`, `oauth`, and `oauthScopes` settings
+  are client-specific and not migrated (warned); there is no `sse` transport
+  type — imported SSE servers are written as `http` (the CLI falls back to SSE
+  on handshake, warned). User-level context lives in agent JSON files
+  (`cli-agents/`) and is not migrated; skills and memory are skipped (warned).
+  `--project` covers `.amazonq/mcp.json` and `AmazonQ.md`.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
