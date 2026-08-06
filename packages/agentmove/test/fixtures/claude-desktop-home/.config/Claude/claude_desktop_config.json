@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": { "API_TOKEN": "test-not-a-real-token" }
+    },
+    "search": {
+      "command": "uvx",
+      "args": ["mcp-server-search"]
+    }
+  }
+}
