@@ -31,6 +31,7 @@ description: What AgentMove reads and writes for each client.
 | Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`; `type` is `stdio` or `http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag); the built-in default agent loads it via `useLegacyMcpJson` |
 | Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`; entries have **no `type` field** — stdio uses `command`/`args`/`env` + optional `working_directory`, remote uses `url`/`headers` with auto-negotiated transport); global rules live in Warp Drive (app-managed) |
 | Junie | `junie` | `~/.junie/mcp/mcp.json` (`mcpServers`; entries have no `type` field — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; shared by the JetBrains IDE plugin and Junie CLI), global guidelines in `~/.junie/AGENTS.md`, `~/.junie/skills/` (Agent Skills standard) |
+| LM Studio | `lmstudio` | `~/.lmstudio/mcp.json` (`mcpServers`, Cursor-style notation — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; no `type` field); MCP servers only — models, presets, and chats are app-managed |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -123,6 +124,11 @@ description: What AgentMove reads and writes for each client.
   (approximated). `--project` covers `.junie/mcp/mcp.json`,
   `.junie/AGENTS.md` (root `AGENTS.md` and legacy `.junie/guidelines.md` are
   read), and `.junie/skills/`.
+- **LM Studio** only exposes MCP servers as a file (`~/.lmstudio/mcp.json`) —
+  system prompts/presets, chats, and models are app-managed and cannot be
+  migrated; no disabled flag (disabled servers emitted enabled, warned);
+  imported SSE servers are written as plain `url` entries (warned); no
+  `--project` scope.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
