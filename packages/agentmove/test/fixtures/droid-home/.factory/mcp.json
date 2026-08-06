@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "airtable": {
+      "command": "npx",
+      "args": ["-y", "airtable-mcp-server@1.4.0"],
+      "env": {
+        "AIRTABLE_API_KEY": "test-not-a-real-token"
+      },
+      "disabledTools": ["delete_records"]
+    },
+    "linear": {
+      "type": "http",
+      "url": "https://mcp.linear.app/mcp",
+      "disabled": true
+    },
+    "internal": {
+      "type": "http",
+      "url": "https://mcp.internal.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer test-not-a-real-token"
+      },
+      "oauth": false
+    }
+  }
+}
