@@ -20,5 +20,7 @@ in between so you can also carry your agent to another machine or keep it in git
 
 ## Supported clients
 
-OpenClaw, Hermes Agent, Claude Code, OpenAI Codex CLI, Cursor, and Gemini CLI.
+OpenClaw, Hermes Agent, Claude Code, OpenAI Codex CLI, Cursor, Gemini CLI,
+Windsurf, Cline, Zed, OpenHands, GitHub Copilot CLI, OpenCode, Qwen Code, and
+goose — fourteen clients, any direction.
 See [Supported clients](/docs/clients/) for exactly what is read and written for each.
