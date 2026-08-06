@@ -1,0 +1,14 @@
+{
+  "amp.notifications.enabled": true,
+  "amp.mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--headless"],
+      "env": { "API_TOKEN": "test-not-a-real-token" }
+    },
+    "linear": {
+      "url": "https://mcp.linear.app/sse",
+      "headers": { "Authorization": "token test-not-a-real-token" }
+    }
+  }
+}
