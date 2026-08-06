@@ -26,6 +26,7 @@ description: What AgentMove reads and writes for each client.
 | Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` **list**; each entry carries its own `name`, stdio uses `command`/`args`/`env`/`cwd`, remote uses `type: streamable-http`/`sse` + `url`), rules markdown in `~/.continue/rules/` |
 | Crush | `crush` | `~/.config/crush/crush.json` (`mcp`; `type` is required — `stdio` uses `command`/`args`/`env`, `http`/`sse` use `url`/`headers` — plus a native `disabled` flag), `~/.config/crush/skills/` (Agent Skills standard); context files (CRUSH.md/AGENTS.md) are project-scoped only |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/` |
+| Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`; stdio uses `command`/`args`/`env`/`cwd`, remote servers require `serverUrl` — legacy `url`/`httpUrl` are not supported — plus `headers`, and a native `disabled` flag), `~/.gemini/config/skills/` (Agent Skills standard); global rules live in `~/.gemini/GEMINI.md`, shared with Gemini CLI |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -87,6 +88,12 @@ description: What AgentMove reads and writes for each client.
   are project-scoped only — user-scope imports report instructions/persona as
   skipped and `--project` writes `CRUSH.md`; memory has no durable store and is
   skipped on import (warned).
+- **Antigravity** `disabledTools`, `authProviderType`, and `oauth` settings are
+  client-specific and not migrated (warned); global rules live in
+  `~/.gemini/GEMINI.md`, shared with Gemini CLI — the instructions layer is
+  owned by the `gemini` client at user scope (`--project` writes
+  `.agents/rules/agentmove.md`); memory has no durable store and is skipped on
+  import (warned).
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
