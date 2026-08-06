@@ -37,6 +37,7 @@ import {
 } from "./adapters/continue.js";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { parseCrushServers, renderCrushServers } from "./adapters/crush.js";
+import { parseDroidServers, renderDroidServers } from "./adapters/droid.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -944,6 +945,45 @@ const antigravityProject: ProjectAdapter = {
   },
 };
 
+const droidProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "droid";
+    const config = await readJsonMap(path.join(dir, ".factory/mcp.json"));
+    bundle.mcpServers = parseDroidServers(config, warnings);
+    bundle.instructions =
+      (await readText(path.join(dir, "AGENTS.md"))) ??
+      (await readText(path.join(dir, ".factory/AGENTS.md")));
+    bundle.skills = await readSkillsDir(path.join(dir, ".factory/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, ".factory/mcp.json"));
+    const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
+    config.mcpServers = mergeMcpRecords(
+      existing,
+      renderDroidServers(bundle),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".factory/mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    if (bundle.instructions) {
+      files.push({ path: "AGENTS.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in droid; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: droid has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".factory/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -964,6 +1004,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   crush: crushProject,
   goose: gooseProject,
   antigravity: antigravityProject,
+  droid: droidProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
