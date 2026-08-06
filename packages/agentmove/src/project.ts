@@ -28,6 +28,7 @@ import { parseGooseMemoryFile } from "./adapters/goose.js";
 import { renderAmpEntry } from "./adapters/amp.js";
 import { parseVscodeServers, renderVscodeServers } from "./adapters/vscode.js";
 import { parseKiroServers, renderKiroServers } from "./adapters/kiro.js";
+import { parseRooServers, readRulesDir, renderRooServers } from "./adapters/roo.js";
 
 /**
  * Project-scoped adapters: read/write the per-project files a client looks
@@ -742,6 +743,43 @@ const kiroProject: ProjectAdapter = {
   },
 };
 
+const rooProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "roo";
+    const config = await readJsonMap(path.join(dir, ".roo/mcp.json"));
+    bundle.mcpServers = parseRooServers(config, warnings);
+    bundle.instructions = await readRulesDir(path.join(dir, ".roo/rules"), warnings, "project");
+    bundle.skills = await readSkillsDir(path.join(dir, ".roo/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, ".roo/mcp.json"));
+    const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
+    config.mcpServers = mergeMcpRecords(
+      existing,
+      renderRooServers(bundle),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".roo/mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    if (bundle.instructions) {
+      files.push({ path: ".roo/rules/agentmove.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in roo; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: roo has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".roo/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -757,6 +795,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   amp: ampProject,
   vscode: vscodeProject,
   kiro: kiroProject,
+  roo: rooProject,
   goose: gooseProject,
 };
 
