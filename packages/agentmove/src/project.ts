@@ -27,6 +27,7 @@ import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
 import { parseGooseMemoryFile } from "./adapters/goose.js";
 import { renderAmpEntry } from "./adapters/amp.js";
 import { parseVscodeServers, renderVscodeServers } from "./adapters/vscode.js";
+import { parseKiroServers, renderKiroServers } from "./adapters/kiro.js";
 
 /**
  * Project-scoped adapters: read/write the per-project files a client looks
@@ -690,6 +691,57 @@ const gooseProject: ProjectAdapter = {
   },
 };
 
+const kiroProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "kiro";
+    const config = await readJsonMap(path.join(dir, ".kiro/settings/mcp.json"));
+    bundle.mcpServers = parseKiroServers(config, warnings);
+    const steeringDir = path.join(dir, ".kiro/steering");
+    const parts: string[] = [];
+    if (await isDir(steeringDir)) {
+      for (const f of (await listDir(steeringDir)).sort()) {
+        if (!f.endsWith(".md")) continue;
+        const content = await readText(path.join(steeringDir, f));
+        if (content?.trim()) parts.push(`<!-- steering: ${f} -->\n${content.trim()}`);
+      }
+      if (parts.length > 1) {
+        warnings.push(
+          "instructions: kiro steering files merged into one document; inclusion-mode front matter is kept verbatim but only applies in kiro",
+        );
+      }
+    }
+    if (parts.length) bundle.instructions = parts.join("\n\n") + "\n";
+    bundle.skills = await readSkillsDir(path.join(dir, ".kiro/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, ".kiro/settings/mcp.json"));
+    const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
+    config.mcpServers = mergeMcpRecords(
+      existing,
+      renderKiroServers(bundle),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".kiro/settings/mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    if (bundle.instructions) {
+      files.push({ path: ".kiro/steering/AGENTS.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in kiro; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: kiro has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".kiro/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -704,6 +756,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   qwen: qwenProject,
   amp: ampProject,
   vscode: vscodeProject,
+  kiro: kiroProject,
   goose: gooseProject,
 };
 
