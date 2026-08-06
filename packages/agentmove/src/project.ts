@@ -23,6 +23,7 @@ import {
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./adapters/shared.js";
+import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
 
 /**
  * Project-scoped adapters: read/write the per-project files a client looks
@@ -485,6 +486,52 @@ const copilotProject: ProjectAdapter = {
   },
 };
 
+const opencodeProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "opencode";
+    const config = await readJsonMap(path.join(dir, "opencode.json"));
+    const serversObj = isRecord(config.mcp) ? config.mcp : {};
+    for (const [name, entry] of Object.entries(serversObj)) {
+      const s = parseCommonMcpEntry(name, fromOpencodeEntry(entry), warnings);
+      if (s) {
+        if (isRecord(entry) && entry.enabled === false) s.enabled = false;
+        bundle.mcpServers.push(s);
+      }
+    }
+    bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".opencode/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, "opencode.json"));
+    const rendered: Record<string, unknown> = {};
+    for (const s of bundle.mcpServers) {
+      rendered[s.name] = toOpencodeEntry(s, warnings);
+    }
+    const existing = isRecord(config.mcp) ? config.mcp : {};
+    config.mcp = mergeMcpRecords(existing, rendered, warnings, opts?.replaceMcp ?? false);
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: "opencode.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    const parts: string[] = [];
+    if (bundle.instructions) parts.push(bundle.instructions.trim());
+    if (bundle.persona) {
+      parts.push(`## Imported by agentmove: persona (SOUL.md)\n\n${bundle.persona.trim()}`);
+      warnings.push("persona: appended to the project AGENTS.md (approximated)");
+    }
+    if (parts.length) files.push({ path: "AGENTS.md", content: parts.join("\n\n") + "\n" });
+    files.push(...planSkills(bundle.skills, ".opencode/skills"));
+    if (bundle.memory.length) {
+      warnings.push("memory: opencode has no project-scoped memory store; skipped");
+    }
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -495,6 +542,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   zed: zedProject,
   openhands: openhandsProject,
   copilot: copilotProject,
+  opencode: opencodeProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

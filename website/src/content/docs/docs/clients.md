@@ -16,6 +16,7 @@ description: What AgentMove reads and writes for each client.
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`; JSONC, stdio servers require `args`), `~/.config/zed/AGENTS.md` |
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]` with `stdio_servers`/`shttp_servers`/`sse_servers`), `~/.openhands/microagents/*.md` |
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json` (`mcpServers`, stdio servers use `type: local`), `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/*.instructions.md` |
+| OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`; local servers use `type: local` with an argv `command` array + `environment`, remote use `type: remote`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -39,5 +40,7 @@ description: What AgentMove reads and writes for each client.
   reported on export; there is no disabled flag, so disabled servers are
   emitted as enabled with a warning. Skills and durable memory have no Copilot
   equivalent.
+- **OpenCode** has no `sse` transport — SSE servers are emitted as `remote`
+  (warned); JSONC comments in `opencode.json` are not preserved on rewrite.
 - OpenClaw `toolFilter` and Hermes `tools.include/exclude` MCP filters have no
   portable equivalent and are dropped with a warning.

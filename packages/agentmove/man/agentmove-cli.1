@@ -8,7 +8,7 @@ agentmove \- move your AI agent between clients: config, MCP servers, skills, me
 .SH DESCRIPTION
 .B agentmove
 migrates AI agent setups between OpenClaw, Hermes Agent, Claude Code, Codex
-CLI, Cursor, Gemini CLI, Windsurf, Cline, Zed, OpenHands, and GitHub Copilot CLI \(em in any direction, through a portable bundle
+CLI, Cursor, Gemini CLI, Windsurf, Cline, Zed, OpenHands, GitHub Copilot CLI, and OpenCode \(em in any direction, through a portable bundle
 format. Imports are dry-run by default, existing files are backed up before
 writing, likely secrets are redacted on export, and every lossy mapping is
 reported as a warning.
@@ -68,7 +68,8 @@ home directory: \fB.mcp.json\fR/\fBCLAUDE.md\fR (claude-code),
 \fB.cursor/mcp.json\fR/\fB.cursor/rules\fR (cursor), \fB.windsurf/rules\fR
 (windsurf), \fB.clinerules\fR (cline), \fB.zed/settings.json\fR/\fB.rules\fR
 (zed), \fB.openhands/microagents\fR+\fB.openhands/skills\fR (openhands),
-\fB.mcp.json\fR+\fB.github/copilot-instructions.md\fR (copilot).
+\fB.mcp.json\fR+\fB.github/copilot-instructions.md\fR (copilot),
+\fBopencode.json\fR+\fBAGENTS.md\fR+\fB.opencode/skills\fR (opencode).
 Backups go to
 \fIdir\fR/.agentmove/backups. openclaw/hermes have no project scope.
 .TP
