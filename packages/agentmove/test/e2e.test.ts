@@ -336,7 +336,7 @@ describe("e2e (built CLI, child process)", () => {
   });
 
   it("converts every source→target pair (full matrix) without errors", async () => {
-    const clients = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq"];
+    const clients = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq", "warp"];
     const fixtures: Record<string, string> = {
       openclaw: "openclaw-home",
       hermes: "hermes-home",
@@ -362,6 +362,7 @@ describe("e2e (built CLI, child process)", () => {
       antigravity: "antigravity-home",
       droid: "droid-home",
       amazonq: "amazonq-home",
+      warp: "warp-home",
     };
     for (const src of clients) {
       const home = await cloneFixture(fixtures[src]!);
@@ -378,7 +379,7 @@ describe("e2e (built CLI, child process)", () => {
   }, 180_000);
 
   it("applies a full round trip into every target and re-exports it", async () => {
-    const targets = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq"];
+    const targets = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq", "warp"];
     for (const dst of targets) {
       const home = await cloneFixture("openclaw-home");
       run(["--home", home, "convert", "openclaw", dst, "--apply"], home);

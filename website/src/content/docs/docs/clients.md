@@ -29,6 +29,7 @@ description: What AgentMove reads and writes for each client.
 | Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`; stdio uses `command`/`args`/`env`/`cwd`, remote servers require `serverUrl` — legacy `url`/`httpUrl` are not supported — plus `headers`, and a native `disabled` flag), `~/.gemini/config/skills/` (Agent Skills standard); global rules live in `~/.gemini/GEMINI.md`, shared with Gemini CLI |
 | Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`; `type` is `stdio`/`http`/`sse` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag), `~/.factory/AGENTS.md` (personal instructions), `~/.factory/skills/` (Agent Skills standard) |
 | Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`; `type` is `stdio` or `http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag); the built-in default agent loads it via `useLegacyMcpJson` |
+| Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`; entries have **no `type` field** — stdio uses `command`/`args`/`env` + optional `working_directory`, remote uses `url`/`headers` with auto-negotiated transport); global rules live in Warp Drive (app-managed) |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -107,6 +108,12 @@ description: What AgentMove reads and writes for each client.
   on handshake, warned). User-level context lives in agent JSON files
   (`cli-agents/`) and is not migrated; skills and memory are skipped (warned).
   `--project` covers `.amazonq/mcp.json` and `AmazonQ.md`.
+- **Warp** entries have no `type` or `disabled` field — imported SSE servers
+  are written as plain `url` entries (transport is auto-negotiated) and
+  disabled servers are emitted enabled (warned). Global rules live in Warp
+  Drive (app-managed) and skills are app-bundled — instructions, persona,
+  memory, and skills are skipped at user level (warned). `--project` covers
+  `.warp/.mcp.json` and `AGENTS.md` (legacy `WARP.md` is read).
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
