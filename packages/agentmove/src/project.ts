@@ -36,6 +36,7 @@ import {
   renderContinueServers,
 } from "./adapters/continue.js";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { parseCrushServers, renderCrushServers } from "./adapters/crush.js";
 
 /**
  * Project-scoped adapters: read/write the per-project files a client looks
@@ -854,6 +855,49 @@ const continueProject: ProjectAdapter = {
   },
 };
 
+const crushProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "crush";
+    const hidden = await readJsonMap(path.join(dir, ".crush.json"));
+    const plain = await readJsonMap(path.join(dir, "crush.json"));
+    const config = Object.keys(hidden).length ? hidden : plain;
+    bundle.mcpServers = parseCrushServers(config, warnings);
+    bundle.instructions =
+      (await readText(path.join(dir, "CRUSH.md"))) ??
+      (await readText(path.join(dir, "AGENTS.md")));
+    bundle.skills = await readSkillsDir(path.join(dir, ".crush/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const hiddenRaw = await readText(path.join(dir, ".crush.json"));
+    const rel = hiddenRaw !== undefined ? ".crush.json" : "crush.json";
+    const config = await readJsonMap(path.join(dir, rel));
+    const existing = isRecord(config.mcp) ? config.mcp : {};
+    config.mcp = mergeMcpRecords(
+      existing,
+      renderCrushServers(bundle),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: rel, content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    if (bundle.instructions) {
+      files.push({ path: "CRUSH.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in crush; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: crush has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".crush/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -871,6 +915,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   kiro: kiroProject,
   roo: rooProject,
   continue: continueProject,
+  crush: crushProject,
   goose: gooseProject,
 };
 

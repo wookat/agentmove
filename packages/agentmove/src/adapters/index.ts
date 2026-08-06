@@ -18,6 +18,7 @@ import { vscode } from "./vscode.js";
 import { kiro } from "./kiro.js";
 import { roo } from "./roo.js";
 import { continueAdapter } from "./continue.js";
+import { crush } from "./crush.js";
 import { goose } from "./goose.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
@@ -40,6 +41,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   kiro,
   roo,
   continue: continueAdapter,
+  crush,
   goose,
 };
 
@@ -74,4 +76,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush };

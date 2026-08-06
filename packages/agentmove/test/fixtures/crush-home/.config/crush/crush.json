@@ -1,0 +1,23 @@
+{
+  "$schema": "https://charm.land/crush.json",
+  "mcp": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/mcp-server.js"],
+      "env": { "API_KEY": "test-not-a-real-token" },
+      "timeout": 120,
+      "disabled_tools": ["some-tool"]
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.example.com/mcp/",
+      "headers": { "Authorization": "Bearer test-not-a-real-token" },
+      "disabled": true
+    },
+    "streaming": {
+      "type": "sse",
+      "url": "https://example.com/mcp/sse"
+    }
+  }
+}
