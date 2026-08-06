@@ -20,6 +20,7 @@ import { roo } from "./roo.js";
 import { continueAdapter } from "./continue.js";
 import { crush } from "./crush.js";
 import { goose } from "./goose.js";
+import { antigravity } from "./antigravity.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   openclaw,
@@ -43,6 +44,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   continue: continueAdapter,
   crush,
   goose,
+  antigravity,
 };
 
 function editDistance(a: string, b: string): number {
@@ -76,4 +78,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush, antigravity };

@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "sqlite-explorer": {
+      "command": "node",
+      "args": ["/usr/local/bin/sqlite-mcp-server.js"],
+      "env": {
+        "SQLITE_DB_PATH": "/var/data/app.db",
+        "API_KEY": "test-not-a-real-token"
+      },
+      "disabledTools": ["drop_table"]
+    },
+    "remote-api": {
+      "serverUrl": "https://api.example.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer test-not-a-real-token"
+      },
+      "disabled": true
+    },
+    "gcp-service": {
+      "serverUrl": "https://example.googleapis.com/mcp/",
+      "authProviderType": "google_credentials"
+    }
+  }
+}

@@ -37,6 +37,11 @@ import {
 } from "./adapters/continue.js";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { parseCrushServers, renderCrushServers } from "./adapters/crush.js";
+import {
+  parseAntigravityServers,
+  readAntigravityRulesDir,
+  renderAntigravityServers,
+} from "./adapters/antigravity.js";
 
 /**
  * Project-scoped adapters: read/write the per-project files a client looks
@@ -898,6 +903,47 @@ const crushProject: ProjectAdapter = {
   },
 };
 
+const antigravityProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "antigravity";
+    const config = await readJsonMap(path.join(dir, ".agents/mcp_config.json"));
+    bundle.mcpServers = parseAntigravityServers(config, warnings);
+    const rules = await readAntigravityRulesDir(path.join(dir, ".agents/rules"), warnings);
+    bundle.instructions = rules ?? (await readText(path.join(dir, "AGENTS.md")));
+    bundle.skills = await readSkillsDir(path.join(dir, ".agents/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, ".agents/mcp_config.json"));
+    const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
+    config.mcpServers = mergeMcpRecords(
+      existing,
+      renderAntigravityServers(bundle),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({
+        path: ".agents/mcp_config.json",
+        content: JSON.stringify(config, null, 2) + "\n",
+      });
+    }
+    if (bundle.instructions) {
+      files.push({ path: ".agents/rules/agentmove.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in antigravity; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: antigravity has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".agents/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -917,6 +963,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   continue: continueProject,
   crush: crushProject,
   goose: gooseProject,
+  antigravity: antigravityProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

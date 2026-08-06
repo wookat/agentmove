@@ -9,7 +9,7 @@ agentmove \- move your AI agent between clients: config, MCP servers, skills, me
 .B agentmove
 migrates AI agent setups between OpenClaw, Hermes Agent, Claude Code, Claude
 Desktop, Codex
-CLI, Cursor, Gemini CLI, Windsurf, Cline, Zed, OpenHands, GitHub Copilot CLI, OpenCode, Qwen Code, Amp, VS Code, Kiro, Roo Code, Continue, Crush, and goose \(em in any direction, through a portable bundle
+CLI, Cursor, Gemini CLI, Windsurf, Cline, Zed, OpenHands, GitHub Copilot CLI, OpenCode, Qwen Code, Amp, VS Code, Kiro, Roo Code, Continue, Crush, goose, and Antigravity \(em in any direction, through a portable bundle
 format. Imports are dry-run by default, existing files are backed up before
 writing, likely secrets are redacted on export, and every lossy mapping is
 reported as a warning.
@@ -78,7 +78,8 @@ home directory: \fB.mcp.json\fR/\fBCLAUDE.md\fR (claude-code),
 \fB.kiro/settings/mcp.json\fR+\fB.kiro/steering/\fR+\fB.kiro/skills/\fR (kiro);
 \fB.roo/mcp.json\fR+\fB.roo/rules/\fR+\fB.roo/skills/\fR (roo);
 \fB.continue/mcpServers/\fR+\fB.continue/rules/\fR (continue);
-\fBcrush.json\fR/\fB.crush.json\fR+\fBCRUSH.md\fR+\fB.crush/skills/\fR (crush).
+\fBcrush.json\fR/\fB.crush.json\fR+\fBCRUSH.md\fR+\fB.crush/skills/\fR (crush);
+\fB.agents/mcp_config.json\fR+\fB.agents/rules/\fR+\fB.agents/skills/\fR (antigravity).
 Backups go to
 \fIdir\fR/.agentmove/backups. openclaw/hermes have no project scope.
 .TP
