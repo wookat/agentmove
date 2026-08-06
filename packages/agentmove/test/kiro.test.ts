@@ -48,6 +48,23 @@ describe("kiro adapter", () => {
     expect(files.some((f) => f.path === ".kiro/skills/sk/SKILL.md")).toBe(true);
   });
 
+  it("handles a missing ~/.kiro gracefully and --replace-mcp semantics", async () => {
+    const { bundle, warnings } = await kiro.exportBundle("/nonexistent-home");
+    expect(bundle.mcpServers).toEqual([]);
+    expect(bundle.instructions).toBeUndefined();
+    expect(bundle.skills).toEqual([]);
+    expect(warnings).toEqual([]);
+
+    const incoming = emptyBundle();
+    incoming.mcpServers = [{ name: "only", transport: "stdio", command: "x" }];
+    const replaced = await kiro.planImport(incoming, HOME, { replaceMcp: true });
+    const mcp = JSON.parse(
+      replaced.files.find((f) => f.path === ".kiro/settings/mcp.json")!.content,
+    ) as { mcpServers: Record<string, unknown> };
+    expect(Object.keys(mcp.mcpServers)).toEqual(["only"]);
+    expect(replaced.warnings.some((w) => w.includes("removed by --replace-mcp"))).toBe(true);
+  });
+
   it("project scope: .kiro/settings/mcp.json + steering + skills", async () => {
     const adapter = getProjectAdapter("kiro");
     const exported = await adapter.exportProject(HOME); // fixture reuses .kiro layout
