@@ -52,7 +52,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all ten clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all eleven clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -75,7 +75,8 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
 - **MCP tool filters** (OpenClaw `toolFilter`, Hermes include/exclude) have no portable
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
-  claude-code, codex, cursor, gemini, windsurf, cline, zed, and openhands only.
+  claude-code, codex, cursor, gemini, windsurf, cline, zed, openhands, and
+  copilot only.
 - **Cline VS Code extension** keeps its own MCP settings copy in VS Code
   globalStorage — only the CLI settings file (`~/.cline`) and global rules are
   migrated.
@@ -105,6 +106,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json`, `~/Documents/Cline/Rules/` |
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`), `~/.config/zed/AGENTS.md` |
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]`), `~/.openhands/microagents/` |
+| GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json`, `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/` |
 
 ## Commands
 
@@ -121,8 +123,9 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   project-scoped files in a repo (`.mcp.json`/`CLAUDE.md`, `AGENTS.md`,
   `.gemini/settings.json`/`GEMINI.md`, `.cursor/mcp.json`/`.cursor/rules`,
   `.windsurf/rules`, `.clinerules`, `.zed/settings.json`/`.rules`,
-  `.openhands/microagents`+`.openhands/skills`) instead of user-scoped config;
-  openclaw/hermes have no project scope
+  `.openhands/microagents`+`.openhands/skills`,
+  `.mcp.json`+`.github/copilot-instructions.md` for copilot) instead of
+  user-scoped config; openclaw/hermes have no project scope
 - `--mif <file>` (on `export`) / `import <client> --mif <file>` — exchange the
   memory layer as a vendor-neutral [MIF v2](https://github.com/varun29ankuS/mif-spec)
   document with any MIF-speaking memory system
