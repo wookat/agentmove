@@ -39,6 +39,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { parseCrushServers, renderCrushServers } from "./adapters/crush.js";
 import { parseDroidServers, renderDroidServers } from "./adapters/droid.js";
 import { parseAmazonqServers, renderAmazonqServers } from "./adapters/amazonq.js";
+import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/warp.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1023,6 +1024,48 @@ const amazonqProject: ProjectAdapter = {
   },
 };
 
+const warpProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "warp";
+    const config = await readJsonMap(path.join(dir, ".warp/.mcp.json"));
+    bundle.mcpServers = parseWarpServers(config, warnings);
+    bundle.instructions =
+      (await readText(path.join(dir, "AGENTS.md"))) ??
+      (await readText(path.join(dir, "WARP.md")));
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, ".warp/.mcp.json"));
+    const key = warpWrapperKey(config);
+    const wrapped = config[key];
+    const existing = isRecord(wrapped) ? wrapped : {};
+    config[key] = mergeMcpRecords(
+      existing,
+      renderWarpServers(bundle, warnings),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".warp/.mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    if (bundle.instructions) {
+      files.push({ path: "AGENTS.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in warp; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: warp has no project-scoped memory store; skipped");
+    }
+    if (bundle.skills.length) {
+      warnings.push("skills: warp skills are app-bundled, not user files; skipped");
+    }
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1045,6 +1088,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   antigravity: antigravityProject,
   droid: droidProject,
   amazonq: amazonqProject,
+  warp: warpProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
