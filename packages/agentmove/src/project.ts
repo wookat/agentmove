@@ -38,6 +38,7 @@ import {
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { parseCrushServers, renderCrushServers } from "./adapters/crush.js";
 import { parseDroidServers, renderDroidServers } from "./adapters/droid.js";
+import { parseAmazonqServers, renderAmazonqServers } from "./adapters/amazonq.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -984,6 +985,44 @@ const droidProject: ProjectAdapter = {
   },
 };
 
+const amazonqProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "amazonq";
+    const config = await readJsonMap(path.join(dir, ".amazonq/mcp.json"));
+    bundle.mcpServers = parseAmazonqServers(config, warnings);
+    bundle.instructions = await readText(path.join(dir, "AmazonQ.md"));
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const config = await readJsonMap(path.join(dir, ".amazonq/mcp.json"));
+    const existing = isRecord(config.mcpServers) ? config.mcpServers : {};
+    config.mcpServers = mergeMcpRecords(
+      existing,
+      renderAmazonqServers(bundle, warnings),
+      warnings,
+      opts?.replaceMcp ?? false,
+    );
+    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+      files.push({ path: ".amazonq/mcp.json", content: JSON.stringify(config, null, 2) + "\n" });
+    }
+    if (bundle.instructions) {
+      files.push({ path: "AmazonQ.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in amazonq; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: amazonq has no project-scoped memory store; skipped");
+    }
+    if (bundle.skills.length) {
+      warnings.push("skills: amazonq has no SKILL.md mechanism; skipped");
+    }
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1005,6 +1044,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   goose: gooseProject,
   antigravity: antigravityProject,
   droid: droidProject,
+  amazonq: amazonqProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

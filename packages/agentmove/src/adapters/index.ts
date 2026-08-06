@@ -22,6 +22,7 @@ import { crush } from "./crush.js";
 import { goose } from "./goose.js";
 import { antigravity } from "./antigravity.js";
 import { droid } from "./droid.js";
+import { amazonq } from "./amazonq.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   openclaw,
@@ -47,6 +48,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   goose,
   antigravity,
   droid,
+  amazonq,
 };
 
 function editDistance(a: string, b: string): number {
@@ -80,4 +82,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush, antigravity, droid };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush, antigravity, droid, amazonq };

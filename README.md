@@ -2,7 +2,7 @@
 
 **Move your AI agent between clients.** The pandoc of agent ecosystems: migrate
 **config + MCP servers + skills + memory + persona/instructions** between
-twenty-three clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
+twenty-four clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
 Gemini CLI, VS Code, Cline, Continue, and more (see the full table below) — in
 any direction, with dry-run previews, diffs, and honest loss reporting.
 
@@ -53,7 +53,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all twenty-three clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all twenty-four clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -77,7 +77,7 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
   claude-code, codex, cursor, gemini, windsurf, cline, zed, openhands,
-  copilot, opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), roo (`.roo/mcp.json` + `.roo/rules/` + `.roo/skills/`), continue (`.continue/mcpServers/` blocks + `.continue/rules/`), crush (`crush.json`/`.crush.json` + `CRUSH.md` + `.crush/skills/`), antigravity (`.agents/mcp_config.json` + `.agents/rules/` + `.agents/skills/`), droid (`.factory/mcp.json` + `AGENTS.md` + `.factory/skills/`), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
+  copilot, opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), roo (`.roo/mcp.json` + `.roo/rules/` + `.roo/skills/`), continue (`.continue/mcpServers/` blocks + `.continue/rules/`), crush (`crush.json`/`.crush.json` + `CRUSH.md` + `.crush/skills/`), antigravity (`.agents/mcp_config.json` + `.agents/rules/` + `.agents/skills/`), droid (`.factory/mcp.json` + `AGENTS.md` + `.factory/skills/`), amazonq (`.amazonq/mcp.json` + `AmazonQ.md`), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
   goose extensions are user-scoped only).
 - **Cline VS Code extension** keeps its own MCP settings copy in VS Code
   globalStorage — only the CLI settings file (`~/.cline`) and global rules are
@@ -121,6 +121,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`), `~/.config/goose/.goosehints`, `~/.config/goose/memory/`, `~/.agents/skills/` |
 | Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`), `~/.gemini/config/skills/` |
 | Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`), `~/.factory/AGENTS.md`, `~/.factory/skills/` |
+| Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`); project scope: `.amazonq/mcp.json` + `AmazonQ.md` |
 
 ## Commands
 
