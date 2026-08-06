@@ -14,6 +14,7 @@ import { opencode } from "./opencode.js";
 import { qwen } from "./qwen.js";
 import { amp } from "./amp.js";
 import { claudeDesktop } from "./claude-desktop.js";
+import { vscode } from "./vscode.js";
 import { goose } from "./goose.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
@@ -32,6 +33,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   opencode,
   qwen,
   amp,
+  vscode,
   goose,
 };
 
@@ -66,4 +68,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode };

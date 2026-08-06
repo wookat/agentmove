@@ -20,6 +20,7 @@ description: What AgentMove reads and writes for each client.
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`; local servers use `type: local` with an argv `command` array + `environment`, remote use `type: remote`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
 | Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`; remote servers use `url` or `httpUrl`), `~/.qwen/QWEN.md` (including the "Qwen Added Memories" section), `~/.qwen/skills/` |
 | Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`; local servers use `command`/`args`/`env`, remote use `url`/`headers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
+| VS Code | `vscode` | user-profile `mcp.json` (`servers`; stdio entries use `command`/`args`/`env`, remote use `type: http`/`sse` + `url`/`headers`); profile folder is `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows) — all three are checked |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/` |
 
 ## Known lossy edges (always reported as warnings)
@@ -56,6 +57,11 @@ description: What AgentMove reads and writes for each client.
   `.amp/settings.json`) require approval in amp before first use
   (`amp mcp approve`). Memory has no durable store — approximated into
   `AGENTS.md` (warned).
+- **VS Code** instructions/prompts/chat modes are profile- or repo-managed —
+  user scope migrates MCP servers only (`--project` covers `.vscode/mcp.json`
+  and `.github/copilot-instructions.md`); `inputs` prompted placeholders are
+  client-specific and `${input:*}` references stay as-is (warned); `envFile`
+  references are machine-specific and dropped (warned); no disabled flag.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped

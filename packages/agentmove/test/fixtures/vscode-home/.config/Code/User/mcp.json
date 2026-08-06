@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@microsoft/mcp-server-playwright"],
+      "env": { "API_TOKEN": "test-not-a-real-token" }
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp",
+      "headers": { "Authorization": "Bearer test-not-a-real-token" }
+    }
+  }
+}
