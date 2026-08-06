@@ -375,7 +375,11 @@ program
     }));
     if (opts.json) process.stdout.write(JSON.stringify(rows, null, 2) + "\n");
     else {
-      for (const r of rows) console.log(`${r.id.padEnd(12)} ${r.label.padEnd(14)} ${r.defaultPath}`);
+      const idW = Math.max(...rows.map((r) => r.id.length));
+      const labelW = Math.max(...rows.map((r) => r.label.length));
+      for (const r of rows) {
+        console.log(`${r.id.padEnd(idW)}  ${r.label.padEnd(labelW)}  ${r.defaultPath}`);
+      }
     }
   });
 

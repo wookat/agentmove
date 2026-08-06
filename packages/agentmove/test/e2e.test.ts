@@ -172,6 +172,11 @@ describe("e2e (built CLI, child process)", () => {
 
     const clients = JSON.parse(run(["clients", "--json"], work)) as { id: string }[];
     expect(clients.map((c) => c.id)).toContain("gemini");
+
+    // table output keeps the path column aligned across all rows
+    const lines = run(["clients"], work).trimEnd().split("\n");
+    const pathCols = new Set(lines.map((l) => l.search(/ {2}[~.]/)));
+    expect(pathCols.size).toBe(1);
     expect(run(["clients"], work)).toContain("openclaw");
   });
 

@@ -32,6 +32,14 @@ npx agentmove-cli export claude-code -o my-agent
 npx agentmove-cli import codex -i my-agent --apply
 ```
 
+Moving to another machine? Seal the bundle into one encrypted file:
+
+```bash
+AGENTMOVE_PASSPHRASE='...' npx agentmove-cli pack my-agent -o agent.agentpack
+# on the new machine
+AGENTMOVE_PASSPHRASE='...' npx agentmove-cli import codex -i agent.agentpack --apply
+```
+
 :::tip
 Enable tab completion with `eval "$(agentmove completion bash)"` (also `zsh`
 and `fish`), and see `man agentmove-cli` after a global install.
