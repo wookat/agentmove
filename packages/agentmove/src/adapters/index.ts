@@ -10,6 +10,7 @@ import { cline } from "./cline.js";
 import { zed } from "./zed.js";
 import { openhands } from "./openhands.js";
 import { copilot } from "./copilot.js";
+import { opencode } from "./opencode.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   openclaw,
@@ -23,6 +24,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   zed,
   openhands,
   copilot,
+  opencode,
 };
 
 function editDistance(a: string, b: string): number {
@@ -56,4 +58,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode };
