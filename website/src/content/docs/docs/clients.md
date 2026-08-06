@@ -30,6 +30,7 @@ description: What AgentMove reads and writes for each client.
 | Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`; `type` is `stdio`/`http`/`sse` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag), `~/.factory/AGENTS.md` (personal instructions), `~/.factory/skills/` (Agent Skills standard) |
 | Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`; `type` is `stdio` or `http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag); the built-in default agent loads it via `useLegacyMcpJson` |
 | Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`; entries have **no `type` field** — stdio uses `command`/`args`/`env` + optional `working_directory`, remote uses `url`/`headers` with auto-negotiated transport); global rules live in Warp Drive (app-managed) |
+| Junie | `junie` | `~/.junie/mcp/mcp.json` (`mcpServers`; entries have no `type` field — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; shared by the JetBrains IDE plugin and Junie CLI), global guidelines in `~/.junie/AGENTS.md`, `~/.junie/skills/` (Agent Skills standard) |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -114,6 +115,14 @@ description: What AgentMove reads and writes for each client.
   Drive (app-managed) and skills are app-bundled — instructions, persona,
   memory, and skills are skipped at user level (warned). `--project` covers
   `.warp/.mcp.json` and `AGENTS.md` (legacy `WARP.md` is read).
+- **Junie** has no `disabled` field in `mcp.json` (servers are toggled via the
+  `/mcp` UI) — disabled servers are emitted enabled (warned); remote servers
+  are plain `url` entries, so imported SSE servers are written without a
+  transport type (warned). Memory has no durable store and is skipped on
+  import (warned); persona is appended to `~/.junie/AGENTS.md`
+  (approximated). `--project` covers `.junie/mcp/mcp.json`,
+  `.junie/AGENTS.md` (root `AGENTS.md` and legacy `.junie/guidelines.md` are
+  read), and `.junie/skills/`.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped

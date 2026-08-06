@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "env": {
+        "CONTEXT7_API_KEY": "test-not-a-real-token"
+      }
+    },
+    "internal": {
+      "url": "https://mcp.internal.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer test-not-a-real-token"
+      }
+    }
+  }
+}
