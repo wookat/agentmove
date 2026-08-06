@@ -19,7 +19,12 @@ export function parseCommonMcpEntry(
     warnings.push(`mcp:${name}: entry is not an object; dropped`);
     return undefined;
   }
-  const url = typeof entry.url === "string" ? entry.url : undefined;
+  const url =
+    typeof entry.url === "string"
+      ? entry.url
+      : typeof entry.httpUrl === "string" // Gemini CLI / Qwen Code streamable-HTTP spelling
+        ? entry.httpUrl
+        : undefined;
   const command = typeof entry.command === "string" ? entry.command : undefined;
   let transport: Transport;
   if (typeof entry.type === "string" && ["stdio", "http", "sse"].includes(entry.type)) {
