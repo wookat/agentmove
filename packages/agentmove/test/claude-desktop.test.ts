@@ -17,7 +17,16 @@ describe("claude-desktop adapter", () => {
     expect(byName.filesystem!.command).toBe("npx");
     expect(byName.filesystem!.env).toEqual({ API_TOKEN: "test-not-a-real-token" });
     expect(byName.search!.command).toBe("uvx");
-    expect(warnings.some((w) => w.includes("only MCP servers migrate"))).toBe(true);
+    expect(warnings.some((w) => w.includes("only MCP servers and skills migrate"))).toBe(true);
+  });
+
+  it("exports personal skills from ~/.claude/skills", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-cd-sk-"));
+    const dir = path.join(home, ".claude/skills/review");
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, "SKILL.md"), "# review");
+    const { bundle } = await claudeDesktop.exportBundle(home);
+    expect(bundle.skills).toEqual([{ name: "review", files: { "SKILL.md": "# review" } }]);
   });
 
   it("finds the macOS config location too", async () => {
@@ -45,7 +54,8 @@ describe("claude-desktop adapter", () => {
     bundle.memory = [{ content: "likes tabs", source: "s", kind: "long-term" }];
     bundle.skills = [{ name: "sk", files: { "SKILL.md": "x" } }];
     const { files, warnings } = await claudeDesktop.planImport(bundle, HOME, {});
-    expect(files).toHaveLength(1);
+    expect(files).toHaveLength(2);
+    expect(files[1]!.path).toBe(".claude/skills/sk/SKILL.md");
     const config = JSON.parse(files[0]!.content) as {
       mcpServers: Record<string, Record<string, unknown>>;
     };
@@ -54,9 +64,11 @@ describe("claude-desktop adapter", () => {
     expect(config.mcpServers.docs!.command).toBe("npx");
     expect(config.mcpServers.api!.url).toBe("https://sse.example.com");
     expect(config.mcpServers.off!.enabled).toBeUndefined();
-    for (const layer of ["instructions", "persona", "memory", "skills"]) {
+    for (const layer of ["instructions", "persona", "memory"]) {
       expect(warnings.some((w) => w.startsWith(`${layer}:`)), layer).toBe(true);
     }
+    expect(warnings.some((w) => w.includes("skills: written to ~/.claude/skills"))).toBe(true);
+    expect(warnings.some((w) => w.includes("no SKILL.md mechanism"))).toBe(false);
     expect(warnings.some((w) => w.includes("no disabled flag"))).toBe(true);
     expect(warnings.some((w) => w.includes("remote server"))).toBe(true);
   });

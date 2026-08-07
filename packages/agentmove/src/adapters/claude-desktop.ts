@@ -14,16 +14,22 @@ import { exists, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planSkills,
+  readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./shared.js";
 
 /**
- * Claude Desktop. The only migratable surface is claude_desktop_config.json
- * with the common `mcpServers` map (stdio command/args/env). Its location is
- * platform-specific: ~/Library/Application Support/Claude (macOS),
- * %APPDATA%\Claude (Windows), ~/.config/Claude (unofficial Linux builds).
+ * Claude Desktop. Migratable surfaces are claude_desktop_config.json with the
+ * common `mcpServers` map (stdio command/args/env) and personal Agent Skills
+ * in ~/.claude/skills, which Desktop local sessions load (shared with Claude
+ * Code). The config location is platform-specific: ~/Library/Application
+ * Support/Claude (macOS), %APPDATA%\Claude (Windows), ~/.config/Claude
+ * (unofficial Linux builds).
  */
+const SKILLS_REL = ".claude/skills";
+
 const CANDIDATE_RELS = [
   "Library/Application Support/Claude/claude_desktop_config.json",
   "AppData/Roaming/Claude/claude_desktop_config.json",
@@ -46,7 +52,8 @@ async function findConfigRel(home: string): Promise<string | undefined> {
 export const claudeDesktop: ClientAdapter = {
   id: "claude-desktop",
   label: "Claude Desktop",
-  defaultPath: "~/Library/Application Support/Claude or %APPDATA%\\Claude (claude_desktop_config.json)",
+  defaultPath:
+    "~/Library/Application Support/Claude or %APPDATA%\\Claude (claude_desktop_config.json) + ~/.claude/skills/",
 
   async detect(home) {
     return (await findConfigRel(home)) !== undefined;
@@ -75,8 +82,9 @@ export const claudeDesktop: ClientAdapter = {
       if (s) servers.push(s);
     }
     bundle.mcpServers = servers;
+    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     warnings.push(
-      "claude-desktop stores instructions/memory/projects inside the app; only MCP servers migrate",
+      "claude-desktop stores instructions/memory/projects inside the app; only MCP servers and skills migrate",
     );
     return { bundle, warnings };
   },
@@ -119,8 +127,11 @@ export const claudeDesktop: ClientAdapter = {
       warnings.push("memory: claude-desktop memory is app-managed; skipped (consider --mif)");
     }
     if (bundle.skills.length) {
-      warnings.push("skills: claude-desktop has no SKILL.md mechanism; skipped");
+      warnings.push(
+        "skills: written to ~/.claude/skills, a shared root also read by claude-code",
+      );
     }
+    files.push(...planSkills(bundle.skills, SKILLS_REL));
     return { files, warnings };
   },
 };
