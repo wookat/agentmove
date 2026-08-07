@@ -128,15 +128,41 @@ everyone imports straight from it:
 # a hosted mcp.json (raw GitHub URL, internal server, …)
 agentmove import cursor -i https://raw.githubusercontent.com/acme/dev/main/team-mcp.json
 
-# a git repository containing an Agent Plugin or an agentmove bundle
+# a git repository containing an Agent Plugin, an agentmove bundle, or skills
 agentmove import claude-code -i https://github.com/acme/team-plugin
+agentmove import cursor -i https://github.com/vercel-labs/agent-skills
 ```
 
 A URL ending in `.json` is fetched and treated as a standalone MCP config; any
 other URL is `git clone`d (shallow) and auto-detected — an Agent Plugin
-(`plugin.json` at the root) or an agentmove bundle. Plain-`http` URLs work but
+(`plugin.json` at the root), an agentmove bundle, or a skills repository
+(see below). Plain-`http` URLs work but
 emit an insecure-URL warning. Fetch/clone failures are data errors (exit 3).
 The usual dry-run/`--apply`, merge, and backup semantics apply.
+
+## Importing a skills repository: `import -i <repo>`
+
+`-i` also accepts a **skills repository** — the layout used across the
+[skills.sh](https://skills.sh) / `npx skills add owner/repo` ecosystem (Vercel's
+`agent-skills`, Google's `agents-cli`, Anthropic's `skills`, …). A directory (or
+cloned URL) that is neither an Agent Plugin nor an agentmove bundle is treated
+as a skills repository when it carries `SKILL.md` skills in any of the common
+shapes:
+
+- `skills/<name>/SKILL.md` — the conventional `skills/` folder
+- `<name>/SKILL.md` — skill directories at the repository top level
+- a single `SKILL.md` at the repository root (named from its frontmatter
+  `name:`, falling back to the directory name)
+
+```bash
+# straight from GitHub into any client's skills location
+agentmove import claude-code -i https://github.com/vercel-labs/agent-skills
+agentmove import cursor -i ./my-skills-repo --apply
+```
+
+Only directories that actually contain a `SKILL.md` are imported; everything
+else in the repository is ignored. The usual dry-run/`--apply`, `--only skills`,
+and backup semantics apply, and the import reports how many skills were found.
 
 ## Standalone MCP config export: `export --mcp-json`
 

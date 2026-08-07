@@ -187,7 +187,11 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   taken from `type`/`transport` or inferred from `command`/`url` with a warning
 - `import <client> -i <url>` — import straight from an http(s) URL: a `.json`
   URL is fetched as a standalone MCP config, any other URL is `git clone`d and
-  auto-detected as an Agent Plugin or agentmove bundle repository
+  auto-detected as an Agent Plugin, agentmove bundle, or skills repository
+- `import <client> -i <repo>` — import a skills repository (the
+  [skills.sh](https://skills.sh) / `npx skills add owner/repo` ecosystem):
+  `SKILL.md` directories under `skills/`, at the top level, or a single skill
+  at the repository root, installed into any client's skills location
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations
