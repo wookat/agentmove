@@ -1,5 +1,11 @@
 # agentmove-cli
 
+## 0.45.0
+
+### Minor Changes
+
+- e87ef3c: New client: Muse Code (Meta's terminal coding agent, 45th client) — `~/.config/muse/settings.json` `mcp_servers` (explicit `transport: stdio/streamable_http`, native `enabled` flag, `schema_version: 1` preserved/written) + `~/.config/muse/skills/` Agent Skills; project scope migrates root `AGENTS.md`, `.agents/skills/`, and `.agents/memory/` durable memory.
+
 ## 0.44.0
 
 ### Minor Changes
