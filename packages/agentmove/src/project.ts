@@ -58,6 +58,12 @@ import { parseVibeServers, planVibeMcp, readVibeConfig } from "./adapters/vibe.j
 import { parseNanocoderServers, planNanocoderMcp, readNanocoderMcp } from "./adapters/nanocoder.js";
 import { parseLibrechatServers, planLibrechatMcp, readLibrechatConfig } from "./adapters/librechat.js";
 import {
+  parseJetbrainsServers,
+  planJetbrainsMcp,
+  readJetbrainsMcp,
+  readJetbrainsRulesDir,
+} from "./adapters/jetbrains.js";
+import {
   parseAntigravityServers,
   readAntigravityRulesDir,
   renderAntigravityServers,
@@ -1555,6 +1561,48 @@ const librechatProject: ProjectAdapter = {
   },
 };
 
+const jetbrainsProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "jetbrains";
+    const config = await readJetbrainsMcp(path.join(dir, ".ai/mcp/mcp.json"));
+    bundle.mcpServers = parseJetbrainsServers(config, warnings);
+    bundle.instructions = await readJetbrainsRulesDir(
+      path.join(dir, ".aiassistant/rules"),
+      warnings,
+    );
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planJetbrainsMcp(
+        bundle,
+        path.join(dir, ".ai/mcp/mcp.json"),
+        ".ai/mcp/mcp.json",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    if (bundle.instructions) {
+      files.push({ path: ".aiassistant/rules/agentmove.md", content: bundle.instructions });
+      warnings.push(
+        "instructions: jetbrains rule type (Always/Manually/...) is set in the IDE; imported rule defaults to Always",
+      );
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in jetbrains; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: jetbrains has no project-scoped memory store; skipped");
+    }
+    if (bundle.skills.length) {
+      warnings.push("skills: jetbrains has no Agent Skills directory; skipped");
+    }
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1579,6 +1627,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   amazonq: amazonqProject,
   warp: warpProject,
   junie: junieProject,
+  jetbrains: jetbrainsProject,
   trae: traeProject,
   codebuddy: codebuddyProject,
   qoder: qoderProject,

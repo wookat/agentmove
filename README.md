@@ -2,7 +2,7 @@
 
 **Move your AI agent between clients.** The pandoc of agent ecosystems: migrate
 **config + MCP servers + skills + memory + persona/instructions** between
-forty-two clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
+forty-three clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
 Gemini CLI, VS Code, Cline, Continue, and more (see the full table below) — in
 any direction, with dry-run previews, diffs, and honest loss reporting.
 
@@ -53,7 +53,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all forty-two clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all forty-three clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -140,6 +140,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Xcode Claude Agent | `xcode-claude` | `~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig` (macOS; Xcode 26's bundled Claude Agent — same `.claude.json` + `.claude/CLAUDE.md` + `.claude/skills` layout as Claude Code, isolated from `~/.claude`) |
 | Xcode Codex | `xcode-codex` | `~/Library/Developer/Xcode/CodingAssistant/codex` (macOS; Xcode 26's bundled Codex — same `config.toml` + `AGENTS.md` layout as Codex CLI, isolated from `~/.codex`; no documented skills directory) |
 | Xcode Gemini | `xcode-gemini` | `~/Library/Developer/Xcode/CodingAssistant/gemini` (macOS; Xcode 26's bundled Gemini — same `settings.json` + `GEMINI.md` layout as Gemini CLI, isolated from `~/.gemini`) |
+| JetBrains AI Assistant | `jetbrains` | `~/.ai/mcp/mcp.json` (`mcpServers`; stdio uses `command`/`args`/`env` + native `workingDirectory`, remote uses `url`/`headers`; shared by the JetBrains AI agents in IntelliJ-family IDEs); project scope: `.ai/mcp/mcp.json` + `.aiassistant/rules/*.md`; prompts and chat memory are IDE-managed |
 
 ## Commands
 

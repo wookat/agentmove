@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "idea-mcp": {
+      "url": "http://localhost:64342/stream"
+    }
+  }
+}

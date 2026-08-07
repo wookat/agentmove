@@ -151,7 +151,8 @@ export type ClientId =
   | "librechat"
   | "xcode-claude"
   | "xcode-codex"
-  | "xcode-gemini";
+  | "xcode-gemini"
+  | "jetbrains";
 
 export const CLIENT_IDS: ClientId[] = [
   "openclaw",
@@ -196,6 +197,7 @@ export const CLIENT_IDS: ClientId[] = [
   "xcode-claude",
   "xcode-codex",
   "xcode-gemini",
+  "jetbrains",
 ];
 
 export interface ExportResult {
