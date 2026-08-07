@@ -52,6 +52,7 @@ import {
   readAuggieSettings,
 } from "./adapters/auggie.js";
 import { parseKiloServers, planKiloMcp, readKiloConfig } from "./adapters/kilo.js";
+import { parseKimiServers, planKimiMcp, readKimiMcp } from "./adapters/kimi.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1353,6 +1354,45 @@ const kiloProject: ProjectAdapter = {
   },
 };
 
+const kimiProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "kimi";
+    const config = await readKimiMcp(path.join(dir, ".kimi-code/mcp.json"));
+    bundle.mcpServers = parseKimiServers(config, warnings);
+    bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".kimi-code/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planKimiMcp(
+        bundle,
+        path.join(dir, ".kimi-code/mcp.json"),
+        ".kimi-code/mcp.json",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    const sections: { title: string; body: string }[] = [];
+    if (bundle.persona) {
+      sections.push({ title: "persona (SOUL.md)", body: bundle.persona });
+      warnings.push("persona: appended to AGENTS.md (approximated)");
+    }
+    if (bundle.instructions || sections.length) {
+      files.push({ path: "AGENTS.md", content: appendSections(bundle.instructions, sections) });
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: kimi has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".kimi-code/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1382,6 +1422,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   qoder: qoderProject,
   auggie: auggieProject,
   kilo: kiloProject,
+  kimi: kimiProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

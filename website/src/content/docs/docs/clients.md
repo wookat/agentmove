@@ -37,6 +37,7 @@ description: What AgentMove reads and writes for each client.
 | Qoder CLI | `qoder` | `~/.qoder/settings.json` (`mcpServers` key inside the general settings file — other settings are preserved on rewrite; `type` is `stdio`/`sse`/`http`/`ws` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.qoder/AGENTS.md` (user memory file), `~/.qoder/skills/` (Agent Skills standard) |
 | Auggie CLI | `auggie` | `~/.augment/settings.json` (`mcpServers` key inside the general settings file — other settings are preserved on rewrite; `type` is `stdio`/`sse`/`http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.augment/rules/*.md` (user rules, always applied), `~/.augment/skills/` (Agent Skills standard) |
 | Kilo Code | `kilo` | `~/.config/kilo/kilo.json` (`mcp` key inside the general config file — other keys are preserved on rewrite; `kilo.jsonc`/`config.json` also read, JSONC accepted; local servers use `type: "local"` with `command` as an argv array plus `environment`, remote servers use `type: "remote"` + `url`/`headers`; native `enabled` flag round-trips), `~/.config/kilo/AGENTS.md` (global instructions), `~/.kilo/skills/` (Agent Skills standard; shared by the CLI and the VS Code/JetBrains extensions) |
+| Kimi Code CLI | `kimi` | `~/.kimi-code/mcp.json` (`mcpServers` key; stdio uses `command`/`args`/`env`/`cwd`, HTTP uses a plain `url` with optional `headers`, legacy SSE sets `transport: "sse"`; native `enabled` flag round-trips; `bearerTokenEnvVar`/`startupTimeoutMs`/`toolTimeoutMs`/`enabledTools`/`disabledTools` are client-specific), `~/.kimi-code/AGENTS.md` (global instructions), `~/.kimi-code/skills/` (Agent Skills standard; `$KIMI_CODE_HOME` relocations are not followed) |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -170,6 +171,12 @@ description: What AgentMove reads and writes for each client.
   preserved on rewrite (warned); memory has no durable store — skipped
   (warned). `--project` covers `kilo.json`/`.kilo/kilo.json(c)`, root
   `AGENTS.md`, and `.kilo/skills/`.
+- **Kimi Code CLI** per-server `bearerTokenEnvVar`, `startupTimeoutMs`,
+  `toolTimeoutMs`, `enabledTools`, and `disabledTools` are client-specific
+  (warned, preserved on merge); memory has no durable store — skipped
+  (warned); persona is appended to `~/.kimi-code/AGENTS.md` (approximated).
+  `--project` covers `.kimi-code/mcp.json`, root `AGENTS.md`, and
+  `.kimi-code/skills/`.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
