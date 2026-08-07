@@ -335,8 +335,9 @@ describe("e2e (built CLI, child process)", () => {
     expect(bad.stderr).toContain('unknown layer "nope"');
   });
 
-  // trae is excluded from the user-scope matrix: its user-level MCP servers
-  // are app-managed, so exports carry skills only (covered in trae.test.ts).
+  // trae and comate are excluded from the user-scope matrix: their user-level
+  // MCP servers are app-managed/project-scoped, so exports carry skills only
+  // (covered in trae.test.ts / comate.test.ts).
   // librechat is excluded too: librechat.yaml is per-deployment, so all
   // migratable files are project-scoped (covered in librechat.test.ts).
   it("converts every source→target pair (full matrix) without errors", async () => {

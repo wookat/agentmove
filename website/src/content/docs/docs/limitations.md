@@ -27,6 +27,7 @@ user-editable files:
 | Qoder CLI | Auto-memory is app-managed runtime data — imported memory is **skipped** with a warning (`~/.qoder/AGENTS.md` migrates as instructions). |
 | Auggie CLI | Augment Memories are app-managed — imported memory is **skipped** with a warning (`~/.augment/rules/` migrates as instructions). |
 | JetBrains AI Assistant | Chat memory and prompts are IDE-managed — imported memory is **skipped** with a warning; user-level instructions have no file slot (project rules migrate with `--project`). |
+| Baidu Comate | Chat memory is app-managed under `.comate` — imported memory is **skipped** with a warning; MCP servers and rules migrate with `--project` only. |
 | Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid / Amazon Q Developer CLI / Warp / Junie / LM Studio / Trae / Kilo Code / Kimi Code CLI / Grok CLI / Vibe Code CLI / Nanocoder / Jan / AnythingLLM / LibreChat | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
 | OpenClaw / Hermes | File-based (`MEMORY.md`, daily files, `§` entries) — migrates fully, both directions. |
 
@@ -81,7 +82,7 @@ Near-lossless, with these edges:
 - HTTP `headers` are not documented for Hermes — dropped when importing there.
 - `disabled` flags don't exist in Claude Code / Cursor / Gemini / Copilot CLI /
   Qwen Code / Windsurf / Zed / OpenHands / Amp / VS Code / Continue /
-  Claude Desktop / Warp / Junie / JetBrains AI Assistant / LM Studio / Trae / Qoder CLI / Auggie CLI — servers are emitted enabled, with a warning. (Cline,
+  Claude Desktop / Warp / Junie / JetBrains AI Assistant / LM Studio / Trae / Baidu Comate / Qoder CLI / Auggie CLI — servers are emitted enabled, with a warning. (Cline,
   OpenCode, Kiro, Roo Code, Crush, Antigravity, Droid, Amazon Q Developer
   CLI, goose, Kilo Code, and Kimi Code CLI keep the
   flag natively; CodeBuddy keeps it via its top-level `disabledMcpServers`

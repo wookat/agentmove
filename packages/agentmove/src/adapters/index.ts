@@ -40,6 +40,7 @@ import { anythingllm } from "./anythingllm.js";
 import { librechat } from "./librechat.js";
 import { xcodeClaude, xcodeCodex, xcodeGemini } from "./xcode.js";
 import { jetbrains } from "./jetbrains.js";
+import { comate } from "./comate.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   openclaw,
@@ -85,6 +86,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   "xcode-codex": xcodeCodex,
   "xcode-gemini": xcodeGemini,
   jetbrains,
+  comate,
 };
 
 function editDistance(a: string, b: string): number {
@@ -118,4 +120,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush, antigravity, droid, amazonq, warp, junie, lmstudio, trae, codebuddy, qoder, auggie, kilo, kimi, grok, vibe, nanocoder, jan, anythingllm, librechat, xcodeClaude, xcodeCodex, xcodeGemini, jetbrains };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush, antigravity, droid, amazonq, warp, junie, lmstudio, trae, codebuddy, qoder, auggie, kilo, kimi, grok, vibe, nanocoder, jan, anythingllm, librechat, xcodeClaude, xcodeCodex, xcodeGemini, jetbrains, comate };
