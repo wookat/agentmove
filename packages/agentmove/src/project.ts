@@ -1713,6 +1713,44 @@ const comateProject: ProjectAdapter = {
   },
 };
 
+const warpCliProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "warp-cli";
+    bundle.instructions =
+      (await readText(path.join(dir, "AGENTS.md"))) ??
+      (await readText(path.join(dir, "WARP.md")));
+    bundle.skills = await readSkillsDir(path.join(dir, ".agents/skills"), warnings);
+    warnings.push(
+      "mcp: warp-cli MCP servers are user-scoped (~/.warp_cli/.mcp.json); project .warp/.mcp.json belongs to the warp client",
+    );
+    return { bundle, warnings };
+  },
+  async planImport(bundle, _dir, _opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    if (bundle.mcpServers.length) {
+      warnings.push(
+        "mcp: warp-cli MCP servers live in ~/.warp_cli/.mcp.json (user scope); not written at project scope (use the warp client for .warp/.mcp.json)",
+      );
+    }
+    const sections: { title: string; body: string }[] = [];
+    if (bundle.persona) {
+      sections.push({ title: "persona (SOUL.md)", body: bundle.persona });
+      warnings.push("persona: appended to AGENTS.md (approximated)");
+    }
+    if (bundle.instructions || sections.length) {
+      files.push({ path: "AGENTS.md", content: appendSections(bundle.instructions, sections) });
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: warp-cli has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".agents/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1750,6 +1788,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   nanocoder: nanocoderProject,
   librechat: librechatProject,
   muse: museProject,
+  "warp-cli": warpCliProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
