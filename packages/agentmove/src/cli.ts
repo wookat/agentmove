@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import os from "node:os";
+import path from "node:path";
 import { Command, CommanderError } from "commander";
 import { ADAPTERS, getAdapter } from "./adapters/index.js";
 import { readBundle, stripSecrets, writeBundle } from "./bundle.js";
@@ -20,6 +21,7 @@ import { completionScript } from "./completion.js";
 import { getProjectAdapter } from "./project.js";
 import { fromMif, toMif } from "./mif.js";
 import { decryptBundle, encryptBundle, isPackFile, requirePassphrase } from "./pack.js";
+import { isPluginDir, readPlugin, writePlugin } from "./plugin.js";
 import fs from "node:fs/promises";
 
 const program = new Command();
@@ -166,6 +168,7 @@ program
   .option("--only <layers>", "comma-separated layers to export (mcp,skills,memory,instructions,persona)")
   .option("--project <dir>", "export the client's project-scoped files from a project directory")
   .option("--mif <file>", "also write the memory layer as a MIF v2 document (.mif.json)")
+  .option("--plugin", "write an Agent Plugin (agent-plugins.org) instead of an agentmove bundle", false)
   .option("--json", "machine-readable JSON output", false)
   .action(
     async (
@@ -176,6 +179,7 @@ program
         only?: string;
         project?: string;
         mif?: string;
+        plugin: boolean;
         json: boolean;
       },
     ) => {
@@ -187,7 +191,14 @@ program
         opts.project,
       );
       if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
-      await writeBundle(bundle, opts.out);
+      if (opts.plugin) {
+        const name = path.basename(path.resolve(opts.out));
+        const pluginWarnings = await writePlugin(bundle, opts.out, name);
+        if (opts.json) collected.push(...pluginWarnings);
+        else printWarnings(pluginWarnings);
+      } else {
+        await writeBundle(bundle, opts.out);
+      }
       if (opts.mif) {
         const doc = toMif(bundle.memory, bundle.manifest.exportedAt ?? new Date().toISOString());
         await fs.writeFile(opts.mif, JSON.stringify(doc, null, 2) + "\n");
@@ -197,6 +208,7 @@ program
           JSON.stringify(
             {
               out: opts.out,
+              format: opts.plugin ? "agent-plugin" : "bundle",
               mif: opts.mif ?? null,
               summary: bundleSummary(bundle),
               warnings: collected,
@@ -207,7 +219,9 @@ program
         );
         return;
       }
-      console.log(`exported ${summaryLine(bundle)} to ${opts.out}`);
+      console.log(
+        `exported ${summaryLine(bundle)} to ${opts.out}${opts.plugin ? " (Agent Plugin)" : ""}`,
+      );
       if (opts.mif) console.log(`wrote ${bundle.memory.length} memory entr(ies) as MIF to ${opts.mif}`);
     },
   );
@@ -216,7 +230,7 @@ program
   .command("import")
   .description("import an agentmove bundle into a client (dry-run by default)")
   .argument("<client>", "target client")
-  .option("-i, --in <dir>", "bundle directory", "./agentmove-bundle")
+  .option("-i, --in <dir>", "bundle directory, .agentpack file, or Agent Plugin directory", "./agentmove-bundle")
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
   .option("--only <layers>", "comma-separated layers to import (mcp,skills,memory,instructions,persona)")
@@ -244,6 +258,10 @@ program
       } else if (await isPackFile(opts.in)) {
         const passphrase = requirePassphrase(process.env.AGENTMOVE_PASSPHRASE);
         bundle = decryptBundle(await fs.readFile(opts.in), passphrase, opts.in);
+      } else if (await isPluginDir(opts.in)) {
+        const plugin = await readPlugin(opts.in);
+        bundle = plugin.bundle;
+        mifWarnings.push(...plugin.warnings);
       } else {
         bundle = await readBundle(opts.in);
       }

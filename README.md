@@ -172,6 +172,11 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 - `--mif <file>` (on `export`) / `import <client> --mif <file>` — exchange the
   memory layer as a vendor-neutral [MIF v2](https://github.com/varun29ankuS/mif-spec)
   document with any MIF-speaking memory system
+- `export <client> --plugin` — write an [Agent Plugin](https://agent-plugins.org)
+  (`plugin.json` + `skills/` + `mcp.json` with explicit transport types) instead of
+  an agentmove bundle; `import -i` auto-detects Agent Plugin directories, so any
+  plugin from the ecosystem can be imported into all supported clients
+  (instructions/persona/memory have no plugin slot and are warned about)
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations

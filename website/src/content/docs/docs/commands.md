@@ -80,6 +80,27 @@ agentmove import gemini --mif memories.mif.json --apply
 MIF fields with no portable equivalent (embeddings, knowledge-graph data) are
 dropped with a warning; a non-MIF file is a data error (exit 3).
 
+## Agent Plugins interop: `export --plugin`
+
+`export <client> --plugin -o <dir>` writes an
+[Agent Plugin](https://agent-plugins.org) (the vendor-neutral 1.0.0 standard from
+Amazon, Cursor, Google, Microsoft, OpenAI, and Vercel) instead of an agentmove
+bundle: `plugin.json` manifest, `skills/` in the Agent Skills format, and
+`mcp.json` with an explicit `type` (`stdio` / `streamable-http` / `sse`) on every
+server. `import -i <dir>` auto-detects a directory containing `plugin.json` and
+imports its MCP servers and skills into any supported client:
+
+```bash
+agentmove export claude-code --plugin -o my-agent-plugin
+agentmove import codex -i some-plugin-from-the-ecosystem --apply
+```
+
+Agent Plugins has no slot for instructions, persona, or memory — those layers
+are skipped with a warning (use a bundle or `--mif` for them). An absolute MCP
+`cwd` is dropped with a warning (the spec only allows plugin-relative or
+`${PLUGIN_ROOT}`/`${PLUGIN_DATA}` working directories), and entries without an
+explicit `type` in an imported plugin are reported and dropped.
+
 ## Encrypted transport: `pack` / `unpack`
 
 `pack <bundle> [-o file]` encrypts a bundle directory into a single portable
@@ -143,6 +164,8 @@ A global install (`npm i -g agentmove-cli`) also links a man page:
   client's project-scoped files in a repository instead of `$HOME`.
 - `--mif <file>` (on `export`, `import`) — exchange the memory layer as a
   MIF v2 document.
+- `--plugin` (on `export`) — write an Agent Plugin instead of an agentmove
+  bundle.
 - `--debug` (or `AGENTMOVE_DEBUG=1`) — print a full stack trace on unexpected
   errors; by default errors are a single readable line.
 - `--json` (on `export`, `import`, `convert`, `diff`, `pack`, `unpack`, `doctor`, `clients`) — machine-readable JSON on
