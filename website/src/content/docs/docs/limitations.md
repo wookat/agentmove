@@ -22,6 +22,7 @@ user-editable files:
 | goose | Memory-extension files (`~/.config/goose/memory/*.txt`) migrate both directions; category names and `# tag` lines are not portable. |
 | Windsurf | Cascade memories are app-managed. **Cannot be exported or imported.** Durable rules in `global_rules.md` migrate as instructions. |
 | Amp | No durable memory store — imported memory is appended to `~/AGENTS.md` (approximated, warned). |
+| CodeBuddy | Auto-memory is app-managed runtime data — imported memory is **skipped** with a warning (`CODEBUDDY.md` migrates as instructions). |
 | Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid / Amazon Q Developer CLI / Warp / Junie / LM Studio / Trae | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
 | OpenClaw / Hermes | File-based (`MEMORY.md`, daily files, `§` entries) — migrates fully, both directions. |
 
@@ -51,6 +52,8 @@ persona, and a later export won't recover it as a separate `persona.md`.
   skills directory — **skipped** with a warning.
 - Trae global skills live in `~/.trae/skills/` and migrate natively;
   project skills in `.trae/skills/` migrate with `--project`.
+- CodeBuddy global skills live in `~/.codebuddy/skills/` and migrate natively;
+  project skills in `.codebuddy/skills/` migrate with `--project`.
 - Binary assets inside skill directories are currently skipped with a warning.
 
 ## MCP servers
@@ -65,7 +68,8 @@ Near-lossless, with these edges:
   Claude Desktop / Warp / Junie / LM Studio / Trae — servers are emitted enabled, with a warning. (Cline,
   OpenCode, Kiro, Roo Code, Crush, Antigravity, Droid, Amazon Q Developer
   CLI, and goose keep the
-  flag natively.)
+  flag natively; CodeBuddy keeps it via its top-level `disabledMcpServers`
+  name list.)
 - goose builtin/platform extensions are goose-internal — not exported;
   `available_tools` filters and keyring `env_keys` are not portable (warned).
 - JSON5/JSONC comments (`openclaw.json`, Zed `settings.json`,

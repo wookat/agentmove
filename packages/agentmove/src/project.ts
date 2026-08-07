@@ -16,6 +16,7 @@ import {
 } from "./model.js";
 import { isDir, listDir, readText } from "./fsutil.js";
 import {
+  appendSections,
   mergeMcpRecords,
   parseCommonMcpEntry,
   planSkills,
@@ -42,6 +43,7 @@ import { parseAmazonqServers, renderAmazonqServers } from "./adapters/amazonq.js
 import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/warp.js";
 import { parseJunieServers, renderJunieServers } from "./adapters/junie.js";
 import { parseTraeServers, planTraeMcp } from "./adapters/trae.js";
+import { parseCodebuddyServers, planCodebuddyMcp, readCodebuddyMcp } from "./adapters/codebuddy.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1164,6 +1166,55 @@ const traeProject: ProjectAdapter = {
   },
 };
 
+const codebuddyProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "codebuddy";
+    const { config } = await readCodebuddyMcp(
+      [path.join(dir, ".mcp.json"), path.join(dir, "mcp.json")],
+      warnings,
+    );
+    bundle.mcpServers = parseCodebuddyServers(config, warnings);
+    bundle.instructions =
+      (await readText(path.join(dir, "CODEBUDDY.md"))) ??
+      (await readText(path.join(dir, ".codebuddy/CODEBUDDY.md")));
+    if (await isDir(path.join(dir, ".codebuddy/rules"))) {
+      warnings.push(
+        "instructions: .codebuddy/rules/*.md are client-specific rule files; not exported (only CODEBUDDY.md is)",
+      );
+    }
+    bundle.skills = await readSkillsDir(path.join(dir, ".codebuddy/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planCodebuddyMcp(
+        bundle,
+        [path.join(dir, ".mcp.json"), path.join(dir, "mcp.json")],
+        [".mcp.json", "mcp.json"],
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    const sections: { title: string; body: string }[] = [];
+    if (bundle.persona) {
+      sections.push({ title: "persona (SOUL.md)", body: bundle.persona });
+      warnings.push("persona: appended to CODEBUDDY.md (approximated)");
+    }
+    if (bundle.instructions || sections.length) {
+      files.push({ path: "CODEBUDDY.md", content: appendSections(bundle.instructions, sections) });
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: codebuddy auto-memory is app-managed; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".codebuddy/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1189,6 +1240,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   warp: warpProject,
   junie: junieProject,
   trae: traeProject,
+  codebuddy: codebuddyProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

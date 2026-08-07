@@ -27,6 +27,7 @@ import { warp } from "./warp.js";
 import { junie } from "./junie.js";
 import { lmstudio } from "./lmstudio.js";
 import { trae } from "./trae.js";
+import { codebuddy } from "./codebuddy.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   openclaw,
@@ -57,6 +58,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   junie,
   lmstudio,
   trae,
+  codebuddy,
 };
 
 function editDistance(a: string, b: string): number {
@@ -90,4 +92,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush, antigravity, droid, amazonq, warp, junie, lmstudio, trae };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush, antigravity, droid, amazonq, warp, junie, lmstudio, trae, codebuddy };
