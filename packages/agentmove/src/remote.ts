@@ -45,12 +45,58 @@ export function rewriteBlobUrl(input: string): string {
   return input.replace(/^(https?:\/\/[^/]+\/.+?)\/-\/blob\//, "$1/-/raw/");
 }
 
+const ARCHIVE_SUFFIX = /\.(zip|tgz|tar\.gz)(\?.*)?$/;
+
+export function isArchiveInput(input: string): boolean {
+  return ARCHIVE_SUFFIX.test(input);
+}
+
+/**
+ * Extract a .zip / .tgz / .tar.gz archive into a temp directory and return
+ * the directory to hand to the detection chain. If the archive unpacks to a
+ * single top-level directory (GitHub "Download ZIP" / release-asset layout),
+ * that directory is returned instead of the wrapper.
+ */
+export async function extractArchive(file: string): Promise<string> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-archive-"));
+  const isZip = /\.zip$/i.test(file.replace(/\?.*$/, ""));
+  const attempts: [string, string[]][] = isZip
+    ? [
+        ["unzip", ["-q", file, "-d", dir]],
+        ["tar", ["-xf", file, "-C", dir]],
+      ]
+    : [["tar", ["-xzf", file, "-C", dir]]];
+  let lastError = "";
+  let extracted = false;
+  for (const [cmd, args] of attempts) {
+    try {
+      await execFileAsync(cmd, args);
+      extracted = true;
+      break;
+    } catch (e) {
+      lastError = (e as Error).message.split("\n")[0]!;
+    }
+  }
+  if (!extracted) {
+    throw new CliError(`${file}: archive extraction failed (${lastError})`, EXIT_DATA);
+  }
+  const entries = (await fs.readdir(dir, { withFileTypes: true })).filter(
+    (e) => e.name !== "__MACOSX",
+  );
+  if (entries.length === 1 && entries[0]!.isDirectory()) {
+    return path.join(dir, entries[0]!.name);
+  }
+  return dir;
+}
+
 /**
  * Resolve an http(s) import source to a local path the normal detection chain
  * can handle: a URL ending in .json is fetched to a temp file (standalone
- * mcp.json), a /tree/<branch>/<subpath> URL is shallow-cloned at that branch
- * and resolved to the subdirectory, anything else is shallow-cloned with git
- * (an Agent Plugin, agentmove bundle, or skills repository).
+ * mcp.json), a .zip / .tgz / .tar.gz URL is downloaded and extracted (an
+ * Agent Plugin, bundle, or skills repository shipped as an archive, e.g. a
+ * GitHub release asset or "Download ZIP" link), a /tree/<branch>/<subpath>
+ * URL is shallow-cloned at that branch and resolved to the subdirectory,
+ * anything else is shallow-cloned with git.
  */
 export async function fetchRemoteInput(
   input: string,
@@ -75,6 +121,22 @@ export async function fetchRemoteInput(
     const file = path.join(work, "remote-mcp.json");
     await fs.writeFile(file, await res.text());
     return file;
+  }
+
+  if (isArchiveInput(input)) {
+    let res: Response;
+    try {
+      res = await fetch(input);
+    } catch (e) {
+      throw new CliError(`${input}: fetch failed (${(e as Error).message})`, EXIT_DATA);
+    }
+    if (!res.ok) {
+      throw new CliError(`${input}: fetch failed (HTTP ${res.status})`, EXIT_DATA);
+    }
+    const base = path.basename(new URL(input).pathname) || "archive";
+    const file = path.join(work, base);
+    await fs.writeFile(file, Buffer.from(await res.arrayBuffer()));
+    return extractArchive(file);
   }
 
   const dir = path.join(work, "repo");
