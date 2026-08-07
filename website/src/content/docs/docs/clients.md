@@ -13,7 +13,7 @@ description: What AgentMove reads and writes for each client.
 | Cursor | `cursor` | `~/.cursor/mcp.json`, `~/.cursor/skills/` (global Agent Skills standard; project scope covers `.cursor/skills/`); instructions/persona imported as `~/.cursor/rules/agentmove-imported.mdc` |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section) |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/` |
-| Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json` (`mcpServers`, remote servers use `type: streamableHttp`/`sse` + `url`), `~/Documents/Cline/Rules/*.md` |
+| Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json` (`mcpServers`, remote servers use `type: streamableHttp`/`sse` + `url`), `~/Documents/Cline/Rules/*.md`, `~/.cline/skills/` |
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`; JSONC, stdio servers require `args`), `~/.config/zed/AGENTS.md` |
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]` with `stdio_servers`/`shttp_servers`/`sse_servers`), `~/.openhands/microagents/*.md` |
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json` (`mcpServers`, stdio servers use `type: local`), `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/*.instructions.md`, `~/.copilot/skills/` |
@@ -29,7 +29,7 @@ description: What AgentMove reads and writes for each client.
 | Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`; stdio uses `command`/`args`/`env`/`cwd`, remote servers require `serverUrl` — legacy `url`/`httpUrl` are not supported — plus `headers`, and a native `disabled` flag), `~/.gemini/config/skills/` (Agent Skills standard); global rules live in `~/.gemini/GEMINI.md`, shared with Gemini CLI. This shared config is used by all Antigravity 2.0 surfaces — the desktop app, the IDE, and the Antigravity CLI (`agy`) — so one migration covers all three |
 | Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`; `type` is `stdio`/`http`/`sse` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag), `~/.factory/AGENTS.md` (personal instructions), `~/.factory/skills/` (Agent Skills standard) |
 | Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`; `type` is `stdio` or `http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag); the built-in default agent loads it via `useLegacyMcpJson` |
-| Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`; entries have **no `type` field** — stdio uses `command`/`args`/`env` + optional `working_directory`, remote uses `url`/`headers` with auto-negotiated transport); global rules live in Warp Drive (app-managed) |
+| Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`; entries have **no `type` field** — stdio uses `command`/`args`/`env` + optional `working_directory`, remote uses `url`/`headers` with auto-negotiated transport), `~/.warp/skills/`; global rules live in Warp Drive (app-managed) |
 | Junie | `junie` | `~/.junie/mcp/mcp.json` (`mcpServers`; entries have no `type` field — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; shared by the JetBrains IDE plugin and Junie CLI), global guidelines in `~/.junie/AGENTS.md`, `~/.junie/skills/` (Agent Skills standard) |
 | LM Studio | `lmstudio` | `~/.lmstudio/mcp.json` (`mcpServers`, Cursor-style notation — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; no `type` field); MCP servers only — models, presets, and chats are app-managed |
 | Trae | `trae` | `~/.trae/skills/` (global Agent Skills standard); user-level MCP servers, rules, and memories are app-managed (Settings UI) — project scope is where Trae's files live: `.trae/mcp.json` (`mcpServers`; entries have no `type` field — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `.trae/rules/*.md`, and `.trae/skills/` |
@@ -64,7 +64,8 @@ description: What AgentMove reads and writes for each client.
   with `--project`).
 - **Cline** VS Code extension keeps its own MCP settings copy in VS Code
   globalStorage; AgentMove migrates the CLI settings file (`~/.cline`) and
-  global rules only. Skills have no Cline equivalent.
+  global rules only. Skills migrate natively via `~/.cline/skills/`
+  (project `.cline/skills/` with `--project`).
 - **Zed** Rules Library entries and Skills are app-managed — not migrated;
   JSONC comments in `settings.json` are not preserved on rewrite (warned).
 - **OpenHands** remote MCP servers only support `api_key` auth — non-Bearer
@@ -136,9 +137,11 @@ description: What AgentMove reads and writes for each client.
 - **Warp** entries have no `type` or `disabled` field — imported SSE servers
   are written as plain `url` entries (transport is auto-negotiated) and
   disabled servers are emitted enabled (warned). Global rules live in Warp
-  Drive (app-managed) and skills are app-bundled — instructions, persona,
-  memory, and skills are skipped at user level (warned). `--project` covers
-  `.warp/.mcp.json` and `AGENTS.md` (legacy `WARP.md` is read).
+  Drive (app-managed) — instructions, persona, and memory are skipped at
+  user level (warned). Skills migrate natively via `~/.warp/skills/`
+  (project `.warp/skills/` with `--project`). `--project` covers
+  `.warp/.mcp.json`, `AGENTS.md` (legacy `WARP.md` is read), and
+  `.warp/skills/`.
 - **Junie** has no `disabled` field in `mcp.json` (servers are toggled via the
   `/mcp` UI) — disabled servers are emitted enabled (warned); remote servers
   are plain `url` entries, so imported SSE servers are written without a

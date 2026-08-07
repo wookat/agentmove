@@ -329,6 +329,7 @@ const clineProject: ProjectAdapter = {
         warnings.push("cline workspace rules concatenated into instructions");
       }
     }
+    bundle.skills = await readSkillsDir(path.join(dir, ".cline/skills"), warnings);
     warnings.push("cline has no project-scoped MCP config; MCP servers stay user-scoped");
     return { bundle, warnings };
   },
@@ -351,7 +352,7 @@ const clineProject: ProjectAdapter = {
       files.push({ path: ".clinerules/agentmove-imported.md", content: body });
     }
     if (bundle.memory.length) warnings.push("memory: cline has no project-scoped memory store; skipped");
-    if (bundle.skills.length) warnings.push("skills: cline has no SKILL.md mechanism; skipped");
+    files.push(...planSkills(bundle.skills, ".cline/skills"));
     return { files, warnings };
   },
 };
@@ -1101,6 +1102,7 @@ const warpProject: ProjectAdapter = {
     bundle.instructions =
       (await readText(path.join(dir, "AGENTS.md"))) ??
       (await readText(path.join(dir, "WARP.md")));
+    bundle.skills = await readSkillsDir(path.join(dir, ".warp/skills"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1126,9 +1128,7 @@ const warpProject: ProjectAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: warp has no project-scoped memory store; skipped");
     }
-    if (bundle.skills.length) {
-      warnings.push("skills: warp skills are app-bundled, not user files; skipped");
-    }
+    files.push(...planSkills(bundle.skills, ".warp/skills"));
     return { files, warnings };
   },
 };

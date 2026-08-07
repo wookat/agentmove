@@ -76,13 +76,13 @@ describe("project-scoped adapters", () => {
     expect(cur.warnings.some((w) => w.startsWith("memory:"))).toBe(true);
   });
 
-  it("cline project import writes .clinerules and warns on MCP/memory/skills", async () => {
+  it("cline project import writes .clinerules and skills, warns on MCP", async () => {
     const { bundle } = await getProjectAdapter("claude-code").exportProject(project);
     const { files, warnings } = await getProjectAdapter("cline").planImport(bundle, project);
     const paths = files.map((f) => f.path);
     expect(paths).toContain(".clinerules/agentmove-imported.md");
     expect(warnings.some((w) => w.includes("no project-scoped MCP config"))).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
     // export side: .clinerules concatenation on a project without one is empty
     const back = await getProjectAdapter("cline").exportProject(project);
     expect(back.bundle.instructions).toBeUndefined();
