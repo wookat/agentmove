@@ -229,6 +229,12 @@ A path ending in `.zip`/`.tgz`/`.tar.gz` packages the repository as an archive
 (one top-level directory named after the file without the suffix). Exporting a
 client with no skills is a data error (exit 3).
 
+Skills that were installed with `gh skill install` carry source-tracking
+metadata (`metadata.github-*` keys) in their `SKILL.md` frontmatter, which
+`gh skill publish` rejects. `--skills-repo` strips those keys on export (with
+a warning per skill, mirroring `gh skill publish --fix`); all other
+frontmatter and file contents are left byte-identical.
+
 ## Standalone MCP config export: `export --mcp-json`
 
 The reverse direction: `export <client> --mcp-json <file>` also writes the MCP
