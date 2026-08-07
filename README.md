@@ -177,6 +177,10 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   an agentmove bundle; `import -i` auto-detects Agent Plugin directories, so any
   plugin from the ecosystem can be imported into all supported clients
   (instructions/persona/memory have no plugin slot and are warned about)
+- `import <client> -i mcp.json` — import a standalone MCP config file (any
+  `mcpServers` map: an Agent Plugins `mcp.json`, a Claude-style `.mcp.json`,
+  a canonical team server list, …) directly into any client; transports are
+  taken from `type`/`transport` or inferred from `command`/`url` with a warning
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations

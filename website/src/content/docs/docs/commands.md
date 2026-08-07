@@ -101,6 +101,24 @@ are skipped with a warning (use a bundle or `--mif` for them). An absolute MCP
 `${PLUGIN_ROOT}`/`${PLUGIN_DATA}` working directories), and entries without an
 explicit `type` in an imported plugin are reported and dropped.
 
+## Standalone MCP config import: `import -i mcp.json`
+
+`import -i` also accepts a bare `.json` file containing an `mcpServers` map —
+an Agent Plugins `mcp.json` on its own, a Claude-style `.mcp.json`, or a
+hand-maintained canonical server list shared by a team:
+
+```bash
+agentmove import cursor -i team-mcp.json          # preview
+agentmove import cursor -i team-mcp.json --apply  # merge into the client
+```
+
+Transports come from an explicit `type` or `transport` field
+(`stdio` / `streamable-http` / `http` / `sse`); when omitted they are inferred —
+`command` means stdio, `url` means Streamable HTTP — with a warning naming the
+inference. Entries that are neither are reported and dropped. Normal merge
+semantics, dry-run, and backups apply; a `.json` file without `mcpServers` is a
+data error (exit 3).
+
 ## Encrypted transport: `pack` / `unpack`
 
 `pack <bundle> [-o file]` encrypts a bundle directory into a single portable

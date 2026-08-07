@@ -2,7 +2,15 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isPluginDir, PLUGIN_MCP_SCHEMA, PLUGIN_SCHEMA, readPlugin, writePlugin } from "../src/plugin.js";
+import {
+  isMcpJsonFile,
+  isPluginDir,
+  PLUGIN_MCP_SCHEMA,
+  PLUGIN_SCHEMA,
+  readMcpFile,
+  readPlugin,
+  writePlugin,
+} from "../src/plugin.js";
 import { CliError, emptyBundle } from "../src/model.js";
 
 function bundle() {
@@ -134,5 +142,56 @@ describe("Agent Plugins export/import", () => {
   it("rejects a directory without plugin.json", async () => {
     expect(await isPluginDir(dir)).toBe(false);
     await expect(readPlugin(dir)).rejects.toThrow(CliError);
+  });
+});
+
+describe("standalone mcp.json import", () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-mcpjson-"));
+  });
+  afterEach(async () => {
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("detects only existing .json files", async () => {
+    const file = path.join(dir, "mcp.json");
+    expect(await isMcpJsonFile(file)).toBe(false);
+    await fs.writeFile(file, "{}");
+    expect(await isMcpJsonFile(file)).toBe(true);
+    expect(await isMcpJsonFile(dir)).toBe(false);
+  });
+
+  it("reads explicit and inferred transports with warnings", async () => {
+    const file = path.join(dir, "mcp.json");
+    await fs.writeFile(
+      file,
+      JSON.stringify({
+        mcpServers: {
+          typed: { type: "sse", url: "https://sse.example.com/mcp" },
+          aliased: { transport: "http", url: "https://api.example.com/mcp" },
+          bare: { command: "node", args: ["server.js"] },
+          remoteBare: { url: "https://bare.example.com/mcp", headers: { "X-Key": "${X_KEY}" } },
+          broken: {},
+        },
+      }),
+    );
+    const { bundle: b, warnings } = await readMcpFile(file);
+    expect(b.mcpServers.map((s) => [s.name, s.transport])).toEqual([
+      ["typed", "sse"],
+      ["aliased", "http"],
+      ["bare", "stdio"],
+      ["remoteBare", "http"],
+    ]);
+    expect(b.mcpServers[3].headers).toEqual({ "X-Key": "${X_KEY}" });
+    expect(warnings.some((w) => w.includes("bare") && w.includes("inferred"))).toBe(true);
+    expect(warnings.some((w) => w.includes("broken") && w.includes("dropped"))).toBe(true);
+    expect(b.skills).toEqual([]);
+  });
+
+  it("rejects a json file without mcpServers", async () => {
+    const file = path.join(dir, "package.json");
+    await fs.writeFile(file, JSON.stringify({ name: "x" }));
+    await expect(readMcpFile(file)).rejects.toThrow(CliError);
   });
 });

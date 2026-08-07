@@ -21,7 +21,7 @@ import { completionScript } from "./completion.js";
 import { getProjectAdapter } from "./project.js";
 import { fromMif, toMif } from "./mif.js";
 import { decryptBundle, encryptBundle, isPackFile, requirePassphrase } from "./pack.js";
-import { isPluginDir, readPlugin, writePlugin } from "./plugin.js";
+import { isMcpJsonFile, isPluginDir, readMcpFile, readPlugin, writePlugin } from "./plugin.js";
 import fs from "node:fs/promises";
 
 const program = new Command();
@@ -230,7 +230,7 @@ program
   .command("import")
   .description("import an agentmove bundle into a client (dry-run by default)")
   .argument("<client>", "target client")
-  .option("-i, --in <dir>", "bundle directory, .agentpack file, or Agent Plugin directory", "./agentmove-bundle")
+  .option("-i, --in <dir>", "bundle directory, .agentpack file, Agent Plugin directory, or mcp.json file", "./agentmove-bundle")
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
   .option("--only <layers>", "comma-separated layers to import (mcp,skills,memory,instructions,persona)")
@@ -262,6 +262,10 @@ program
         const plugin = await readPlugin(opts.in);
         bundle = plugin.bundle;
         mifWarnings.push(...plugin.warnings);
+      } else if (await isMcpJsonFile(opts.in)) {
+        const mcp = await readMcpFile(opts.in);
+        bundle = mcp.bundle;
+        mifWarnings.push(...mcp.warnings);
       } else {
         bundle = await readBundle(opts.in);
       }
