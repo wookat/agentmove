@@ -21,7 +21,8 @@ describe("project-scoped adapters", () => {
     const paths = files.map((f) => f.path);
     expect(paths).toContain(".cursor/mcp.json");
     expect(paths).toContain(".cursor/rules/agentmove-imported.mdc");
-    expect(warnings.some((w) => w.includes("skills"))).toBe(true);
+    expect(paths).toContain(".cursor/skills/review/SKILL.md");
+    expect(warnings.some((w) => w.includes("skills"))).toBe(false);
     const mcp = JSON.parse(files.find((f) => f.path === ".cursor/mcp.json")!.content) as {
       mcpServers: Record<string, unknown>;
     };

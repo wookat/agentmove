@@ -72,7 +72,7 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
   not written into the client's own memory store.
 - **Persona** is native only in OpenClaw/Hermes (`SOUL.md`); everywhere else it's appended
   to instructions and flagged `approximated`.
-- **Skills** have no equivalent in Gemini CLI or Cursor — skipped with a warning.
+- **Skills** have no equivalent in Gemini CLI — skipped with a warning.
 - **MCP tool filters** (OpenClaw `toolFilter`, Hermes include/exclude) have no portable
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
@@ -103,7 +103,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`; macOS `~/Library/Application Support/Claude`, Windows `%APPDATA%\Claude`, Linux `~/.config/Claude`) |
 | Claude Code | `claude-code` | `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/skills/` |
 | Codex CLI | `codex` | `~/.codex/config.toml`, `~/.codex/AGENTS.md`, `~/.agents/skills/` |
-| Cursor | `cursor` | `~/.cursor/mcp.json` (rules/memories are project/app-scoped) |
+| Cursor | `cursor` | `~/.cursor/mcp.json` + `~/.cursor/skills/` (Agent Skills standard; rules/memories are project/app-scoped) |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json`, `~/.gemini/GEMINI.md` |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json`, `~/.codeium/windsurf/memories/global_rules.md` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json`, `~/Documents/Cline/Rules/` |
