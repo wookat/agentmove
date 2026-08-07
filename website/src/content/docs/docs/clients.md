@@ -32,6 +32,7 @@ description: What AgentMove reads and writes for each client.
 | Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`; entries have **no `type` field** — stdio uses `command`/`args`/`env` + optional `working_directory`, remote uses `url`/`headers` with auto-negotiated transport); global rules live in Warp Drive (app-managed) |
 | Junie | `junie` | `~/.junie/mcp/mcp.json` (`mcpServers`; entries have no `type` field — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; shared by the JetBrains IDE plugin and Junie CLI), global guidelines in `~/.junie/AGENTS.md`, `~/.junie/skills/` (Agent Skills standard) |
 | LM Studio | `lmstudio` | `~/.lmstudio/mcp.json` (`mcpServers`, Cursor-style notation — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; no `type` field); MCP servers only — models, presets, and chats are app-managed |
+| Trae | `trae` | `~/.trae/skills/` (global Agent Skills standard); user-level MCP servers, rules, and memories are app-managed (Settings UI) — project scope is where Trae's files live: `.trae/mcp.json` (`mcpServers`; entries have no `type` field — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `.trae/rules/*.md`, and `.trae/skills/` |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -129,6 +130,13 @@ description: What AgentMove reads and writes for each client.
   migrated; no disabled flag (disabled servers emitted enabled, warned);
   imported SSE servers are written as plain `url` entries (warned); no
   `--project` scope.
+- **Trae** user-level MCP servers, global rules, and memories are app-managed
+  through the Settings UI with no documented config file — only global skills
+  (`~/.trae/skills/`) migrate at user scope (warned). `--project` covers
+  `.trae/mcp.json` (no `type` or `disabled` fields — disabled servers emitted
+  enabled and SSE written as plain `url`, both warned; Trae only loads it
+  after the "Enable Project MCP" toggle is on), `.trae/rules/` (imported rules
+  land in `.trae/rules/agentmove-imported.md`), and `.trae/skills/`.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped

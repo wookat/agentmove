@@ -136,7 +136,8 @@ export type ClientId =
   | "amazonq"
   | "warp"
   | "junie"
-  | "lmstudio";
+  | "lmstudio"
+  | "trae";
 
 export const CLIENT_IDS: ClientId[] = [
   "openclaw",
@@ -166,6 +167,7 @@ export const CLIENT_IDS: ClientId[] = [
   "warp",
   "junie",
   "lmstudio",
+  "trae",
 ];
 
 export interface ExportResult {
