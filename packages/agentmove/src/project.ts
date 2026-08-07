@@ -41,6 +41,7 @@ import { parseDroidServers, renderDroidServers } from "./adapters/droid.js";
 import { parseAmazonqServers, renderAmazonqServers } from "./adapters/amazonq.js";
 import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/warp.js";
 import { parseJunieServers, renderJunieServers } from "./adapters/junie.js";
+import { parseTraeServers, planTraeMcp } from "./adapters/trae.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1107,6 +1108,62 @@ const warpProject: ProjectAdapter = {
   },
 };
 
+const traeProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "trae";
+    const config = await readJsonMap(path.join(dir, ".trae/mcp.json"));
+    bundle.mcpServers = parseTraeServers(config, warnings);
+    const rulesDir = path.join(dir, ".trae/rules");
+    if (await isDir(rulesDir)) {
+      const parts: string[] = [];
+      for (const name of (await listDir(rulesDir)).sort()) {
+        if (!name.endsWith(".md")) continue;
+        const content = await readText(path.join(rulesDir, name));
+        if (content) parts.push(`<!-- .trae/rules/${name} -->\n${content.trim()}`);
+      }
+      if (parts.length) {
+        bundle.instructions = parts.join("\n\n") + "\n";
+        warnings.push("trae project rules concatenated into instructions (frontmatter kept as-is)");
+      }
+    }
+    bundle.skills = await readSkillsDir(path.join(dir, ".trae/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planTraeMcp(
+        bundle,
+        path.join(dir, ".trae/mcp.json"),
+        ".trae/mcp.json",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    if (bundle.mcpServers.length) {
+      warnings.push("mcp: trae loads .trae/mcp.json only after the Enable Project MCP toggle is on (Settings > MCP)");
+    }
+    if (bundle.instructions || bundle.persona) {
+      const body = [
+        ...(bundle.instructions ? [bundle.instructions.trim(), ""] : []),
+        ...(bundle.persona
+          ? ["## Imported by agentmove: persona (SOUL.md)", "", bundle.persona.trim(), ""]
+          : []),
+      ].join("\n");
+      files.push({ path: ".trae/rules/agentmove-imported.md", content: body });
+      if (bundle.persona) warnings.push("persona: appended to .trae/rules/agentmove-imported.md (approximated)");
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: trae memories are app-managed; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".trae/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1131,6 +1188,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   amazonq: amazonqProject,
   warp: warpProject,
   junie: junieProject,
+  trae: traeProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

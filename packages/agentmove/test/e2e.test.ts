@@ -335,6 +335,8 @@ describe("e2e (built CLI, child process)", () => {
     expect(bad.stderr).toContain('unknown layer "nope"');
   });
 
+  // trae is excluded from the user-scope matrix: its user-level MCP servers
+  // are app-managed, so exports carry skills only (covered in trae.test.ts).
   it("converts every source→target pair (full matrix) without errors", async () => {
     const clients = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq", "warp", "junie", "lmstudio"];
     const fixtures: Record<string, string> = {
