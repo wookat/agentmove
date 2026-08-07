@@ -55,6 +55,7 @@ import { parseKiloServers, planKiloMcp, readKiloConfig } from "./adapters/kilo.j
 import { parseKimiServers, planKimiMcp, readKimiMcp } from "./adapters/kimi.js";
 import { parseGrokServers, planGrokMcp, readGrokConfig } from "./adapters/grok.js";
 import { parseVibeServers, planVibeMcp, readVibeConfig } from "./adapters/vibe.js";
+import { parseNanocoderServers, planNanocoderMcp, readNanocoderMcp } from "./adapters/nanocoder.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1473,6 +1474,48 @@ const vibeProject: ProjectAdapter = {
   },
 };
 
+const nanocoderProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "nanocoder";
+    const config = await readNanocoderMcp(path.join(dir, ".mcp.json"));
+    bundle.mcpServers = parseNanocoderServers(config, warnings);
+    bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planNanocoderMcp(
+        bundle,
+        path.join(dir, ".mcp.json"),
+        ".mcp.json",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    const sections: { title: string; body: string }[] = [];
+    if (bundle.persona) {
+      sections.push({ title: "persona (SOUL.md)", body: bundle.persona });
+      warnings.push("persona: appended to AGENTS.md (approximated)");
+    }
+    if (bundle.instructions || sections.length) {
+      files.push({ path: "AGENTS.md", content: appendSections(bundle.instructions, sections) });
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: nanocoder has no project-scoped memory store; skipped");
+    }
+    if (bundle.skills.length) {
+      warnings.push(
+        "skills: nanocoder skills use their own skill.yaml bundle format, not the Agent Skills standard; skipped",
+      );
+    }
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1505,6 +1548,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   kimi: kimiProject,
   grok: grokProject,
   vibe: vibeProject,
+  nanocoder: nanocoderProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
