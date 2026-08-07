@@ -1,0 +1,15 @@
+{
+  "theme": "dark",
+  "mcp": {
+    "filesystem": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "environment": { "FS_API_KEY": "test-not-a-real-token" }
+    },
+    "api-server": {
+      "type": "remote",
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer test-not-a-real-token" }
+    }
+  }
+}
