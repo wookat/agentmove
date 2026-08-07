@@ -115,6 +115,14 @@ export async function readBundle(dir: string): Promise<Bundle> {
 
 const SECRET_KEY_RE = /(key|token|secret|password|credential|authorization|cookie)/i;
 
+/** Keys whose values are env-var *names* (e.g. Codex bearer_token_env_var), not secrets. */
+const ENV_VAR_NAME_KEY_RE = /_env_var(s)?$/i;
+
+/** Values that are already env-var placeholders (optionally with a Bearer prefix) carry no literal secret. */
+function isPlaceholderValue(v: string): boolean {
+  return /^(Bearer )?\$\{[A-Za-z_][A-Za-z0-9_]*\}$/.test(v) || v.startsWith("${");
+}
+
 function redactValue(value: unknown, ctx: string, redacted: string[]): unknown {
   if (Array.isArray(value)) {
     return value.map((item, i) => redactValue(item, `${ctx}[${i}]`, redacted));
@@ -122,7 +130,13 @@ function redactValue(value: unknown, ctx: string, redacted: string[]): unknown {
   if (isRecord(value)) {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
-      if (SECRET_KEY_RE.test(k) && typeof v === "string" && v && !v.startsWith("${")) {
+      if (
+        SECRET_KEY_RE.test(k) &&
+        !ENV_VAR_NAME_KEY_RE.test(k) &&
+        typeof v === "string" &&
+        v &&
+        !isPlaceholderValue(v)
+      ) {
         out[k] = `\${${k}}`;
         redacted.push(`${ctx}.${k}`);
       } else {
@@ -142,7 +156,7 @@ export function stripSecrets(bundle: Bundle): { bundle: Bundle; redacted: string
       if (!rec) return rec;
       const out: Record<string, string> = {};
       for (const [k, v] of Object.entries(rec)) {
-        if (SECRET_KEY_RE.test(k) && v && !v.startsWith("${")) {
+        if (SECRET_KEY_RE.test(k) && v && !isPlaceholderValue(v)) {
           out[k] = `\${${k}}`;
           redacted.push(`mcp:${s.name}.${ctx}.${k}`);
         } else {

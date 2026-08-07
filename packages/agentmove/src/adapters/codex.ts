@@ -38,6 +38,18 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
   const AGENTS_REL = `${configDir}/AGENTS.md`;
   const agentsTilde = `~/${AGENTS_REL}`;
 
+  const CLIENT_SPECIFIC_KEYS = [
+    "env_vars",
+    "startup_timeout_sec",
+    "tool_timeout_sec",
+    "enabled_tools",
+    "disabled_tools",
+    "default_tools_approval_mode",
+    "tools",
+    "auth",
+    "experimental_environment",
+  ] as const;
+
   async function readConfig(home: string): Promise<Record<string, unknown>> {
     const file = path.join(home, CONFIG_REL);
     const raw = await readText(file);
@@ -77,6 +89,32 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
           warnings.push(`mcp:${name}: neither command nor url; dropped`);
           continue;
         }
+        const headers: Record<string, string> = {
+          ...(asStringRecord(entry.http_headers, `mcp:${name}.http_headers`, warnings) ?? {}),
+        };
+        const envHeaders = asStringRecord(
+          entry.env_http_headers,
+          `mcp:${name}.env_http_headers`,
+          warnings,
+        );
+        for (const [header, envVar] of Object.entries(envHeaders ?? {})) {
+          headers[header] = `\${${envVar}}`;
+          warnings.push(
+            `mcp:${name}: env_http_headers.${header} exported as a \${${envVar}} placeholder header`,
+          );
+        }
+        if (typeof entry.bearer_token_env_var === "string") {
+          headers.Authorization = `Bearer \${${entry.bearer_token_env_var}}`;
+          warnings.push(
+            `mcp:${name}: bearer_token_env_var exported as an Authorization: Bearer \${${entry.bearer_token_env_var}} placeholder header`,
+          );
+        }
+        const clientSpecific = CLIENT_SPECIFIC_KEYS.filter((k) => entry[k] !== undefined);
+        if (clientSpecific.length) {
+          warnings.push(
+            `mcp:${name}: ${id}-specific field(s) ${clientSpecific.join(", ")} have no portable equivalent; not exported (kept on merge)`,
+          );
+        }
         servers.push({
           name,
           transport: url ? "http" : "stdio",
@@ -85,7 +123,7 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
           env: asStringRecord(entry.env, `mcp:${name}.env`, warnings),
           cwd: typeof entry.cwd === "string" ? entry.cwd : undefined,
           url,
-          headers: asStringRecord(entry.http_headers, `mcp:${name}.http_headers`, warnings),
+          headers: Object.keys(headers).length ? headers : undefined,
           enabled: typeof entry.enabled === "boolean" ? entry.enabled : undefined,
         });
       }
@@ -119,7 +157,32 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
             warnings.push(`mcp:${s.name}: ${id} uses streamable HTTP for remote servers; sse emitted as url`);
           }
           entry.url = s.url;
-          if (s.headers && Object.keys(s.headers).length) entry.http_headers = s.headers;
+          const httpHeaders: Record<string, string> = {};
+          const envHttpHeaders: Record<string, string> = {};
+          let bearerEnvVar: string | undefined;
+          for (const [header, value] of Object.entries(s.headers ?? {})) {
+            const bearer =
+              header.toLowerCase() === "authorization"
+                ? /^Bearer \$\{([A-Za-z_][A-Za-z0-9_]*)\}$/.exec(value)
+                : null;
+            const placeholder = /^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/.exec(value);
+            if (bearer) {
+              bearerEnvVar = bearer[1];
+              warnings.push(
+                `mcp:${s.name}: Authorization Bearer placeholder written as bearer_token_env_var = "${bearer[1]}"`,
+              );
+            } else if (placeholder) {
+              envHttpHeaders[header] = placeholder[1]!;
+              warnings.push(
+                `mcp:${s.name}: ${header} placeholder written as env_http_headers.${header} = "${placeholder[1]}"`,
+              );
+            } else {
+              httpHeaders[header] = value;
+            }
+          }
+          if (Object.keys(httpHeaders).length) entry.http_headers = httpHeaders;
+          if (Object.keys(envHttpHeaders).length) entry.env_http_headers = envHttpHeaders;
+          if (bearerEnvVar) entry.bearer_token_env_var = bearerEnvVar;
         }
         if (s.enabled === false) entry.enabled = false;
         mcp_servers[s.name] = entry;

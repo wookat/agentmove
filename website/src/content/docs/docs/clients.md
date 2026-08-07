@@ -9,7 +9,7 @@ description: What AgentMove reads and writes for each client.
 | Hermes Agent | `hermes` | `~/.hermes/config.yaml` (`mcp_servers`, model), `SOUL.md`, `memories/MEMORY.md` and `USER.md` (`§`-delimited entries), `skills/` |
 | Claude Code | `claude-code` | `~/.claude.json` (`mcpServers`), `~/.claude/CLAUDE.md`, `~/.claude/skills/` |
 | Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`); located at `~/Library/Application Support/Claude` (macOS), `%APPDATA%\Claude` (Windows), or `~/.config/Claude` (Linux) — all three are checked |
-| Codex CLI | `codex` | `~/.codex/config.toml` (`[mcp_servers.*]`, model), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
+| Codex CLI | `codex` | `~/.codex/config.toml` (`[mcp_servers.*]`, model; `bearer_token_env_var`/`env_http_headers` round-trip as `${VAR}` placeholder headers; `startup_timeout_sec`, `tool_timeout_sec`, `env_vars`, tool approval settings are client-specific and kept on merge), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
 | Cursor | `cursor` | `~/.cursor/mcp.json`, `~/.cursor/skills/` (global Agent Skills standard; project scope covers `.cursor/skills/`); instructions/persona imported as `~/.cursor/rules/agentmove-imported.mdc` |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section) |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/` |
@@ -61,6 +61,13 @@ description: What AgentMove reads and writes for each client.
   `--project`).
 - **Gemini CLI** has no `SKILL.md` mechanism; skills are skipped with a warning.
 - **Codex / Claude Code** client-managed memories are not exported in v0.
+- **Codex CLI** `bearer_token_env_var` exports as an `Authorization: Bearer ${VAR}`
+  placeholder header and `env_http_headers` entries export as `${VAR}` placeholder
+  headers (both are written back natively on import into Codex); per-server
+  `startup_timeout_sec`, `tool_timeout_sec`, `env_vars`, `enabled_tools`,
+  `disabled_tools`, `default_tools_approval_mode`, `tools`, `auth`, and
+  `experimental_environment` have no portable equivalent — warned on export and
+  preserved on merge.
 - **Windsurf** Cascade memories are app-managed and cannot be migrated; skills
   migrate natively via `~/.codeium/windsurf/skills/` (project `.windsurf/skills/`
   with `--project`).

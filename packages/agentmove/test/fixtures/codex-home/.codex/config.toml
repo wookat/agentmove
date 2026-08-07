@@ -8,3 +8,10 @@ args = ["-y", "linear-mcp"]
 url = "https://mcp.example.com"
 http_headers = { "X-Api-Key" = "k123" }
 enabled = false
+
+[mcp_servers.github]
+url = "https://api.example.com/mcp"
+bearer_token_env_var = "GITHUB_TOKEN"
+env_http_headers = { "X-Org-Id" = "ORG_ID" }
+startup_timeout_sec = 20
+tool_timeout_sec = 120

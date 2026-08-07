@@ -106,7 +106,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Hermes Agent | `hermes` | `~/.hermes/config.yaml`, `SOUL.md`, `memories/`, `skills/` |
 | Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`; macOS `~/Library/Application Support/Claude`, Windows `%APPDATA%\Claude`, Linux `~/.config/Claude`) |
 | Claude Code | `claude-code` | `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/skills/` |
-| Codex CLI | `codex` | `~/.codex/config.toml`, `~/.codex/AGENTS.md`, `~/.agents/skills/` |
+| Codex CLI | `codex` | `~/.codex/config.toml` (incl. `bearer_token_env_var`/`env_http_headers` as `${VAR}` placeholder headers), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
 | Cursor | `cursor` | `~/.cursor/mcp.json` + `~/.cursor/skills/` (Agent Skills standard; rules/memories are project/app-scoped) |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json`, `~/.gemini/GEMINI.md` |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json`, `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/` |
