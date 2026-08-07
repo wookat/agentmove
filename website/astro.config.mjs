@@ -33,6 +33,7 @@ export default defineConfig({
           items: [
             { label: 'Commands', slug: 'docs/commands' },
             { label: 'Gemini CLI → Antigravity', slug: 'docs/gemini-to-antigravity' },
+            { label: 'Agent Plugins interop', slug: 'docs/agent-plugins' },
             { label: 'Supported clients', slug: 'docs/clients' },
             { label: 'The bundle format', slug: 'docs/bundle' },
             { label: 'Loss reporting & safety', slug: 'docs/safety' },
