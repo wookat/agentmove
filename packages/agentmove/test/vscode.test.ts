@@ -19,7 +19,16 @@ describe("vscode adapter", () => {
     expect(byName.playwright!.env).toEqual({ API_TOKEN: "test-not-a-real-token" });
     expect(byName.github!.transport).toBe("http");
     expect(byName.github!.url).toBe("https://api.githubcopilot.com/mcp");
-    expect(warnings.some((w) => w.includes("only user MCP servers migrate"))).toBe(true);
+    expect(warnings.some((w) => w.includes("only user MCP servers and skills migrate"))).toBe(true);
+  });
+
+  it("exports personal skills from ~/.agents/skills", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-vsc-sk-"));
+    const dir = path.join(home, ".agents/skills/review");
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, "SKILL.md"), "# review");
+    const { bundle } = await vscode.exportBundle(home);
+    expect(bundle.skills).toEqual([{ name: "review", files: { "SKILL.md": "# review" } }]);
   });
 
   it("finds the macOS profile location too", async () => {
@@ -47,8 +56,9 @@ describe("vscode adapter", () => {
     bundle.memory = [{ content: "likes tabs", source: "s", kind: "long-term" }];
     bundle.skills = [{ name: "sk", files: { "SKILL.md": "x" } }];
     const { files, warnings } = await vscode.planImport(bundle, HOME, {});
-    expect(files).toHaveLength(1);
+    expect(files).toHaveLength(2);
     expect(files[0]!.path).toBe(".config/Code/User/mcp.json");
+    expect(files[1]!.path).toBe(".agents/skills/sk/SKILL.md");
     const config = JSON.parse(files[0]!.content) as {
       servers: Record<string, Record<string, unknown>>;
     };
@@ -57,9 +67,10 @@ describe("vscode adapter", () => {
     expect(config.servers.docs!.type).toBeUndefined(); // stdio entries carry no type
     expect(config.servers.api!.type).toBe("sse");
     expect(config.servers.api!.url).toBe("https://sse.example.com");
-    for (const layer of ["instructions", "persona", "memory", "skills"]) {
+    for (const layer of ["instructions", "persona", "memory"]) {
       expect(warnings.some((w) => w.startsWith(`${layer}:`)), layer).toBe(true);
     }
+    expect(warnings.some((w) => w.includes("skills: written to ~/.agents/skills"))).toBe(true);
     expect(warnings.some((w) => w.includes("no disabled flag"))).toBe(true);
   });
 
@@ -75,6 +86,7 @@ describe("vscode adapter", () => {
     ) as { servers: Record<string, unknown> };
     expect(config.servers.db).toBeDefined();
     expect(files.some((f) => f.path === ".github/copilot-instructions.md")).toBe(true);
-    expect(warnings.some((w) => w.includes("no SKILL.md mechanism"))).toBe(true);
+    expect(files.some((f) => f.path === ".github/skills/sk/SKILL.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("no SKILL.md mechanism"))).toBe(false);
   });
 });

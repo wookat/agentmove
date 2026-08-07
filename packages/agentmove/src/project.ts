@@ -671,7 +671,7 @@ const vscodeProject: ProjectAdapter = {
     const config = await readJsonMap(path.join(dir, ".vscode/mcp.json"));
     bundle.mcpServers = parseVscodeServers(config, warnings);
     bundle.instructions = await readText(path.join(dir, ".github/copilot-instructions.md"));
-    warnings.push("skills: vscode has no SKILL.md mechanism; skipped");
+    bundle.skills = await readSkillsDir(path.join(dir, ".github/skills"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -693,7 +693,7 @@ const vscodeProject: ProjectAdapter = {
     }
     if (bundle.persona) warnings.push("persona: no project-scoped slot in vscode; skipped");
     if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in vscode; skipped");
-    if (bundle.skills.length) warnings.push("skills: vscode has no SKILL.md mechanism; skipped");
+    files.push(...planSkills(bundle.skills, ".github/skills"));
     return { files, warnings };
   },
 };

@@ -14,6 +14,8 @@ import { exists, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planSkills,
+  readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./shared.js";
@@ -25,8 +27,13 @@ import {
  * is platform-specific: ~/.config/Code/User (Linux),
  * ~/Library/Application Support/Code/User (macOS), %APPDATA%\Code\User
  * (Windows). An optional top-level `inputs` array defines prompted
- * placeholders and is preserved untouched on merge.
+ * placeholders and is preserved untouched on merge. Personal Agent Skills
+ * are read from ~/.agents/skills (the shared cross-agent root VS Code scans
+ * natively, alongside ~/.copilot/skills and ~/.claude/skills which belong to
+ * their own clients here).
  */
+const SKILLS_REL = ".agents/skills";
+
 const CANDIDATE_RELS = [
   ".config/Code/User/mcp.json",
   "Library/Application Support/Code/User/mcp.json",
@@ -88,7 +95,7 @@ export function renderVscodeServers(
 export const vscode: ClientAdapter = {
   id: "vscode",
   label: "VS Code",
-  defaultPath: "~/.config/Code/User/mcp.json (or the macOS/Windows profile folder)",
+  defaultPath: "~/.config/Code/User/mcp.json (or the macOS/Windows profile folder) + ~/.agents/skills/",
 
   async detect(home) {
     return (await findConfigRel(home)) !== undefined;
@@ -108,8 +115,9 @@ export const vscode: ClientAdapter = {
       );
     }
     bundle.mcpServers = parseVscodeServers(config, warnings);
+    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     warnings.push(
-      "vscode instructions/prompts/chat modes are profile- or repo-scoped; only user MCP servers migrate (use --project for .vscode/mcp.json)",
+      "vscode instructions/prompts/chat modes are profile- or repo-scoped; only user MCP servers and skills migrate (use --project for .vscode/mcp.json)",
     );
     return { bundle, warnings };
   },
@@ -138,7 +146,12 @@ export const vscode: ClientAdapter = {
     }
     if (bundle.persona) warnings.push("persona: vscode has no persona file; skipped");
     if (bundle.memory.length) warnings.push("memory: vscode has no durable memory store; skipped");
-    if (bundle.skills.length) warnings.push("skills: vscode has no SKILL.md mechanism; skipped");
+    if (bundle.skills.length) {
+      warnings.push(
+        "skills: written to ~/.agents/skills, a shared root also read by other agents (codex, zed, warp-cli, …)",
+      );
+    }
+    files.push(...planSkills(bundle.skills, SKILLS_REL));
     return { files, warnings };
   },
 };
