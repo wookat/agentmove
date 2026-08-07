@@ -198,6 +198,10 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   [skills.sh](https://skills.sh) / `npx skills add owner/repo` ecosystem):
   `SKILL.md` directories under `skills/`, at the top level, or a single skill
   at the repository root, installed into any client's skills location
+- `export <client> --skills-repo <dir>` — also write the skills layer as a
+  skills repository (`skills/<name>/SKILL.md`), ready to commit and publish
+  with `gh skill publish` or install with `npx skills add`; a path ending in
+  `.zip`/`.tgz`/`.tar.gz` writes it as an archive
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations

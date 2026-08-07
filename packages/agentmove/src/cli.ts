@@ -22,7 +22,7 @@ import { getProjectAdapter } from "./project.js";
 import { fromMif, toMif } from "./mif.js";
 import { decryptBundle, encryptBundle, isPackFile, requirePassphrase } from "./pack.js";
 import { isMcpJsonFile, isPluginDir, readMcpFile, readPlugin, writeMcpFile, writePlugin } from "./plugin.js";
-import { isSkillsRepo, readSkillsRepo } from "./skillsrepo.js";
+import { isSkillsRepo, readSkillsRepo, writeSkillsRepo } from "./skillsrepo.js";
 import { createArchive, extractArchive, fetchRemoteInput, isArchiveInput, isRemoteInput } from "./remote.js";
 import fs from "node:fs/promises";
 
@@ -171,6 +171,7 @@ program
   .option("--project <dir>", "export the client's project-scoped files from a project directory")
   .option("--mif <file>", "also write the memory layer as a MIF v2 document (.mif.json)")
   .option("--mcp-json <file>", "also write the MCP layer as a standalone standard mcp.json")
+  .option("--skills-repo <dir>", "also write the skills layer as a skills repository (skills/<name>/SKILL.md, ready for `npx skills add` / `gh skill publish`); a path ending in .zip/.tgz/.tar.gz writes it as an archive")
   .option("--plugin", "write an Agent Plugin (agent-plugins.org) instead of an agentmove bundle; an -o ending in .zip/.tgz/.tar.gz writes the plugin as an archive", false)
   .option("--json", "machine-readable JSON output", false)
   .action(
@@ -183,6 +184,7 @@ program
         project?: string;
         mif?: string;
         mcpJson?: string;
+        skillsRepo?: string;
         plugin: boolean;
         json: boolean;
       },
@@ -222,6 +224,17 @@ program
         if (opts.json) collected.push(...mcpWarnings);
         else printWarnings(mcpWarnings);
       }
+      if (opts.skillsRepo) {
+        if (isArchiveInput(opts.skillsRepo)) {
+          const name = path.basename(path.resolve(opts.skillsRepo)).replace(/\.(zip|tgz|tar\.gz)$/i, "");
+          const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-skills-"));
+          const stage = path.join(work, name);
+          await writeSkillsRepo(bundle.skills, stage);
+          await createArchive(stage, opts.skillsRepo);
+        } else {
+          await writeSkillsRepo(bundle.skills, opts.skillsRepo);
+        }
+      }
       if (opts.json) {
         process.stdout.write(
           JSON.stringify(
@@ -230,6 +243,7 @@ program
               format: opts.plugin ? "agent-plugin" : "bundle",
               mif: opts.mif ?? null,
               mcpJson: opts.mcpJson ?? null,
+              skillsRepo: opts.skillsRepo ?? null,
               summary: bundleSummary(bundle),
               warnings: collected,
             },
@@ -245,6 +259,8 @@ program
       if (opts.mif) console.log(`wrote ${bundle.memory.length} memory entr(ies) as MIF to ${opts.mif}`);
       if (opts.mcpJson)
         console.log(`wrote ${bundle.mcpServers.length} MCP server(s) as mcp.json to ${opts.mcpJson}`);
+      if (opts.skillsRepo)
+        console.log(`wrote ${bundle.skills.length} skill(s) as a skills repository to ${opts.skillsRepo}`);
     },
   );
 
