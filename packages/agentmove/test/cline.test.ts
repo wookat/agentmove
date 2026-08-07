@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { cline } from "../src/adapters/cline.js";
+import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle } from "../src/model.js";
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
@@ -18,6 +19,7 @@ describe("cline adapter", () => {
     expect(byName["legacy-sse"]!.transport).toBe("sse");
     expect(bundle.instructions).toContain("TypeScript strict mode");
     expect(bundle.instructions).toContain("Prefer small PRs");
+    expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
     expect(warnings.some((w) => w.includes("globalStorage"))).toBe(true);
   });
 
@@ -43,7 +45,7 @@ describe("cline adapter", () => {
     expect(warnings).toEqual([]);
   });
 
-  it("warns on memory/skills and approximates persona into rules", async () => {
+  it("warns on memory, plans skills into ~/.cline/skills, approximates persona into rules", async () => {
     const bundle = emptyBundle();
     bundle.persona = "You are helpful.";
     bundle.memory = [{ content: "m", source: "s", kind: "long-term" }];
@@ -53,8 +55,18 @@ describe("cline adapter", () => {
     expect(files.find((f) => f.path.endsWith("agentmove-imported.md"))!.content).toContain(
       "You are helpful.",
     );
+    expect(files.some((f) => f.path === ".cline/skills/sk/SKILL.md")).toBe(true);
     expect(warnings.some((w) => w.startsWith("memory:"))).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
     expect(warnings.some((w) => w.startsWith("persona:"))).toBe(true);
+  });
+
+  it("project scope: plans skills into .cline/skills", async () => {
+    const adapter = getProjectAdapter("cline");
+    const bundle = emptyBundle();
+    bundle.skills = [{ name: "review", files: { "SKILL.md": "# Review" } }];
+    const { files, warnings } = await adapter.planImport(bundle, "/nonexistent-project", {});
+    expect(files.some((f) => f.path === ".cline/skills/review/SKILL.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
   });
 });

@@ -14,6 +14,8 @@ import { exists, isDir, listDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planSkills,
+  readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./shared.js";
@@ -27,6 +29,7 @@ import {
  */
 const MCP_REL = ".cline/data/settings/cline_mcp_settings.json";
 const RULES_REL = "Documents/Cline/Rules";
+const SKILLS_REL = ".cline/skills";
 
 async function readMcpConfig(home: string): Promise<Record<string, unknown>> {
   const file = path.join(home, MCP_REL);
@@ -59,7 +62,7 @@ export async function readRulesDir(dir: string): Promise<string | undefined> {
 export const cline: ClientAdapter = {
   id: "cline",
   label: "Cline",
-  defaultPath: "~/.cline + ~/Documents/Cline/Rules",
+  defaultPath: "~/.cline (settings + skills/) + ~/Documents/Cline/Rules",
 
   async detect(home) {
     return (
@@ -87,6 +90,7 @@ export const cline: ClientAdapter = {
     bundle.mcpServers = servers;
 
     bundle.instructions = await readRulesDir(path.join(home, RULES_REL));
+    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     warnings.push(
       "cline VS Code extension keeps its own MCP settings copy in VS Code globalStorage; " +
         "only the CLI settings file (~/.cline) and global rules are migrated",
@@ -132,9 +136,7 @@ export const cline: ClientAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: cline has no durable memory store; skipped (consider --mif)");
     }
-    if (bundle.skills.length) {
-      warnings.push("skills: cline has no SKILL.md mechanism; skipped (consider converting to rules manually)");
-    }
+    files.push(...planSkills(bundle.skills, SKILLS_REL));
     return { files, warnings };
   },
 };

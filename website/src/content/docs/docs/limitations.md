@@ -52,9 +52,13 @@ persona, and a later export won't recover it as a separate `persona.md`.
   Antigravity, Droid, and Junie (plus project scope for OpenHands).
 - Gemini CLI has no `SKILL.md` mechanism — skills are **skipped** (a Gemini
   extension would be the manual equivalent).
-- Cline, Zed, VS Code, Continue, Claude Desktop, Amazon Q Developer CLI,
-  Warp, LM Studio, and JetBrains AI Assistant have no user-level skills
+- Zed, VS Code, Continue, Claude Desktop, Amazon Q Developer CLI,
+  LM Studio, and JetBrains AI Assistant have no user-level skills
   directory — **skipped** with a warning.
+- Cline skills live in `~/.cline/skills/` (project `.cline/skills/` with
+  `--project`) and migrate natively.
+- Warp skills live in `~/.warp/skills/` (project `.warp/skills/` with
+  `--project`) and migrate natively.
 - GitHub Copilot CLI skills live in `~/.copilot/skills/` (project
   `.github/skills/` with `--project`) and migrate natively.
 - Windsurf skills live in `~/.codeium/windsurf/skills/` (project

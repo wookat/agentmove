@@ -52,6 +52,8 @@ user-scoped config under `$HOME`:
 | cursor | `.cursor/mcp.json`, `.cursor/rules/*.mdc` |
 | windsurf | `.windsurf/rules/*.md`, `.windsurf/skills/` (no project-scoped MCP config — warned) |
 | copilot | `.mcp.json`, `.github/copilot-instructions.md` + `.github/instructions/`, `.github/skills/` |
+| cline | `.clinerules/*.md`, `.cline/skills/` (no project-scoped MCP config — warned) |
+| warp | `.warp/.mcp.json`, `AGENTS.md` (legacy `WARP.md` read), `.warp/skills/` |
 
 ```bash
 # move a repo's Claude Code setup to Cursor, in place

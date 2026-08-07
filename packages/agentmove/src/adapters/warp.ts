@@ -14,6 +14,8 @@ import { exists, isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planSkills,
+  readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./shared.js";
@@ -28,6 +30,7 @@ import {
  * AGENTS.md (or legacy WARP.md) at the repo root.
  */
 const MCP_REL = ".warp/.mcp.json";
+const SKILLS_REL = ".warp/skills";
 
 const WRAPPER_KEYS = ["mcpServers", "mcp_servers", "servers"] as const;
 
@@ -87,7 +90,7 @@ export function renderWarpServers(bundle: Bundle, warnings: string[]): Record<st
 export const warp: ClientAdapter = {
   id: "warp",
   label: "Warp",
-  defaultPath: "~/.warp/.mcp.json",
+  defaultPath: "~/.warp (.mcp.json + skills/)",
 
   async detect(home) {
     return (await exists(path.join(home, MCP_REL))) || (await isDir(path.join(home, ".warp")));
@@ -101,6 +104,7 @@ export const warp: ClientAdapter = {
     const config = await readJsonMap(path.join(home, MCP_REL));
     bundle.config.raw = config;
     bundle.mcpServers = parseWarpServers(config, warnings);
+    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     return { bundle, warnings };
   },
 
@@ -133,9 +137,7 @@ export const warp: ClientAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: warp has no durable memory store; skipped (consider --mif)");
     }
-    if (bundle.skills.length) {
-      warnings.push("skills: warp skills are app-bundled, not user files; skipped");
-    }
+    files.push(...planSkills(bundle.skills, SKILLS_REL));
     return { files, warnings };
   },
 };

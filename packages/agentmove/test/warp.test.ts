@@ -24,6 +24,7 @@ describe("warp adapter", () => {
     expect(byName.fetch!.env).toEqual({ FETCH_API_KEY: "test-not-a-real-token" });
     expect(byName.internal!.transport).toBe("http"); // no type field: url implies remote
     expect(byName.internal!.headers).toEqual({ Authorization: "Bearer test-not-a-real-token" });
+    expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
     expect(warnings).toEqual([]);
   });
 
@@ -49,11 +50,11 @@ describe("warp adapter", () => {
     expect(config.mcpServers!.events!.disabled).toBeUndefined();
     expect(warnings.some((w) => w.includes("no disabled flag"))).toBe(true);
     expect(warnings.some((w) => w.includes("auto-negotiate transport"))).toBe(true);
-    expect(files).toHaveLength(1); // no instructions/skills files written
+    expect(files.some((f) => f.path === ".warp/skills/sk/SKILL.md")).toBe(true);
     expect(warnings.some((w) => w.startsWith("instructions:"))).toBe(true);
     expect(warnings.some((w) => w.startsWith("persona:"))).toBe(true);
     expect(warnings.some((w) => w.startsWith("memory:"))).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
   });
 
   it("preserves an alternate wrapper key and supports --replace-mcp / missing homes", async () => {
@@ -109,6 +110,7 @@ describe("warp adapter", () => {
     expect(Object.keys(config.mcpServers!).sort()).toEqual(["db", "local"]);
     expect(config.mcpServers!.db!.type).toBeUndefined();
     expect(files.some((f) => f.path === "AGENTS.md")).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(files.some((f) => f.path === ".warp/skills/review/SKILL.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
   });
 });
