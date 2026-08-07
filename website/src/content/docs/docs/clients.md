@@ -8,7 +8,7 @@ description: What AgentMove reads and writes for each client.
 | OpenClaw | `openclaw` | `~/.openclaw/openclaw.json` (JSON5, `mcp.servers`, model), workspace `SOUL.md`, `AGENTS.md`, `MEMORY.md`, `USER.md`, `memory/YYYY-MM-DD.md`, `skills/` (plus `~/.openclaw/skills/`) |
 | Hermes Agent | `hermes` | `~/.hermes/config.yaml` (`mcp_servers`, model), `SOUL.md`, `memories/MEMORY.md` and `USER.md` (`§`-delimited entries), `skills/` |
 | Claude Code | `claude-code` | `~/.claude.json` (`mcpServers`), `~/.claude/CLAUDE.md`, `~/.claude/skills/` |
-| Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`); located at `~/Library/Application Support/Claude` (macOS), `%APPDATA%\Claude` (Windows), or `~/.config/Claude` (Linux) — all three are checked |
+| Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`); located at `~/Library/Application Support/Claude` (macOS), `%APPDATA%\Claude` (Windows), or `~/.config/Claude` (Linux) — all three are checked; `~/.claude/skills/` (personal Agent Skills, loaded by Desktop local sessions, shared with Claude Code) |
 | Codex CLI | `codex` | `~/.codex/config.toml` (`[mcp_servers.*]`, model; `bearer_token_env_var`/`env_http_headers` round-trip as `${VAR}` placeholder headers; `startup_timeout_sec`, `tool_timeout_sec`, `env_vars`, tool approval settings are client-specific and kept on merge), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
 | Cursor | `cursor` | `~/.cursor/mcp.json`, `~/.cursor/skills/` (global Agent Skills standard; project scope covers `.cursor/skills/`); instructions/persona imported as `~/.cursor/rules/agentmove-imported.mdc` |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section) |
@@ -91,9 +91,11 @@ description: What AgentMove reads and writes for each client.
   (warned); JSONC comments in `opencode.json` are not preserved on rewrite.
 - **Qwen Code** has no per-server disabled flag — disabled servers are emitted
   as enabled with a warning.
-- **Claude Desktop** only exposes MCP servers as a file — instructions,
-  memory, and projects are app-managed and cannot be migrated; remote servers
-  are emitted with a `url` for proxy setups (warned); no `--project` scope.
+- **Claude Desktop** exposes MCP servers as a file and loads personal Agent
+  Skills from `~/.claude/skills/` (a shared root also read by Claude Code —
+  imports warn about it) — instructions, memory, and projects are app-managed
+  and cannot be migrated; remote servers are emitted with a `url` for proxy
+  setups (warned); no `--project` scope.
 - **Amp** has no per-server disabled flag and no explicit transport field for
   remote servers (plain `url`); imported workspace servers (`--project`,
   `.amp/settings.json`) require approval in amp before first use

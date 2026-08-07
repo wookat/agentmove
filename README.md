@@ -104,7 +104,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | --- | --- | --- |
 | OpenClaw | `openclaw` | `~/.openclaw/openclaw.json`, workspace (`SOUL.md`, `AGENTS.md`, `MEMORY.md`, `memory/`, `skills/`) |
 | Hermes Agent | `hermes` | `~/.hermes/config.yaml`, `SOUL.md`, `memories/`, `skills/` |
-| Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`; macOS `~/Library/Application Support/Claude`, Windows `%APPDATA%\Claude`, Linux `~/.config/Claude`) |
+| Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`; macOS `~/Library/Application Support/Claude`, Windows `%APPDATA%\Claude`, Linux `~/.config/Claude`) + `~/.claude/skills/` |
 | Claude Code | `claude-code` | `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/skills/` |
 | Codex CLI | `codex` | `~/.codex/config.toml` (incl. `bearer_token_env_var`/`env_http_headers` as `${VAR}` placeholder headers), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
 | Cursor | `cursor` | `~/.cursor/mcp.json` + `~/.cursor/skills/` (Agent Skills standard; rules/memories are project/app-scoped) |
