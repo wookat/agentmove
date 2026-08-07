@@ -2,7 +2,7 @@
 
 **Move your AI agent between clients.** The pandoc of agent ecosystems: migrate
 **config + MCP servers + skills + memory + persona/instructions** between
-thirty clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
+thirty-one clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
 Gemini CLI, VS Code, Cline, Continue, and more (see the full table below) — in
 any direction, with dry-run previews, diffs, and honest loss reporting.
 
@@ -53,7 +53,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all thirty clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all thirty-one clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -77,7 +77,7 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
   claude-code, codex, cursor, gemini, windsurf, cline, zed, openhands,
-  copilot, opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), roo (`.roo/mcp.json` + `.roo/rules/` + `.roo/skills/`), continue (`.continue/mcpServers/` blocks + `.continue/rules/`), crush (`crush.json`/`.crush.json` + `CRUSH.md` + `.crush/skills/`), antigravity (`.agents/mcp_config.json` + `.agents/rules/` + `.agents/skills/`), droid (`.factory/mcp.json` + `AGENTS.md` + `.factory/skills/`), amazonq (`.amazonq/mcp.json` + `AmazonQ.md`), warp (`.warp/.mcp.json` + `AGENTS.md`), junie (`.junie/mcp/mcp.json` + `.junie/AGENTS.md` + `.junie/skills/`), trae (`.trae/mcp.json` + `.trae/rules/` + `.trae/skills/`), codebuddy (`.mcp.json` + `CODEBUDDY.md` + `.codebuddy/skills/`), qoder (`.mcp.json` + `AGENTS.md` + `.qoder/skills/`), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
+  copilot, opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), roo (`.roo/mcp.json` + `.roo/rules/` + `.roo/skills/`), continue (`.continue/mcpServers/` blocks + `.continue/rules/`), crush (`crush.json`/`.crush.json` + `CRUSH.md` + `.crush/skills/`), antigravity (`.agents/mcp_config.json` + `.agents/rules/` + `.agents/skills/`), droid (`.factory/mcp.json` + `AGENTS.md` + `.factory/skills/`), amazonq (`.amazonq/mcp.json` + `AmazonQ.md`), warp (`.warp/.mcp.json` + `AGENTS.md`), junie (`.junie/mcp/mcp.json` + `.junie/AGENTS.md` + `.junie/skills/`), trae (`.trae/mcp.json` + `.trae/rules/` + `.trae/skills/`), codebuddy (`.mcp.json` + `CODEBUDDY.md` + `.codebuddy/skills/`), qoder (`.mcp.json` + `AGENTS.md` + `.qoder/skills/`), auggie (`.augment/settings.json` + `.augment/rules/` + `.augment/skills/`), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
   goose extensions are user-scoped only).
 - **Cline VS Code extension** keeps its own MCP settings copy in VS Code
   globalStorage — only the CLI settings file (`~/.cline`) and global rules are
@@ -128,6 +128,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Trae | `trae` | `~/.trae/skills/` (global Agent Skills); MCP/rules are project-scoped: `.trae/mcp.json` (`mcpServers`) + `.trae/rules/` + `.trae/skills/` |
 | CodeBuddy | `codebuddy` | `~/.codebuddy/.mcp.json` (`mcpServers` + `disabledMcpServers` name list; JSONC accepted, `mcp.json`/`~/.codebuddy.json` read as fallbacks), `~/.codebuddy/CODEBUDDY.md` (user memory), `~/.codebuddy/skills/` (Agent Skills standard) |
 | Qoder CLI | `qoder` | `~/.qoder/settings.json` (`mcpServers` key; other settings preserved), `~/.qoder/AGENTS.md` (user memory), `~/.qoder/skills/` (Agent Skills standard) |
+| Auggie CLI | `auggie` | `~/.augment/settings.json` (`mcpServers` key; other settings preserved), `~/.augment/rules/` (user rules), `~/.augment/skills/` (Agent Skills standard) |
 
 ## Commands
 

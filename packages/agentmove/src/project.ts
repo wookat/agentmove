@@ -46,6 +46,12 @@ import { parseTraeServers, planTraeMcp } from "./adapters/trae.js";
 import { parseCodebuddyServers, planCodebuddyMcp, readCodebuddyMcp } from "./adapters/codebuddy.js";
 import { parseQoderServers, planQoderMcp, readQoderSettings } from "./adapters/qoder.js";
 import {
+  parseAuggieServers,
+  planAuggieMcp,
+  readAuggieRulesDir,
+  readAuggieSettings,
+} from "./adapters/auggie.js";
+import {
   parseAntigravityServers,
   readAntigravityRulesDir,
   renderAntigravityServers,
@@ -1262,6 +1268,45 @@ const qoderProject: ProjectAdapter = {
   },
 };
 
+const auggieProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "auggie";
+    const config = await readAuggieSettings(path.join(dir, ".augment/settings.json"));
+    bundle.mcpServers = parseAuggieServers(config, warnings);
+    bundle.instructions = await readAuggieRulesDir(
+      path.join(dir, ".augment/rules"),
+      warnings,
+      "project",
+    );
+    bundle.skills = await readSkillsDir(path.join(dir, ".augment/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planAuggieMcp(
+        bundle,
+        path.join(dir, ".augment/settings.json"),
+        ".augment/settings.json",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    if (bundle.instructions) {
+      files.push({ path: ".augment/rules/agentmove.md", content: bundle.instructions });
+    }
+    if (bundle.persona) warnings.push("persona: no project-scoped slot in auggie; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: auggie has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".augment/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1289,6 +1334,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   trae: traeProject,
   codebuddy: codebuddyProject,
   qoder: qoderProject,
+  auggie: auggieProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
