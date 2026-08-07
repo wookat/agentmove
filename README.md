@@ -189,7 +189,9 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   URL is fetched as a standalone MCP config, any other URL is `git clone`d and
   auto-detected as an Agent Plugin, agentmove bundle, or skills repository; a
   GitHub-style `/tree/<branch>/<dir>` (or GitLab `/-/tree/`) URL imports just
-  that directory, and a `blob` link to a `.json` file fetches the raw file
+  that directory, a `blob` link to a `.json` file fetches the raw file, and a
+  `.zip`/`.tgz`/`.tar.gz` URL (release asset, "Download ZIP" link) is
+  downloaded and extracted — local archive files work too
 - `import <client> -i <repo>` — import a skills repository (the
   [skills.sh](https://skills.sh) / `npx skills add owner/repo` ecosystem):
   `SKILL.md` directories under `skills/`, at the top level, or a single skill

@@ -4,7 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { fetchRemoteInput, isRemoteInput, parseTreeUrl, rewriteBlobUrl } from "../src/remote.js";
+import {
+  extractArchive,
+  fetchRemoteInput,
+  isArchiveInput,
+  isRemoteInput,
+  parseTreeUrl,
+  rewriteBlobUrl,
+} from "../src/remote.js";
 import { isMcpJsonFile, isPluginDir, readMcpFile } from "../src/plugin.js";
 import { CliError } from "../src/model.js";
 
@@ -111,6 +118,33 @@ describe("remote import inputs", () => {
     expect(rewriteBlobUrl("https://example.com/team-mcp.json")).toBe(
       "https://example.com/team-mcp.json",
     );
+  });
+
+  it("recognizes archive inputs", () => {
+    expect(isArchiveInput("plugin.zip")).toBe(true);
+    expect(isArchiveInput("https://example.com/skills.tar.gz")).toBe(true);
+    expect(isArchiveInput("https://example.com/skills.tgz?token=x")).toBe(true);
+    expect(isArchiveInput("https://example.com/repo")).toBe(false);
+    expect(isArchiveInput("bundle")).toBe(false);
+  });
+
+  it("extracts a .tgz archive and unwraps a single top-level directory", async () => {
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-test-"));
+    const src = path.join(work, "my-skills");
+    await fs.mkdir(path.join(src, "skills", "web"), { recursive: true });
+    await fs.writeFile(path.join(src, "skills", "web", "SKILL.md"), "# web\n");
+    const archive = path.join(work, "my-skills.tgz");
+    execFileSync("tar", ["-czf", archive, "-C", work, "my-skills"]);
+    const dir = await extractArchive(archive);
+    expect(path.basename(dir)).toBe("my-skills");
+    expect(await fs.readFile(path.join(dir, "skills", "web", "SKILL.md"), "utf8")).toBe("# web\n");
+  });
+
+  it("fails with a data error on a corrupt archive", async () => {
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-test-"));
+    const bad = path.join(work, "bad.tgz");
+    await fs.writeFile(bad, "not an archive");
+    await expect(extractArchive(bad)).rejects.toThrow(/archive extraction failed/);
   });
 
   it("fails with a data error when git clone fails", async () => {

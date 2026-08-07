@@ -160,6 +160,26 @@ And a pasted **blob** link to a `.json` file is rewritten to the raw file it
 renders, so `https://github.com/acme/dev/blob/main/team-mcp.json` (or GitLab's
 `/-/blob/`) fetches the config instead of the HTML page.
 
+## Importing an archive: `import -i <file-or-url>.zip`
+
+`-i` also accepts a `.zip`, `.tgz`, or `.tar.gz` archive — a GitHub release
+asset, a repository "Download ZIP" link, or a local file:
+
+```sh
+# a plugin or skills repository shipped as a release asset
+agentmove import cursor -i https://github.com/acme/skills/archive/refs/heads/main.zip
+
+# a local archive
+agentmove import codex -i ./my-plugin.zip
+```
+
+The archive is downloaded (for URLs) and extracted, a single top-level wrapper
+directory (the GitHub archive layout) is unwrapped, and the contents go
+through the same auto-detection: Agent Plugin, agentmove bundle, skills
+repository, or standalone `mcp.json`. A corrupt or unreadable archive is a
+data error (exit 3). Extraction uses the system `tar` (and `unzip` where
+available), which is preinstalled on Linux, macOS, and Windows 10+.
+
 ## Importing a skills repository: `import -i <repo>`
 
 `-i` also accepts a **skills repository** — the layout used across the
