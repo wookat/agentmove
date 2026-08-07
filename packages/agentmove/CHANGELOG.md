@@ -1,5 +1,14 @@
 # agentmove-cli
 
+## 0.41.0
+
+### Minor Changes
+
+- d3c0862: Cursor now supports the Agent Skills standard (official cursor.com/docs/skills)
+  — the cursor adapter migrates skills instead of skipping them: user scope reads
+  and writes `~/.cursor/skills/`, project scope (`--project`) reads and writes
+  `.cursor/skills/`. The old "cursor has no skills directory" warning is gone.
+
 ## 0.40.0
 
 ### Minor Changes
