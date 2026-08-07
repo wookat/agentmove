@@ -1,5 +1,16 @@
 # agentmove-cli
 
+## 0.29.0
+
+### Minor Changes
+
+- 3c40c42: Add Auggie CLI (Augment Code) as the 31st supported client. User scope
+  migrates the `mcpServers` key inside `~/.augment/settings.json` (other
+  settings preserved on rewrite; explicit `type` written on import),
+  `~/.augment/rules/*.md` user rules as instructions, and `~/.augment/skills/`
+  Agent Skills. `--project` covers `.augment/settings.json`, `.augment/rules/`,
+  and `.augment/skills/`.
+
 ## 0.28.0
 
 ### Minor Changes
