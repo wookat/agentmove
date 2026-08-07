@@ -25,7 +25,7 @@ user-editable files:
 | CodeBuddy | Auto-memory is app-managed runtime data — imported memory is **skipped** with a warning (`CODEBUDDY.md` migrates as instructions). |
 | Qoder CLI | Auto-memory is app-managed runtime data — imported memory is **skipped** with a warning (`~/.qoder/AGENTS.md` migrates as instructions). |
 | Auggie CLI | Augment Memories are app-managed — imported memory is **skipped** with a warning (`~/.augment/rules/` migrates as instructions). |
-| Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid / Amazon Q Developer CLI / Warp / Junie / LM Studio / Trae / Kilo Code / Kimi Code CLI | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
+| Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid / Amazon Q Developer CLI / Warp / Junie / LM Studio / Trae / Kilo Code / Kimi Code CLI / Grok CLI | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
 | OpenClaw / Hermes | File-based (`MEMORY.md`, daily files, `§` entries) — migrates fully, both directions. |
 
 Practical consequence: **OpenClaw ↔ Hermes ↔ goose memory migration is
@@ -64,6 +64,8 @@ persona, and a later export won't recover it as a separate `persona.md`.
   project skills in `.kilo/skills/` migrate with `--project`.
 - Kimi Code CLI global skills live in `~/.kimi-code/skills/` and migrate natively;
   project skills in `.kimi-code/skills/` migrate with `--project`.
+- Grok CLI global skills live in `~/.grok/skills/` and migrate natively;
+  project skills in `.grok/skills/` migrate with `--project`.
 - Binary assets inside skill directories are currently skipped with a warning.
 
 ## MCP servers

@@ -38,6 +38,7 @@ description: What AgentMove reads and writes for each client.
 | Auggie CLI | `auggie` | `~/.augment/settings.json` (`mcpServers` key inside the general settings file — other settings are preserved on rewrite; `type` is `stdio`/`sse`/`http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.augment/rules/*.md` (user rules, always applied), `~/.augment/skills/` (Agent Skills standard) |
 | Kilo Code | `kilo` | `~/.config/kilo/kilo.json` (`mcp` key inside the general config file — other keys are preserved on rewrite; `kilo.jsonc`/`config.json` also read, JSONC accepted; local servers use `type: "local"` with `command` as an argv array plus `environment`, remote servers use `type: "remote"` + `url`/`headers`; native `enabled` flag round-trips), `~/.config/kilo/AGENTS.md` (global instructions), `~/.kilo/skills/` (Agent Skills standard; shared by the CLI and the VS Code/JetBrains extensions) |
 | Kimi Code CLI | `kimi` | `~/.kimi-code/mcp.json` (`mcpServers` key; stdio uses `command`/`args`/`env`/`cwd`, HTTP uses a plain `url` with optional `headers`, legacy SSE sets `transport: "sse"`; native `enabled` flag round-trips; `bearerTokenEnvVar`/`startupTimeoutMs`/`toolTimeoutMs`/`enabledTools`/`disabledTools` are client-specific), `~/.kimi-code/AGENTS.md` (global instructions), `~/.kimi-code/skills/` (Agent Skills standard; `$KIMI_CODE_HOME` relocations are not followed) |
+| Grok CLI | `grok` | `~/.grok/config.toml` (`[mcp_servers.*]` tables inside the general config file — other tables are preserved on rewrite; stdio servers use `command`/`args`/`env`, remote servers use `url`/`headers`; `startup_timeout_sec`/`tool_timeout_sec` are client-specific; `${VAR}` placeholders expand natively at load time), `~/.grok/AGENTS.md` (global rules), `~/.grok/skills/` (Agent Skills standard) |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -177,6 +178,15 @@ description: What AgentMove reads and writes for each client.
   (warned); persona is appended to `~/.kimi-code/AGENTS.md` (approximated).
   `--project` covers `.kimi-code/mcp.json`, root `AGENTS.md`, and
   `.kimi-code/skills/`.
+- **Grok CLI** has no documented `sse` transport — SSE servers are emitted as
+  plain `url` entries (warned); `cwd` is not documented and dropped (warned);
+  `config.toml` has no documented per-server disabled flag — disabled servers
+  are imported as enabled (warned; use `grok mcp disable` afterwards);
+  per-server `startup_timeout_sec`/`tool_timeout_sec` are client-specific
+  (warned, preserved on merge); memory has no durable store — skipped
+  (warned); compat-loaded servers (`~/.claude.json`, `.cursor/mcp.json`,
+  `.mcp.json`) belong to those clients and are not read from Grok. `--project`
+  covers `.grok/config.toml`, root `AGENTS.md`, and `.grok/skills/`.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
