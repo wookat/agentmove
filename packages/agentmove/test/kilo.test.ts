@@ -130,7 +130,7 @@ describe("kilo adapter", () => {
     bundle.skills = [{ name: "review", files: { "SKILL.md": "y" } }];
     const { files, warnings } = await adapter.planImport(bundle, dir, {});
     const config = JSON.parse(
-      files.find((f) => f.path === path.join(".kilo", "kilo.json"))!.content,
+      files.find((f) => f.path === ".kilo/kilo.json")!.content,
     ) as KiloConfig & { instructions?: unknown };
     expect(Object.keys(config.mcp!).sort()).toEqual(["existing", "search"]);
     expect(config.mcp!.search!.type).toBe("remote");
