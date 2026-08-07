@@ -62,7 +62,8 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 Every lossy or approximated step is reported as a warning — nothing is silently
 dropped. Likely secrets (env/header values named `*KEY*`, `*TOKEN*`, `*AUTHORIZATION*`, …) are replaced
-with `${VAR}` placeholders unless you pass `--include-secrets`.
+with `${VAR}` placeholders — in the portable MCP list and recursively throughout the raw
+config snapshot kept in the bundle — unless you pass `--include-secrets`.
 
 ## What does NOT migrate (honest edition)
 

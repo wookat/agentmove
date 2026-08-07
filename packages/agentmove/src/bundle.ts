@@ -115,6 +115,25 @@ export async function readBundle(dir: string): Promise<Bundle> {
 
 const SECRET_KEY_RE = /(key|token|secret|password|credential|authorization|cookie)/i;
 
+function redactValue(value: unknown, ctx: string, redacted: string[]): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item, i) => redactValue(item, `${ctx}[${i}]`, redacted));
+  }
+  if (isRecord(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (SECRET_KEY_RE.test(k) && typeof v === "string" && v && !v.startsWith("${")) {
+        out[k] = `\${${k}}`;
+        redacted.push(`${ctx}.${k}`);
+      } else {
+        out[k] = redactValue(v, `${ctx}.${k}`, redacted);
+      }
+    }
+    return out;
+  }
+  return value;
+}
+
 /** Replace likely-secret env/header values with ${VAR} placeholders unless keeping secrets. */
 export function stripSecrets(bundle: Bundle): { bundle: Bundle; redacted: string[] } {
   const redacted: string[] = [];
@@ -134,5 +153,8 @@ export function stripSecrets(bundle: Bundle): { bundle: Bundle; redacted: string
     };
     return { ...s, env: clean(s.env, "env"), headers: clean(s.headers, "headers") };
   });
-  return { bundle: { ...bundle, mcpServers: servers }, redacted };
+  const config: Bundle["config"] = bundle.config.raw
+    ? { ...bundle.config, raw: redactValue(bundle.config.raw, "config", redacted) as Record<string, unknown> }
+    : bundle.config;
+  return { bundle: { ...bundle, mcpServers: servers, config }, redacted };
 }

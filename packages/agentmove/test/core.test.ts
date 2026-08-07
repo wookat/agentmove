@@ -31,8 +31,19 @@ describe("stripSecrets", () => {
   it("replaces likely-secret env values with placeholders", async () => {
     const { bundle } = await ADAPTERS["claude-code"].exportBundle(path.join(FIXTURES, "claude-home"));
     const { bundle: clean, redacted } = stripSecrets(bundle);
-    expect(redacted).toEqual(["mcp:notion.env.NOTION_TOKEN"]);
+    expect(redacted).toContain("mcp:notion.env.NOTION_TOKEN");
     expect(clean.mcpServers[0]?.env?.NOTION_TOKEN).toBe("${NOTION_TOKEN}");
+  });
+
+  it("redacts secrets inside the raw config snapshot", async () => {
+    const { bundle } = await ADAPTERS["claude-code"].exportBundle(path.join(FIXTURES, "claude-home"));
+    const { bundle: clean, redacted } = stripSecrets(bundle);
+    expect(redacted).toContain("config.mcpServers.notion.env.NOTION_TOKEN");
+    const raw = clean.config.raw as {
+      mcpServers: { notion: { env: { NOTION_TOKEN: string } } };
+    };
+    expect(raw.mcpServers.notion.env.NOTION_TOKEN).toBe("${NOTION_TOKEN}");
+    expect(bundle.config.raw).not.toBe(clean.config.raw);
   });
 
   it("redacts Authorization headers", async () => {

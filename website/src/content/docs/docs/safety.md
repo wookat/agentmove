@@ -31,8 +31,10 @@ telling you what happened and where the data went:
 
 Env/header values whose names look like secrets (`*KEY*`, `*TOKEN*`,
 `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, `*AUTHORIZATION*`, `*COOKIE*`) are replaced with `${VAR}`
-placeholders on export. Pass `--include-secrets` to keep real values — only do
-this for bundles that never leave your machine.
+placeholders on export — both in the portable `mcp-servers.json` and recursively
+throughout the raw source-config snapshot kept in the bundle's `config.json`.
+Pass `--include-secrets` to keep real values — only do this for bundles that
+never leave your machine.
 
 ## Encrypted transport
 
