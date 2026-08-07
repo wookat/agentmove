@@ -100,6 +100,28 @@ describe("codex", () => {
     expect((servers.search.http_headers as Record<string, string>)["X-Api-Key"]).toBe("k123");
     expect(servers.linear.command).toBe("npx");
   });
+
+  it("maps bearer_token_env_var and env_http_headers to placeholder headers on export", async () => {
+    const { bundle, warnings } = await ADAPTERS.codex.exportBundle(homeOf("codex-home"));
+    const github = bundle.mcpServers.find((s) => s.name === "github")!;
+    expect(github.headers?.Authorization).toBe("Bearer ${GITHUB_TOKEN}");
+    expect(github.headers?.["X-Org-Id"]).toBe("${ORG_ID}");
+    expect(
+      warnings.some((w) => w.includes("startup_timeout_sec, tool_timeout_sec")),
+    ).toBe(true);
+  });
+
+  it("writes placeholder headers back as native bearer_token_env_var / env_http_headers", async () => {
+    const { bundle } = await ADAPTERS.codex.exportBundle(homeOf("codex-home"));
+    const { files, warnings } = await ADAPTERS.codex.planImport(bundle, homeOf("empty-home"));
+    const config = files.find((f) => f.path === ".codex/config.toml")!;
+    const parsed = parseToml(config.content) as Record<string, unknown>;
+    const servers = parsed.mcp_servers as Record<string, Record<string, unknown>>;
+    expect(servers.github.bearer_token_env_var).toBe("GITHUB_TOKEN");
+    expect((servers.github.env_http_headers as Record<string, string>)["X-Org-Id"]).toBe("ORG_ID");
+    expect(servers.github.http_headers).toBeUndefined();
+    expect(warnings.some((w) => w.includes("bearer_token_env_var"))).toBe(true);
+  });
 });
 
 describe("cursor", () => {

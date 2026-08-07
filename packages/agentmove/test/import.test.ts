@@ -67,7 +67,7 @@ describe("claude-code import into existing config", () => {
     const { files, warnings } = await ADAPTERS["claude-code"].planImport(bundle, homeOf("claude-home"));
     const config = files.find((f) => f.path === ".claude.json")!;
     const parsed = JSON.parse(config.content) as { mcpServers: Record<string, unknown> };
-    expect(Object.keys(parsed.mcpServers).sort()).toEqual(["linear", "notion", "search"]);
+    expect(Object.keys(parsed.mcpServers).sort()).toEqual(["github", "linear", "notion", "search"]);
     // codex `search` server is disabled; claude-code has no disabled flag
     expect(warnings.some((w) => w.includes("no disabled flag"))).toBe(true);
   });
@@ -83,7 +83,7 @@ describe("mcp merge semantics", () => {
     );
     const config = files.find((f) => f.path === ".claude.json")!;
     const parsed = JSON.parse(config.content) as { mcpServers: Record<string, unknown> };
-    expect(Object.keys(parsed.mcpServers).sort()).toEqual(["linear", "search"]);
+    expect(Object.keys(parsed.mcpServers).sort()).toEqual(["github", "linear", "search"]);
     expect(warnings.some((w) => w.includes("removed by --replace-mcp"))).toBe(true);
   });
 

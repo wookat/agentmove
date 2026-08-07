@@ -53,6 +53,18 @@ describe("stripSecrets", () => {
     expect(remote.headers?.Authorization).toBe("${Authorization}");
     expect(redacted).toContain("mcp:remote.headers.Authorization");
   });
+
+  it("leaves placeholder-only header values and env-var-name keys untouched", async () => {
+    const { bundle } = await ADAPTERS.codex.exportBundle(path.join(FIXTURES, "codex-home"));
+    const { bundle: clean, redacted } = stripSecrets(bundle);
+    const github = clean.mcpServers.find((s) => s.name === "github")!;
+    expect(github.headers?.Authorization).toBe("Bearer ${GITHUB_TOKEN}");
+    expect(redacted).not.toContain("mcp:github.headers.Authorization");
+    const raw = clean.config.raw as {
+      mcp_servers: { github: { bearer_token_env_var: string } };
+    };
+    expect(raw.mcp_servers.github.bearer_token_env_var).toBe("GITHUB_TOKEN");
+  });
 });
 
 describe("diff", () => {
@@ -73,7 +85,7 @@ describe("doctor", () => {
     const reports = await runDoctor(path.join(FIXTURES, "codex-home"));
     const codex = reports.find((r) => r.id === "codex")!;
     expect(codex.detected).toBe(true);
-    expect(codex.inventory?.mcpServers).toBe(2);
+    expect(codex.inventory?.mcpServers).toBe(3);
     expect(reports.find((r) => r.id === "hermes")?.detected).toBe(false);
   });
 });
