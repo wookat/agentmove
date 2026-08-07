@@ -34,6 +34,7 @@ description: What AgentMove reads and writes for each client.
 | LM Studio | `lmstudio` | `~/.lmstudio/mcp.json` (`mcpServers`, Cursor-style notation — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; no `type` field); MCP servers only — models, presets, and chats are app-managed |
 | Trae | `trae` | `~/.trae/skills/` (global Agent Skills standard); user-level MCP servers, rules, and memories are app-managed (Settings UI) — project scope is where Trae's files live: `.trae/mcp.json` (`mcpServers`; entries have no `type` field — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `.trae/rules/*.md`, and `.trae/skills/` |
 | CodeBuddy | `codebuddy` | `~/.codebuddy/.mcp.json` (`mcpServers`; `type` is `stdio`/`sse`/`http` and may be omitted — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; a top-level `disabledMcpServers` name list carries the disabled state; JSONC accepted; `~/.codebuddy/mcp.json` and `~/.codebuddy.json` are read as legacy fallbacks), `~/.codebuddy/CODEBUDDY.md` (user memory file), `~/.codebuddy/skills/` (Agent Skills standard) |
+| Qoder CLI | `qoder` | `~/.qoder/settings.json` (`mcpServers` key inside the general settings file — other settings are preserved on rewrite; `type` is `stdio`/`sse`/`http`/`ws` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.qoder/AGENTS.md` (user memory file), `~/.qoder/skills/` (Agent Skills standard) |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -144,6 +145,15 @@ description: What AgentMove reads and writes for each client.
   `~/.codebuddy/rules/` are client-specific and left in place (warned).
   `--project` covers `.mcp.json` at the project root (the same file Claude
   Code project scope uses), `CODEBUDDY.md`, and `.codebuddy/skills/`.
+- **Qoder CLI** has no per-server disabled flag (only `mcp.allowed`/`mcp.excluded`
+  allowlists, preserved as plain settings) — disabled servers are emitted
+  enabled (warned); `ws` (WebSocket) servers have no portable equivalent and
+  are skipped on export (warned); `isProxy` is client-specific (warned); `cwd`
+  is not documented and dropped (warned); user rule files in `~/.qoder/rules/`
+  are client-specific and left in place (warned); auto-memory is app-managed
+  and skipped on import (warned). `--project` covers `.mcp.json` at the
+  project root, `AGENTS.md` (legacy `AGENTS.local.md` is read), and
+  `.qoder/skills/`.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
