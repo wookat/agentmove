@@ -19,6 +19,7 @@ describe("copilot adapter", () => {
     expect(byName.github!.headers!.Authorization).toContain("Bearer");
     expect(bundle.instructions).toContain("Always write tests first.");
     expect(bundle.instructions).toContain("TypeScript strict mode");
+    expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
     // client-specific tool allowlists are reported, not silently dropped
     expect(warnings.some((w) => w.includes("tool allowlist"))).toBe(true);
   });
@@ -48,7 +49,7 @@ describe("copilot adapter", () => {
     expect(warnings.some((w) => w.includes("no disabled flag"))).toBe(true);
   });
 
-  it("warns on memory/skills and approximates persona into instructions", async () => {
+  it("warns on memory, plans skills into ~/.copilot/skills, approximates persona", async () => {
     const bundle = emptyBundle();
     bundle.persona = "You are helpful.";
     bundle.memory = [{ content: "m", source: "s", kind: "long-term" }];
@@ -58,8 +59,9 @@ describe("copilot adapter", () => {
     expect(
       files.find((f) => f.path.endsWith("agentmove-imported.instructions.md"))!.content,
     ).toContain("You are helpful.");
+    expect(files.some((f) => f.path === ".copilot/skills/sk/SKILL.md")).toBe(true);
     expect(warnings.some((w) => w.startsWith("memory:"))).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
     expect(warnings.some((w) => w.startsWith("persona:"))).toBe(true);
   });
 
@@ -75,5 +77,14 @@ describe("copilot adapter", () => {
     expect(
       files.some((f) => f.path === ".github/instructions/agentmove-imported.instructions.md"),
     ).toBe(true);
+  });
+
+  it("project scope: plans skills into .github/skills", async () => {
+    const adapter = getProjectAdapter("copilot");
+    const bundle = emptyBundle();
+    bundle.skills = [{ name: "review", files: { "SKILL.md": "# Review" } }];
+    const { files, warnings } = await adapter.planImport(bundle, "/nonexistent-project", {});
+    expect(files.some((f) => f.path === ".github/skills/review/SKILL.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
   });
 });

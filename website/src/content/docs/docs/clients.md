@@ -12,11 +12,11 @@ description: What AgentMove reads and writes for each client.
 | Codex CLI | `codex` | `~/.codex/config.toml` (`[mcp_servers.*]`, model), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
 | Cursor | `cursor` | `~/.cursor/mcp.json`, `~/.cursor/skills/` (global Agent Skills standard; project scope covers `.cursor/skills/`); instructions/persona imported as `~/.cursor/rules/agentmove-imported.mdc` |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section) |
-| Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md` |
+| Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json` (`mcpServers`, remote servers use `type: streamableHttp`/`sse` + `url`), `~/Documents/Cline/Rules/*.md` |
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`; JSONC, stdio servers require `args`), `~/.config/zed/AGENTS.md` |
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]` with `stdio_servers`/`shttp_servers`/`sse_servers`), `~/.openhands/microagents/*.md` |
-| GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json` (`mcpServers`, stdio servers use `type: local`), `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/*.instructions.md` |
+| GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json` (`mcpServers`, stdio servers use `type: local`), `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/*.instructions.md`, `~/.copilot/skills/` |
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`; local servers use `type: local` with an argv `command` array + `environment`, remote use `type: remote`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
 | Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`; remote servers use `url` or `httpUrl`), `~/.qwen/QWEN.md` (including the "Qwen Added Memories" section), `~/.qwen/skills/` |
 | Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`; local servers use `command`/`args`/`env`, remote use `url`/`headers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
@@ -60,7 +60,8 @@ description: What AgentMove reads and writes for each client.
 - **Gemini CLI** has no `SKILL.md` mechanism; skills are skipped with a warning.
 - **Codex / Claude Code** client-managed memories are not exported in v0.
 - **Windsurf** Cascade memories are app-managed and cannot be migrated; skills
-  have no Windsurf equivalent.
+  migrate natively via `~/.codeium/windsurf/skills/` (project `.windsurf/skills/`
+  with `--project`).
 - **Cline** VS Code extension keeps its own MCP settings copy in VS Code
   globalStorage; AgentMove migrates the CLI settings file (`~/.cline`) and
   global rules only. Skills have no Cline equivalent.
@@ -71,8 +72,9 @@ description: What AgentMove reads and writes for each client.
   Skills live in repositories (`.openhands/skills`, via `--project`).
 - **GitHub Copilot CLI** per-server `tools` allowlists are client-specific and
   reported on export; there is no disabled flag, so disabled servers are
-  emitted as enabled with a warning. Skills and durable memory have no Copilot
-  equivalent.
+  emitted as enabled with a warning. Skills migrate natively via
+  `~/.copilot/skills/` (project `.github/skills/` with `--project`); durable
+  memory has no Copilot equivalent.
 - **OpenCode** has no `sse` transport — SSE servers are emitted as `remote`
   (warned); JSONC comments in `opencode.json` are not preserved on rewrite.
 - **Qwen Code** has no per-server disabled flag — disabled servers are emitted

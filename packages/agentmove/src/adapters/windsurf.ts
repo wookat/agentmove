@@ -11,10 +11,18 @@ import {
   parseFile,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { mergeMcpRecords, parseCommonMcpEntry, renderCommonMcpEntry, touchesMcpConfig } from "./shared.js";
+import {
+  mergeMcpRecords,
+  parseCommonMcpEntry,
+  planSkills,
+  readSkillsDir,
+  renderCommonMcpEntry,
+  touchesMcpConfig,
+} from "./shared.js";
 
 const MCP_REL = ".codeium/windsurf/mcp_config.json";
 const RULES_REL = ".codeium/windsurf/memories/global_rules.md";
+const SKILLS_REL = ".codeium/windsurf/skills";
 
 async function readMcpConfig(home: string): Promise<Record<string, unknown>> {
   const file = path.join(home, MCP_REL);
@@ -37,7 +45,7 @@ function normalizeEntry(entry: unknown): unknown {
 export const windsurf: ClientAdapter = {
   id: "windsurf",
   label: "Windsurf",
-  defaultPath: "~/.codeium/windsurf (memories are app-managed)",
+  defaultPath: "~/.codeium/windsurf (mcp_config.json + global_rules.md + skills/; memories are app-managed)",
 
   async detect(home) {
     return (
@@ -62,6 +70,7 @@ export const windsurf: ClientAdapter = {
     bundle.mcpServers = servers;
 
     bundle.instructions = await readText(path.join(home, RULES_REL));
+    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     warnings.push(
       "windsurf Cascade memories are app-managed and not exported; " +
         "durable rules live in global_rules.md (exported as instructions)",
@@ -107,9 +116,7 @@ export const windsurf: ClientAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: windsurf Cascade memories are app-managed and cannot be imported; skipped");
     }
-    if (bundle.skills.length) {
-      warnings.push("skills: windsurf has no SKILL.md mechanism; skipped (consider converting to rules manually)");
-    }
+    files.push(...planSkills(bundle.skills, SKILLS_REL));
     return { files, warnings };
   },
 };

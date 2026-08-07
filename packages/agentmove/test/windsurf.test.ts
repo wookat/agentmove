@@ -15,6 +15,7 @@ describe("windsurf adapter", () => {
     expect(remote.transport).toBe("http");
     expect(remote.url).toBe("https://mcp.example.com/mcp");
     expect(bundle.instructions).toContain("Always use TypeScript.");
+    expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
   });
 
   it("plans imports with serverUrl for remote servers and merge semantics", async () => {
@@ -28,14 +29,15 @@ describe("windsurf adapter", () => {
     expect(files.some((f) => f.path === ".codeium/windsurf/memories/global_rules.md")).toBe(true);
   });
 
-  it("skips memory/skills with warnings and approximates persona into rules", async () => {
+  it("skips memory with warning, plans skills, approximates persona into rules", async () => {
     const bundle = emptyBundle();
     bundle.persona = "You are Clawd.";
     bundle.memory = [{ content: "note", source: "MEMORY.md", kind: "long-term" }];
     bundle.skills = [{ name: "rev", files: { "SKILL.md": "x" } }];
     const { files, warnings } = await ADAPTERS.windsurf.planImport(bundle, home);
     expect(warnings.some((w) => w.startsWith("memory:"))).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
+    expect(files.some((f) => f.path === ".codeium/windsurf/skills/rev/SKILL.md")).toBe(true);
     const rules = files.find((f) => f.path === ".codeium/windsurf/memories/global_rules.md")!;
     expect(rules.content).toContain("You are Clawd.");
   });
