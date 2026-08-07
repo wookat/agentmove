@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { isSkillsRepo, readSkillsRepo } from "../src/skillsrepo.js";
+import { isSkillsRepo, readSkillsRepo, writeSkillsRepo } from "../src/skillsrepo.js";
 
 async function tmp(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "agentmove-skrepo-"));
@@ -93,5 +93,28 @@ describe("readSkillsRepo", () => {
     await fs.writeFile(path.join(dir, "SKILL.md"), "# no frontmatter");
     const { bundle } = await readSkillsRepo(dir);
     expect(bundle.skills[0]!.name).toBe(path.basename(dir));
+  });
+});
+
+describe("writeSkillsRepo", () => {
+  it("writes the nested layout and round-trips through readSkillsRepo", async () => {
+    const dir = await tmp();
+    await writeSkillsRepo(
+      [
+        { name: "rev", files: { "SKILL.md": "# rev\n", "extra/notes.md": "n\n" } },
+        { name: "web", files: { "SKILL.md": "# web\n" } },
+      ],
+      dir,
+    );
+    expect(await fs.readFile(path.join(dir, "skills/rev/SKILL.md"), "utf8")).toBe("# rev\n");
+    expect(await fs.readFile(path.join(dir, "skills/rev/extra/notes.md"), "utf8")).toBe("n\n");
+    expect(await isSkillsRepo(dir)).toBe(true);
+    const { bundle } = await readSkillsRepo(dir);
+    expect(bundle.skills.map((s) => s.name)).toEqual(["rev", "web"]);
+  });
+
+  it("fails with a data error when there are no skills", async () => {
+    const dir = await tmp();
+    await expect(writeSkillsRepo([], dir)).rejects.toThrow(/no skills to export/);
   });
 });

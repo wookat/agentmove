@@ -212,6 +212,23 @@ Only directories that actually contain a `SKILL.md` are imported; everything
 else in the repository is ignored. The usual dry-run/`--apply`, `--only skills`,
 and backup semantics apply, and the import reports how many skills were found.
 
+## Skills repository export: `export --skills-repo`
+
+The reverse direction: `export <client> --skills-repo <dir>` also writes the
+skills layer as a skills repository in the conventional
+`skills/<name>/SKILL.md` layout — ready to commit and publish with
+`gh skill publish`, install with `npx skills add`, or import back with
+`agentmove import -i`:
+
+```bash
+agentmove export claude-code --skills-repo ./my-skills
+agentmove export claude-code --skills-repo my-skills.zip   # as an archive
+```
+
+A path ending in `.zip`/`.tgz`/`.tar.gz` packages the repository as an archive
+(one top-level directory named after the file without the suffix). Exporting a
+client with no skills is a data error (exit 3).
+
 ## Standalone MCP config export: `export --mcp-json`
 
 The reverse direction: `export <client> --mcp-json <file>` also writes the MCP

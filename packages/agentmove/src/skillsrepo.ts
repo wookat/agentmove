@@ -1,5 +1,6 @@
+import { promises as fs } from "node:fs";
 import path from "node:path";
-import { Bundle, emptyBundle, Skill } from "./model.js";
+import { Bundle, CliError, emptyBundle, EXIT_DATA, Skill } from "./model.js";
 import { exists, isDir, listDir, readText, readTextTree } from "./fsutil.js";
 
 /**
@@ -69,4 +70,22 @@ export async function readSkillsRepo(
     `imported as a skills repository (${skills.length} skill(s) from SKILL.md directories); no other layers present`,
   );
   return { bundle, warnings };
+}
+
+/**
+ * Write the bundle's skills as a skills repository in the nested layout
+ * (skills/<name>/SKILL.md) recognized across the ecosystem — `npx skills add`,
+ * `gh skill publish`, and agentmove's own skills-repository import.
+ */
+export async function writeSkillsRepo(skills: Skill[], dir: string): Promise<void> {
+  if (!skills.length) {
+    throw new CliError("no skills to export as a skills repository", EXIT_DATA);
+  }
+  for (const skill of skills) {
+    for (const [rel, content] of Object.entries(skill.files)) {
+      const file = path.join(dir, "skills", skill.name, rel);
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, content);
+    }
+  }
 }
