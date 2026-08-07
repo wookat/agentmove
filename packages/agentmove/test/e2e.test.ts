@@ -337,6 +337,8 @@ describe("e2e (built CLI, child process)", () => {
 
   // trae is excluded from the user-scope matrix: its user-level MCP servers
   // are app-managed, so exports carry skills only (covered in trae.test.ts).
+  // librechat is excluded too: librechat.yaml is per-deployment, so all
+  // migratable files are project-scoped (covered in librechat.test.ts).
   it("converts every source→target pair (full matrix) without errors", async () => {
     const clients = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq", "warp", "junie", "lmstudio", "codebuddy", "qoder", "auggie", "kilo", "kimi", "grok", "vibe", "nanocoder", "jan", "anythingllm"];
     const fixtures: Record<string, string> = {

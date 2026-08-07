@@ -1,0 +1,17 @@
+version: 1.2.8
+cache: true
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - '@modelcontextprotocol/server-filesystem'
+      - /tmp
+    env:
+      FS_API_KEY: test-not-a-real-token
+  api-server:
+    type: streamable-http
+    url: https://mcp.example.com/mcp
+    headers:
+      Authorization: Bearer test-not-a-real-token
