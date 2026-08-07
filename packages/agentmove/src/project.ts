@@ -283,6 +283,7 @@ const windsurfProject: ProjectAdapter = {
         warnings.push("windsurf rules concatenated into instructions (frontmatter kept as-is)");
       }
     }
+    bundle.skills = await readSkillsDir(path.join(dir, ".windsurf/skills"), warnings);
     warnings.push("windsurf has no project-scoped MCP config; MCP servers stay user-scoped");
     return { bundle, warnings };
   },
@@ -305,7 +306,7 @@ const windsurfProject: ProjectAdapter = {
       files.push({ path: ".windsurf/rules/agentmove-imported.md", content: body });
     }
     if (bundle.memory.length) warnings.push("memory: windsurf memories are app-managed; skipped");
-    if (bundle.skills.length) warnings.push("skills: windsurf has no SKILL.md mechanism; skipped");
+    files.push(...planSkills(bundle.skills, ".windsurf/skills"));
     return { files, warnings };
   },
 };
@@ -495,6 +496,7 @@ const copilotProject: ProjectAdapter = {
       }
     }
     if (parts.length) bundle.instructions = parts.join("\n\n") + "\n";
+    bundle.skills = await readSkillsDir(path.join(dir, ".github/skills"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -527,7 +529,7 @@ const copilotProject: ProjectAdapter = {
       if (bundle.persona) warnings.push("persona: appended to a repo instructions file (approximated)");
     }
     if (bundle.memory.length) warnings.push("memory: copilot has no project-scoped memory store; skipped");
-    if (bundle.skills.length) warnings.push("skills: copilot has no SKILL.md mechanism; skipped");
+    files.push(...planSkills(bundle.skills, ".github/skills"));
     return { files, warnings };
   },
 };

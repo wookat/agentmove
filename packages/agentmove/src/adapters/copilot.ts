@@ -14,6 +14,8 @@ import { exists, isDir, listDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planSkills,
+  readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./shared.js";
@@ -28,6 +30,7 @@ import {
 const MCP_REL = ".copilot/mcp-config.json";
 const INSTRUCTIONS_FILE_REL = ".copilot/copilot-instructions.md";
 const INSTRUCTIONS_DIR_REL = ".copilot/instructions";
+const SKILLS_REL = ".copilot/skills";
 
 async function readMcpConfig(home: string): Promise<Record<string, unknown>> {
   const file = path.join(home, MCP_REL);
@@ -48,7 +51,7 @@ function normalizeEntry(entry: unknown): unknown {
 export const copilot: ClientAdapter = {
   id: "copilot",
   label: "GitHub Copilot CLI",
-  defaultPath: "~/.copilot (mcp-config.json + copilot-instructions.md)",
+  defaultPath: "~/.copilot (mcp-config.json + copilot-instructions.md + skills/)",
 
   async detect(home) {
     return (
@@ -93,6 +96,7 @@ export const copilot: ClientAdapter = {
     }
     if (parts.length) bundle.instructions = parts.join("\n\n") + "\n";
 
+    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     return { bundle, warnings };
   },
 
@@ -135,11 +139,7 @@ export const copilot: ClientAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: copilot has no durable memory store; skipped (consider --mif)");
     }
-    if (bundle.skills.length) {
-      warnings.push(
-        "skills: copilot has no SKILL.md mechanism; skipped (consider converting to instructions manually)",
-      );
-    }
+    files.push(...planSkills(bundle.skills, SKILLS_REL));
     return { files, warnings };
   },
 };

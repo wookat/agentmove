@@ -50,7 +50,8 @@ user-scoped config under `$HOME`:
 | codex | `AGENTS.md`, `.agents/skills/` (no project-scoped MCP config — warned) |
 | gemini | `.gemini/settings.json`, `GEMINI.md` |
 | cursor | `.cursor/mcp.json`, `.cursor/rules/*.mdc` |
-| windsurf | `.windsurf/rules/*.md` (no project-scoped MCP config — warned) |
+| windsurf | `.windsurf/rules/*.md`, `.windsurf/skills/` (no project-scoped MCP config — warned) |
+| copilot | `.mcp.json`, `.github/copilot-instructions.md` + `.github/instructions/`, `.github/skills/` |
 
 ```bash
 # move a repo's Claude Code setup to Cursor, in place
