@@ -20,7 +20,7 @@ description: What AgentMove reads and writes for each client.
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`; local servers use `type: local` with an argv `command` array + `environment`, remote use `type: remote`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
 | Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`; remote servers use `url` or `httpUrl`), `~/.qwen/QWEN.md` (including the "Qwen Added Memories" section), `~/.qwen/skills/` |
 | Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`; local servers use `command`/`args`/`env`, remote use `url`/`headers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
-| VS Code | `vscode` | user-profile `mcp.json` (`servers`; stdio entries use `command`/`args`/`env`, remote use `type: http`/`sse` + `url`/`headers`); profile folder is `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows) — all three are checked |
+| VS Code | `vscode` | user-profile `mcp.json` (`servers`; stdio entries use `command`/`args`/`env`, remote use `type: http`/`sse` + `url`/`headers`); profile folder is `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows) — all three are checked; `~/.agents/skills/` (personal Agent Skills, shared cross-agent root) |
 | Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`; stdio entries use `command`/`args`/`env` + native `disabled`, remote use `url`/`headers`), steering markdown in `~/.kiro/steering/` (AGENTS.md standard supported), `~/.kiro/skills/` (Agent Skills standard) |
 | Roo Code | `roo` | VS Code globalStorage `mcp_settings.json` (`mcpServers`; stdio entries use `command`/`args`/`env` + native `disabled`, remote entries require an explicit `type: streamable-http`/`sse` + `url`/`headers`) — `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows); rules markdown in `~/.roo/rules/`, `~/.roo/skills/` (Agent Skills standard) |
 | Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` **list**; each entry carries its own `name`, stdio uses `command`/`args`/`env`/`cwd`, remote uses `type: streamable-http`/`sse` + `url`), rules markdown in `~/.continue/rules/`, `~/.continue/skills/` |
@@ -100,8 +100,11 @@ description: What AgentMove reads and writes for each client.
   (`amp mcp approve`). Memory has no durable store — approximated into
   `AGENTS.md` (warned).
 - **VS Code** instructions/prompts/chat modes are profile- or repo-managed —
-  user scope migrates MCP servers only (`--project` covers `.vscode/mcp.json`
-  and `.github/copilot-instructions.md`); `inputs` prompted placeholders are
+  user scope migrates MCP servers and personal skills (`~/.agents/skills/`, a
+  shared root also read by codex/zed/warp-cli; `~/.copilot/skills` and
+  `~/.claude/skills` belong to their own clients here); `--project` covers
+  `.vscode/mcp.json`, `.github/copilot-instructions.md`, and `.github/skills/`;
+  `inputs` prompted placeholders are
   client-specific and `${input:*}` references stay as-is (warned); `envFile`
   references are machine-specific and dropped (warned); no disabled flag.
 - **Kiro** `autoApprove`, `disabledTools`, and `oauth` settings are
