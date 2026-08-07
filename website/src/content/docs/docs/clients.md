@@ -43,6 +43,7 @@ description: What AgentMove reads and writes for each client.
 | Nanocoder | `nanocoder` | `~/.config/nanocoder/.mcp.json` (`mcpServers` map with explicit `transport` (`stdio`/`http`/`websocket`); stdio servers use `command`/`args`/`env`, HTTP servers use `url`/`headers`; the `enabled` boolean round-trips; `timeout`/`alwaysAllow`/`description`/`tags` are client-specific); instructions live in the project-root `AGENTS.md` only (`--project`); nanocoder skills use their own `skill.yaml` bundle format and are not migrated |
 | Jan | `jan` | `~/.local/share/Jan/data/mcp_config.json` (`mcpServers` map — the Jan data folder's config; every entry carries `command`/`args` (empty for remote servers), remote entries add `type` (`http`/`sse`) plus `url`/`headers`; the native `active` boolean round-trips as the enabled flag; `timeout`/`official` are client-specific; `mcpSettings` and other top-level keys are preserved on rewrite); assistants, models, and chats are app-managed |
 | AnythingLLM | `anythingllm` | `~/.config/anythingllm-desktop/storage/plugins/anythingllm_mcp_servers.json` (`mcpServers` map; stdio uses `command`/`args`/`env`, remote uses `url`/`headers` plus optional `type` — `streamable`/`http` select Streamable HTTP and an omitted `type` means SSE; `anythingllm.autoStart: false` round-trips as the disabled flag, `anythingllm.suppressedTools` is client-specific); workspaces, system prompts, and chats are app-managed (database) |
+| LibreChat | `librechat` | `librechat.yaml` in the deployment directory (project-scoped — use `--project`; `mcpServers` map: stdio servers use `command`/`args`/`env`, remote servers use `url`/`headers` with `type: sse` or `type: streamable-http` — an omitted `type` on an http(s) `url` means SSE; websocket servers are skipped; `timeout`/`initTimeout`/`serverInstructions`/`iconPath`/`chatMenu`/`customUserVars`/`requiresOAuth`/`oauth`/`proxy` are client-specific; other yaml keys are preserved on rewrite); custom prompts, agents, and memory are app-managed (database) |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -230,6 +231,16 @@ description: What AgentMove reads and writes for each client.
   (warned). The Linux desktop storage path is
   `~/.config/anythingllm-desktop/storage`; macOS/Windows and Docker
   `STORAGE_DIR` locations are not followed.
+- **LibreChat** is a self-hosted deployment: everything migratable lives in
+  the deployment's `librechat.yaml`, so use `--project` in the deployment
+  directory (user scope is warnings-only). Remote entries are written with an
+  explicit `type: sse`/`streamable-http`; websocket servers have no portable
+  equivalent and are skipped (warned); there is no disabled flag and `cwd` is
+  not supported (warned); `timeout`/`customUserVars`/`oauth` and other
+  client-specific keys are warned and preserved on merge; existing YAML
+  comments are not preserved on rewrite (warned). Custom prompts, agents, and
+  memory live in the app database — imported instructions/persona/memory/
+  skills are skipped (warned).
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped

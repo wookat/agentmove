@@ -56,6 +56,7 @@ import { parseKimiServers, planKimiMcp, readKimiMcp } from "./adapters/kimi.js";
 import { parseGrokServers, planGrokMcp, readGrokConfig } from "./adapters/grok.js";
 import { parseVibeServers, planVibeMcp, readVibeConfig } from "./adapters/vibe.js";
 import { parseNanocoderServers, planNanocoderMcp, readNanocoderMcp } from "./adapters/nanocoder.js";
+import { parseLibrechatServers, planLibrechatMcp, readLibrechatConfig } from "./adapters/librechat.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1516,6 +1517,44 @@ const nanocoderProject: ProjectAdapter = {
   },
 };
 
+const librechatProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "librechat";
+    const config = await readLibrechatConfig(path.join(dir, "librechat.yaml"));
+    bundle.mcpServers = parseLibrechatServers(config, warnings);
+    warnings.push(
+      "instructions: librechat custom prompts, agents, and memory are app-managed (database); only mcpServers migrate",
+    );
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planLibrechatMcp(
+        bundle,
+        path.join(dir, "librechat.yaml"),
+        "librechat.yaml",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    if (bundle.instructions) {
+      warnings.push("instructions: librechat custom prompts are app-managed (database); skipped");
+    }
+    if (bundle.persona) warnings.push("persona: librechat has no persona file; skipped");
+    if (bundle.memory.length) {
+      warnings.push("memory: librechat memory is app-managed (database); skipped (consider --mif)");
+    }
+    if (bundle.skills.length) {
+      warnings.push("skills: librechat has no SKILL.md mechanism; skipped");
+    }
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1549,6 +1588,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   grok: grokProject,
   vibe: vibeProject,
   nanocoder: nanocoderProject,
+  librechat: librechatProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
