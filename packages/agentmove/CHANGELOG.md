@@ -1,5 +1,15 @@
 # agentmove-cli
 
+## 0.56.0
+
+### Minor Changes
+
+- 3dafd55: URL import polish: GitLab-style `/-/tree/<branch>[/<dir>]` URLs are recognized
+  (the `/-/` marker supports arbitrarily nested subgroups), and a pasted GitHub /
+  GitLab `blob` link to a `.json` file is rewritten to the raw file it renders
+  (`github.com/o/r/blob/…` → `raw.githubusercontent.com/…`, `/-/blob/` → `/-/raw/`)
+  so it imports as a config instead of failing on the HTML page.
+
 ## 0.55.0
 
 ### Minor Changes
