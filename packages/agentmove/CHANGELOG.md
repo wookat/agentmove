@@ -1,5 +1,11 @@
 # agentmove-cli
 
+## 0.42.0
+
+### Minor Changes
+
+- 470f8ee: Agent Skills support for GitHub Copilot CLI (`~/.copilot/skills/`, project `.github/skills/`) and Windsurf (`~/.codeium/windsurf/skills/`, project `.windsurf/skills/`): skills now migrate natively in both directions instead of being skipped with a warning.
+
 ## 0.41.0
 
 ### Minor Changes
