@@ -22,6 +22,7 @@ import { getProjectAdapter } from "./project.js";
 import { fromMif, toMif } from "./mif.js";
 import { decryptBundle, encryptBundle, isPackFile, requirePassphrase } from "./pack.js";
 import { isMcpJsonFile, isPluginDir, readMcpFile, readPlugin, writeMcpFile, writePlugin } from "./plugin.js";
+import { fetchRemoteInput, isRemoteInput } from "./remote.js";
 import fs from "node:fs/promises";
 
 const program = new Command();
@@ -240,7 +241,7 @@ program
   .command("import")
   .description("import an agentmove bundle into a client (dry-run by default)")
   .argument("<client>", "target client")
-  .option("-i, --in <dir>", "bundle directory, .agentpack file, Agent Plugin directory, or mcp.json file", "./agentmove-bundle")
+  .option("-i, --in <dir>", "bundle directory, .agentpack file, Agent Plugin directory, mcp.json file, or an http(s) URL (a .json URL is fetched, anything else is git-cloned)", "./agentmove-bundle")
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
   .option("--only <layers>", "comma-separated layers to import (mcp,skills,memory,instructions,persona)")
@@ -261,6 +262,9 @@ program
       },
     ) => {
       const mifWarnings: string[] = [];
+      if (isRemoteInput(opts.in)) {
+        opts.in = await fetchRemoteInput(opts.in, mifWarnings);
+      }
       let bundle: Bundle;
       if (opts.mif) {
         bundle = emptyBundle();

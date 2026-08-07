@@ -185,6 +185,9 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   `mcpServers` map: an Agent Plugins `mcp.json`, a Claude-style `.mcp.json`,
   a canonical team server list, …) directly into any client; transports are
   taken from `type`/`transport` or inferred from `command`/`url` with a warning
+- `import <client> -i <url>` — import straight from an http(s) URL: a `.json`
+  URL is fetched as a standalone MCP config, any other URL is `git clone`d and
+  auto-detected as an Agent Plugin or agentmove bundle repository
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations
