@@ -47,37 +47,7 @@ export async function writePlugin(bundle: Bundle, dir: string, name: string): Pr
   };
   await fs.writeFile(path.join(dir, "plugin.json"), JSON.stringify(manifest, null, 2) + "\n");
 
-  const mcpServers: Record<string, unknown> = {};
-  for (const s of bundle.mcpServers) {
-    const entry: Record<string, unknown> = {};
-    if (s.transport === "stdio") {
-      if (!s.command) {
-        warnings.push(`mcp:${s.name}: stdio server without a command; skipped in plugin mcp.json`);
-        continue;
-      }
-      entry.type = "stdio";
-      entry.command = s.command;
-      if (s.args?.length) entry.args = s.args;
-      if (s.env && Object.keys(s.env).length) entry.env = s.env;
-      if (s.cwd) {
-        warnings.push(
-          `mcp:${s.name}: cwd "${s.cwd}" dropped — Agent Plugins only allows plugin-relative or \${PLUGIN_ROOT}/\${PLUGIN_DATA} working directories`,
-        );
-      }
-    } else {
-      if (!s.url) {
-        warnings.push(`mcp:${s.name}: remote server without a url; skipped in plugin mcp.json`);
-        continue;
-      }
-      entry.type = s.transport === "sse" ? "sse" : "streamable-http";
-      entry.url = s.url;
-      if (s.headers && Object.keys(s.headers).length) entry.headers = s.headers;
-    }
-    if (s.enabled === false) {
-      warnings.push(`mcp:${s.name}: Agent Plugins has no disabled flag; exported as enabled`);
-    }
-    mcpServers[s.name] = entry;
-  }
+  const mcpServers = toMcpEntries(bundle.mcpServers, warnings, { keepCwd: false });
   if (Object.keys(mcpServers).length) {
     await fs.writeFile(
       path.join(dir, "mcp.json"),
@@ -137,6 +107,65 @@ export async function readPlugin(
   const skills: Skill[] = await readSkillsDir(path.join(dir, "skills"), warnings);
   bundle.skills = skills;
   return { bundle, warnings };
+}
+
+function toMcpEntries(
+  servers: McpServer[],
+  warnings: string[],
+  opts: { keepCwd: boolean },
+): Record<string, unknown> {
+  const mcpServers: Record<string, unknown> = {};
+  for (const s of servers) {
+    const entry: Record<string, unknown> = {};
+    if (s.transport === "stdio") {
+      if (!s.command) {
+        warnings.push(`mcp:${s.name}: stdio server without a command; skipped in mcp.json`);
+        continue;
+      }
+      entry.type = "stdio";
+      entry.command = s.command;
+      if (s.args?.length) entry.args = s.args;
+      if (s.env && Object.keys(s.env).length) entry.env = s.env;
+      if (s.cwd) {
+        if (opts.keepCwd) {
+          entry.cwd = s.cwd;
+        } else {
+          warnings.push(
+            `mcp:${s.name}: cwd "${s.cwd}" dropped — Agent Plugins only allows plugin-relative or \${PLUGIN_ROOT}/\${PLUGIN_DATA} working directories`,
+          );
+        }
+      }
+    } else {
+      if (!s.url) {
+        warnings.push(`mcp:${s.name}: remote server without a url; skipped in mcp.json`);
+        continue;
+      }
+      entry.type = s.transport === "sse" ? "sse" : "streamable-http";
+      entry.url = s.url;
+      if (s.headers && Object.keys(s.headers).length) entry.headers = s.headers;
+    }
+    if (s.enabled === false) {
+      warnings.push(`mcp:${s.name}: mcp.json has no disabled flag; exported as enabled`);
+    }
+    mcpServers[s.name] = entry;
+  }
+  return mcpServers;
+}
+
+/**
+ * Write the bundle's MCP layer as a standalone standard mcp.json (the Agent
+ * Plugins mcp.json shape with an explicit type on every entry). Unlike a
+ * plugin's mcp.json, a standalone file keeps `cwd` values.
+ */
+export async function writeMcpFile(servers: McpServer[], file: string): Promise<string[]> {
+  const warnings: string[] = [];
+  const mcpServers = toMcpEntries(servers, warnings, { keepCwd: true });
+  await fs.mkdir(path.dirname(path.resolve(file)), { recursive: true });
+  await fs.writeFile(
+    file,
+    JSON.stringify({ $schema: PLUGIN_MCP_SCHEMA, mcpServers }, null, 2) + "\n",
+  );
+  return warnings;
 }
 
 function parseMcpEntries(

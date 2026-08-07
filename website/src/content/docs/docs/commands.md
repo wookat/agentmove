@@ -119,6 +119,23 @@ inference. Entries that are neither are reported and dropped. Normal merge
 semantics, dry-run, and backups apply; a `.json` file without `mcpServers` is a
 data error (exit 3).
 
+## Standalone MCP config export: `export --mcp-json`
+
+The reverse direction: `export <client> --mcp-json <file>` also writes the MCP
+layer as a standalone standard `mcp.json` — an explicit `type` on every entry
+(`stdio` / `streamable-http` / `sse`), stamped with the Agent Plugins MCP
+schema, secrets redacted to `${VAR}` placeholders by default:
+
+```bash
+agentmove export claude-code --mcp-json team-mcp.json
+```
+
+The result is a shareable canonical server list any teammate can import into
+their own client (`import <client> -i team-mcp.json`) or feed to any other
+`mcpServers`-speaking tool. Unlike a plugin's `mcp.json`, a standalone file
+keeps `cwd` values; a disabled server is exported as enabled with a warning
+(the format has no disabled flag).
+
 ## Encrypted transport: `pack` / `unpack`
 
 `pack <bundle> [-o file]` encrypts a bundle directory into a single portable
