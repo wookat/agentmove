@@ -19,12 +19,30 @@ export function isRemoteInput(input: string): boolean {
  */
 const TREE_URL = /^(https?:\/\/[^/]+\/[^/]+\/[^/]+)\/tree\/([^/]+)(?:\/(.+?))?\/?$/;
 
+/**
+ * A GitLab-style tree URL: https://host/group[/subgroup…]/repo/-/tree/<branch>[/<subpath>].
+ * The explicit /-/ marker allows arbitrarily nested subgroups before the repo.
+ */
+const GITLAB_TREE_URL = /^(https?:\/\/[^/]+\/.+?)\/-\/tree\/([^/]+)(?:\/(.+?))?\/?$/;
+
 export function parseTreeUrl(
   input: string,
 ): { repo: string; branch: string; subpath?: string } | undefined {
-  const m = TREE_URL.exec(input);
+  const m = GITLAB_TREE_URL.exec(input) ?? TREE_URL.exec(input);
   if (!m) return undefined;
   return { repo: m[1]!, branch: m[2]!, subpath: m[3] };
+}
+
+/**
+ * Rewrite a web "blob" file URL to the raw file it renders, so a pasted
+ * GitHub/GitLab file link to a .json config fetches the file instead of the
+ * HTML page: github.com/o/r/blob/<ref>/<path> → raw.githubusercontent.com,
+ * and GitLab's /-/blob/ → /-/raw/.
+ */
+export function rewriteBlobUrl(input: string): string {
+  const gh = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/.exec(input);
+  if (gh) return `https://raw.githubusercontent.com/${gh[1]}/${gh[2]}/${gh[3]}`;
+  return input.replace(/^(https?:\/\/[^/]+\/.+?)\/-\/blob\//, "$1/-/raw/");
 }
 
 /**
@@ -44,14 +62,15 @@ export async function fetchRemoteInput(
   const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-remote-"));
 
   if (/\.json(\?.*)?$/.test(input)) {
+    const url = rewriteBlobUrl(input);
     let res: Response;
     try {
-      res = await fetch(input);
+      res = await fetch(url);
     } catch (e) {
       throw new CliError(`${input}: fetch failed (${(e as Error).message})`, EXIT_DATA);
     }
     if (!res.ok) {
-      throw new CliError(`${input}: fetch failed (HTTP ${res.status})`, EXIT_DATA);
+      throw new CliError(`${url}: fetch failed (HTTP ${res.status})`, EXIT_DATA);
     }
     const file = path.join(work, "remote-mcp.json");
     await fs.writeFile(file, await res.text());

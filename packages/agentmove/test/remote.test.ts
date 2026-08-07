@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { fetchRemoteInput, isRemoteInput, parseTreeUrl } from "../src/remote.js";
+import { fetchRemoteInput, isRemoteInput, parseTreeUrl, rewriteBlobUrl } from "../src/remote.js";
 import { isMcpJsonFile, isPluginDir, readMcpFile } from "../src/plugin.js";
 import { CliError } from "../src/model.js";
 
@@ -88,6 +88,29 @@ describe("remote import inputs", () => {
     });
     expect(parseTreeUrl("https://github.com/acme/skills")).toBeUndefined();
     expect(parseTreeUrl("https://github.com/acme/skills/blob/main/SKILL.md")).toBeUndefined();
+  });
+
+  it("parses GitLab-style /-/tree/ URLs, including subgroups", () => {
+    expect(
+      parseTreeUrl("https://gitlab.com/group/sub/repo/-/tree/main/skills/web"),
+    ).toEqual({ repo: "https://gitlab.com/group/sub/repo", branch: "main", subpath: "skills/web" });
+    expect(parseTreeUrl("https://gitlab.com/group/repo/-/tree/v2")).toEqual({
+      repo: "https://gitlab.com/group/repo",
+      branch: "v2",
+      subpath: undefined,
+    });
+  });
+
+  it("rewrites blob file URLs to their raw form", () => {
+    expect(rewriteBlobUrl("https://github.com/acme/dev/blob/main/team-mcp.json")).toBe(
+      "https://raw.githubusercontent.com/acme/dev/main/team-mcp.json",
+    );
+    expect(
+      rewriteBlobUrl("https://gitlab.com/group/sub/repo/-/blob/main/team-mcp.json"),
+    ).toBe("https://gitlab.com/group/sub/repo/-/raw/main/team-mcp.json");
+    expect(rewriteBlobUrl("https://example.com/team-mcp.json")).toBe(
+      "https://example.com/team-mcp.json",
+    );
   });
 
   it("fails with a data error when git clone fails", async () => {
