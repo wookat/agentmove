@@ -152,7 +152,8 @@ export type ClientId =
   | "xcode-claude"
   | "xcode-codex"
   | "xcode-gemini"
-  | "jetbrains";
+  | "jetbrains"
+  | "comate";
 
 export const CLIENT_IDS: ClientId[] = [
   "openclaw",
@@ -198,6 +199,7 @@ export const CLIENT_IDS: ClientId[] = [
   "xcode-codex",
   "xcode-gemini",
   "jetbrains",
+  "comate",
 ];
 
 export interface ExportResult {

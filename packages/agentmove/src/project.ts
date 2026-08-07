@@ -43,6 +43,7 @@ import { parseAmazonqServers, renderAmazonqServers } from "./adapters/amazonq.js
 import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/warp.js";
 import { parseJunieServers, renderJunieServers } from "./adapters/junie.js";
 import { parseTraeServers, planTraeMcp } from "./adapters/trae.js";
+import { parseComateServers, planComateMcp } from "./adapters/comate.js";
 import { parseCodebuddyServers, planCodebuddyMcp, readCodebuddyMcp } from "./adapters/codebuddy.js";
 import { parseQoderServers, planQoderMcp, readQoderSettings } from "./adapters/qoder.js";
 import {
@@ -1603,6 +1604,65 @@ const jetbrainsProject: ProjectAdapter = {
   },
 };
 
+const comateProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "comate";
+    const config = await readJsonMap(path.join(dir, ".comate/mcp.json"));
+    bundle.mcpServers = parseComateServers(config, warnings);
+    const rulesDir = path.join(dir, ".comate/rules");
+    if (await isDir(rulesDir)) {
+      const parts: string[] = [];
+      for (const name of (await listDir(rulesDir)).sort()) {
+        if (!name.endsWith(".mdr") && !name.endsWith(".md")) continue;
+        const content = await readText(path.join(rulesDir, name));
+        if (content) parts.push(`<!-- .comate/rules/${name} -->\n${content.trim()}`);
+      }
+      if (parts.length) {
+        bundle.instructions = parts.join("\n\n") + "\n";
+        warnings.push("comate project rules concatenated into instructions (frontmatter kept as-is)");
+      }
+    }
+    bundle.skills = await readSkillsDir(path.join(dir, ".comate/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planComateMcp(
+        bundle,
+        path.join(dir, ".comate/mcp.json"),
+        ".comate/mcp.json",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    if (bundle.instructions || bundle.persona) {
+      const body = [
+        "---",
+        "description:",
+        "globs:",
+        "alwaysApply: true",
+        "---",
+        "",
+        ...(bundle.instructions ? [bundle.instructions.trim(), ""] : []),
+        ...(bundle.persona
+          ? ["## Imported by agentmove: persona (SOUL.md)", "", bundle.persona.trim(), ""]
+          : []),
+      ].join("\n");
+      files.push({ path: ".comate/rules/agentmove-imported.mdr", content: body });
+      if (bundle.persona) warnings.push("persona: appended to .comate/rules/agentmove-imported.mdr (approximated)");
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: comate memories are app-managed under .comate; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".comate/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1630,6 +1690,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   jetbrains: jetbrainsProject,
   trae: traeProject,
   codebuddy: codebuddyProject,
+  comate: comateProject,
   qoder: qoderProject,
   auggie: auggieProject,
   kilo: kiloProject,

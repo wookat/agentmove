@@ -48,6 +48,7 @@ description: What AgentMove reads and writes for each client.
 | Xcode Codex | `xcode-codex` | `~/Library/Developer/Xcode/CodingAssistant/codex/` (macOS — Xcode 26's bundled Codex config root, isolated from `~/.codex`; same layout as Codex CLI: `config.toml` `[mcp_servers.*]`, `AGENTS.md` instructions; no documented skills directory) |
 | Xcode Gemini | `xcode-gemini` | `~/Library/Developer/Xcode/CodingAssistant/gemini/` (macOS — Xcode 26's bundled Gemini config root, isolated from `~/.gemini`; same layout as Gemini CLI: `settings.json` `mcpServers`, `GEMINI.md` instructions + "Gemini Added Memories") |
 | JetBrains AI Assistant | `jetbrains` | `~/.ai/mcp/mcp.json` (`mcpServers` map shared by the JetBrains AI agents in IntelliJ-family IDEs; entries have no `type` field — stdio uses `command`/`args`/`env` plus a native `workingDirectory` that round-trips as `cwd`, remote uses `url`/`headers` over Streamable HTTP; no per-server disabled flag — servers are toggled in the IDE settings UI); project scope: `.ai/mcp/mcp.json` + `.aiassistant/rules/*.md` project rules (merged on export, imports write `.aiassistant/rules/agentmove.md`); prompts and chat memory are IDE-managed. Junie is a separate JetBrains product (see `junie`) |
+| Baidu Comate | `comate` | `~/.comate/skills/` (global Agent Skills standard); MCP servers and rules are project-scoped — project scope covers `.comate/mcp.json` (`mcpServers`; entries have no `type` field — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; per-server enable/disable is toggled in the UI, not stored in the file), `.comate/rules/*.mdr` project rules (Cursor-style `description`/`globs`/`alwaysApply` frontmatter), and `.comate/skills/`; chat memory is app-managed under `.comate` |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -155,6 +156,14 @@ description: What AgentMove reads and writes for each client.
   enabled and SSE written as plain `url`, both warned; Trae only loads it
   after the "Enable Project MCP" toggle is on), `.trae/rules/` (imported rules
   land in `.trae/rules/agentmove-imported.md`), and `.trae/skills/`.
+- **Baidu Comate** MCP servers and rules are project-scoped only — at user
+  scope just global skills (`~/.comate/skills/`) migrate (warned).
+  `--project` covers `.comate/mcp.json` (no `type` or `disabled` fields —
+  disabled servers emitted enabled and SSE written as plain `url`, both
+  warned), `.comate/rules/*.mdr` (imported rules land in
+  `.comate/rules/agentmove-imported.mdr` with an `alwaysApply: true`
+  frontmatter), and `.comate/skills/`. Chat memory is app-managed under
+  `.comate` and skipped (warned).
 - **CodeBuddy** disabled state round-trips via the top-level
   `disabledMcpServers` name list; per-server `description` is client-specific
   (warned); `cwd` is not documented and dropped (warned); user rule files in
