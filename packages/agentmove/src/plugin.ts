@@ -27,6 +27,15 @@ export async function isPluginDir(dir: string): Promise<boolean> {
   return exists(path.join(dir, "plugin.json"));
 }
 
+export async function isMcpJsonFile(file: string): Promise<boolean> {
+  if (!file.endsWith(".json")) return false;
+  try {
+    return (await fs.stat(file)).isFile();
+  } catch {
+    return false;
+  }
+}
+
 export async function writePlugin(bundle: Bundle, dir: string, name: string): Promise<string[]> {
   const warnings: string[] = [];
   await fs.mkdir(dir, { recursive: true });
@@ -122,44 +131,95 @@ export async function readPlugin(
   if (mcpRaw !== undefined) {
     const data = parseFile<unknown>(mcpFile, mcpRaw, JSON.parse);
     const serversObj = isRecord(data) && isRecord(data.mcpServers) ? data.mcpServers : {};
-    const servers: McpServer[] = [];
-    for (const [name, entry] of Object.entries(serversObj)) {
-      if (!isRecord(entry) || typeof entry.type !== "string") {
-        warnings.push(`mcp:${name}: entry missing the required explicit type; dropped`);
-        continue;
-      }
-      if (entry.type === "stdio") {
-        if (typeof entry.command !== "string") {
-          warnings.push(`mcp:${name}: stdio entry missing command; dropped`);
-          continue;
-        }
-        servers.push({
-          name,
-          transport: "stdio",
-          command: entry.command,
-          args: stringArgs(entry.args, `mcp:${name}.args`, warnings),
-          env: asStringRecord(entry.env, `mcp:${name}.env`, warnings),
-          cwd: typeof entry.cwd === "string" ? entry.cwd : undefined,
-        });
-      } else if (entry.type === "streamable-http" || entry.type === "sse") {
-        if (typeof entry.url !== "string") {
-          warnings.push(`mcp:${name}: ${entry.type} entry missing url; dropped`);
-          continue;
-        }
-        servers.push({
-          name,
-          transport: entry.type === "sse" ? "sse" : "http",
-          url: entry.url,
-          headers: asStringRecord(entry.headers, `mcp:${name}.headers`, warnings),
-        });
-      } else {
-        warnings.push(`mcp:${name}: unknown type "${entry.type}"; dropped`);
-      }
-    }
-    bundle.mcpServers = servers;
+    bundle.mcpServers = parseMcpEntries(serversObj, warnings, { inferType: false });
   }
 
   const skills: Skill[] = await readSkillsDir(path.join(dir, "skills"), warnings);
   bundle.skills = skills;
+  return { bundle, warnings };
+}
+
+function parseMcpEntries(
+  serversObj: Record<string, unknown>,
+  warnings: string[],
+  opts: { inferType: boolean },
+): McpServer[] {
+  const servers: McpServer[] = [];
+  for (const [name, entry] of Object.entries(serversObj)) {
+    if (!isRecord(entry)) {
+      warnings.push(`mcp:${name}: entry is not an object; dropped`);
+      continue;
+    }
+    let type = typeof entry.type === "string" ? entry.type : undefined;
+    if (type === undefined && opts.inferType && typeof entry.transport === "string") {
+      type = entry.transport;
+    }
+    if (type === undefined && opts.inferType) {
+      if (typeof entry.command === "string") type = "stdio";
+      else if (typeof entry.url === "string") type = "streamable-http";
+      if (type !== undefined) {
+        warnings.push(`mcp:${name}: no explicit type; inferred ${type === "stdio" ? "stdio from command" : "streamable-http from url"}`);
+      }
+    }
+    if (type === undefined) {
+      warnings.push(`mcp:${name}: entry missing the required explicit type; dropped`);
+      continue;
+    }
+    if (type === "stdio") {
+      if (typeof entry.command !== "string") {
+        warnings.push(`mcp:${name}: stdio entry missing command; dropped`);
+        continue;
+      }
+      servers.push({
+        name,
+        transport: "stdio",
+        command: entry.command,
+        args: stringArgs(entry.args, `mcp:${name}.args`, warnings),
+        env: asStringRecord(entry.env, `mcp:${name}.env`, warnings),
+        cwd: typeof entry.cwd === "string" ? entry.cwd : undefined,
+      });
+    } else if (
+      type === "streamable-http" ||
+      type === "sse" ||
+      (opts.inferType && (type === "http" || type === "streamable_http" || type === "streamable"))
+    ) {
+      if (typeof entry.url !== "string") {
+        warnings.push(`mcp:${name}: ${type} entry missing url; dropped`);
+        continue;
+      }
+      servers.push({
+        name,
+        transport: type === "sse" ? "sse" : "http",
+        url: entry.url,
+        headers: asStringRecord(entry.headers, `mcp:${name}.headers`, warnings),
+      });
+    } else {
+      warnings.push(`mcp:${name}: unknown type "${type}"; dropped`);
+    }
+  }
+  return servers;
+}
+
+/**
+ * Read a standalone MCP config file (an Agent Plugins mcp.json, or the common
+ * `mcpServers` shape used by mcp.json/.mcp.json files across the ecosystem).
+ * More lenient than a plugin's mcp.json: the transport may be given as `type`
+ * or `transport`, and is inferred from `command`/`url` (with a warning) when
+ * omitted, since many clients' files carry no explicit type.
+ */
+export async function readMcpFile(
+  file: string,
+): Promise<{ bundle: Bundle; warnings: string[] }> {
+  const warnings: string[] = [];
+  const bundle = emptyBundle();
+  const raw = await readText(file);
+  if (raw === undefined) {
+    throw new CliError(`${file}: cannot read MCP config file`, EXIT_DATA);
+  }
+  const data = parseFile<unknown>(file, raw, JSON.parse);
+  if (!isRecord(data) || !isRecord(data.mcpServers)) {
+    throw new CliError(`${file}: not an MCP config file (missing mcpServers)`, EXIT_DATA);
+  }
+  bundle.mcpServers = parseMcpEntries(data.mcpServers, warnings, { inferType: true });
   return { bundle, warnings };
 }
