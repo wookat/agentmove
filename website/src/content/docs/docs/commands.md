@@ -119,6 +119,25 @@ inference. Entries that are neither are reported and dropped. Normal merge
 semantics, dry-run, and backups apply; a `.json` file without `mcpServers` is a
 data error (exit 3).
 
+## Importing from a URL: `import -i https://…`
+
+`-i` also accepts an http(s) URL, so a team can share one canonical source and
+everyone imports straight from it:
+
+```bash
+# a hosted mcp.json (raw GitHub URL, internal server, …)
+agentmove import cursor -i https://raw.githubusercontent.com/acme/dev/main/team-mcp.json
+
+# a git repository containing an Agent Plugin or an agentmove bundle
+agentmove import claude-code -i https://github.com/acme/team-plugin
+```
+
+A URL ending in `.json` is fetched and treated as a standalone MCP config; any
+other URL is `git clone`d (shallow) and auto-detected — an Agent Plugin
+(`plugin.json` at the root) or an agentmove bundle. Plain-`http` URLs work but
+emit an insecure-URL warning. Fetch/clone failures are data errors (exit 3).
+The usual dry-run/`--apply`, merge, and backup semantics apply.
+
 ## Standalone MCP config export: `export --mcp-json`
 
 The reverse direction: `export <client> --mcp-json <file>` also writes the MCP
