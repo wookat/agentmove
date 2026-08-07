@@ -23,5 +23,5 @@ in between so you can also carry your agent to another machine or keep it in git
 OpenClaw, Hermes Agent, Claude Code, Claude Desktop, OpenAI Codex CLI, Cursor,
 Gemini CLI, Windsurf, Cline, Zed, OpenHands, GitHub Copilot CLI, OpenCode,
 Qwen Code, Amp, VS Code, Kiro, Roo Code, Continue, Crush, goose, Antigravity,
-Droid, Amazon Q Developer CLI, Warp, Junie, LM Studio, Trae, CodeBuddy, Qoder CLI, Auggie CLI, Kilo Code, Kimi Code CLI, Grok CLI, Vibe Code CLI, Nanocoder, and Jan — thirty-seven clients, any direction.
+Droid, Amazon Q Developer CLI, Warp, Junie, LM Studio, Trae, CodeBuddy, Qoder CLI, Auggie CLI, Kilo Code, Kimi Code CLI, Grok CLI, Vibe Code CLI, Nanocoder, Jan, and AnythingLLM — thirty-eight clients, any direction.
 See [Supported clients](/docs/clients/) for exactly what is read and written for each.

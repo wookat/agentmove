@@ -146,7 +146,8 @@ export type ClientId =
   | "grok"
   | "vibe"
   | "nanocoder"
-  | "jan";
+  | "jan"
+  | "anythingllm";
 
 export const CLIENT_IDS: ClientId[] = [
   "openclaw",
@@ -186,6 +187,7 @@ export const CLIENT_IDS: ClientId[] = [
   "vibe",
   "nanocoder",
   "jan",
+  "anythingllm",
 ];
 
 export interface ExportResult {

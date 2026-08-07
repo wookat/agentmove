@@ -42,6 +42,7 @@ description: What AgentMove reads and writes for each client.
 | Vibe Code CLI | `vibe` | `~/.vibe/config.toml` (`[[mcp_servers]]` array of tables with explicit `transport` (`stdio`/`http`/`streamable-http`) inside the general config file — other keys are preserved on rewrite; stdio servers use `command`/`args`/`env`, remote servers use `url`/`headers`; `api_key_env`/`api_key_header`/`api_key_format`, `startup_timeout_sec`/`tool_timeout_sec`, and `enabled_tools`/`disabled_tools` are client-specific), `~/.vibe/AGENTS.md` (global instructions), `~/.vibe/skills/` (Agent Skills standard) |
 | Nanocoder | `nanocoder` | `~/.config/nanocoder/.mcp.json` (`mcpServers` map with explicit `transport` (`stdio`/`http`/`websocket`); stdio servers use `command`/`args`/`env`, HTTP servers use `url`/`headers`; the `enabled` boolean round-trips; `timeout`/`alwaysAllow`/`description`/`tags` are client-specific); instructions live in the project-root `AGENTS.md` only (`--project`); nanocoder skills use their own `skill.yaml` bundle format and are not migrated |
 | Jan | `jan` | `~/.local/share/Jan/data/mcp_config.json` (`mcpServers` map — the Jan data folder's config; every entry carries `command`/`args` (empty for remote servers), remote entries add `type` (`http`/`sse`) plus `url`/`headers`; the native `active` boolean round-trips as the enabled flag; `timeout`/`official` are client-specific; `mcpSettings` and other top-level keys are preserved on rewrite); assistants, models, and chats are app-managed |
+| AnythingLLM | `anythingllm` | `~/.config/anythingllm-desktop/storage/plugins/anythingllm_mcp_servers.json` (`mcpServers` map; stdio uses `command`/`args`/`env`, remote uses `url`/`headers` plus optional `type` — `streamable`/`http` select Streamable HTTP and an omitted `type` means SSE; `anythingllm.autoStart: false` round-trips as the disabled flag, `anythingllm.suppressedTools` is client-specific); workspaces, system prompts, and chats are app-managed (database) |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -219,6 +220,16 @@ description: What AgentMove reads and writes for each client.
   skipped (warned). The Jan data folder defaults to `~/.local/share/Jan/data`
   on Linux and can be relocated in Settings; relocated folders are not
   followed.
+- **AnythingLLM** remote entries use `type: streamable` (or `http`) for
+  Streamable HTTP and default to SSE when `type` is omitted — imported HTTP
+  servers are written as `type: streamable`; `anythingllm.autoStart: false`
+  round-trips as the disabled flag, and `anythingllm.suppressedTools` is
+  client-specific (warned, preserved on merge); `cwd` is not supported and
+  dropped (warned); workspaces, system prompts, and chat history live in the
+  app database — imported instructions/persona/memory/skills are skipped
+  (warned). The Linux desktop storage path is
+  `~/.config/anythingllm-desktop/storage`; macOS/Windows and Docker
+  `STORAGE_DIR` locations are not followed.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
