@@ -51,6 +51,7 @@ import {
   readAuggieRulesDir,
   readAuggieSettings,
 } from "./adapters/auggie.js";
+import { parseKiloServers, planKiloMcp, readKiloConfig } from "./adapters/kilo.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1307,6 +1308,51 @@ const auggieProject: ProjectAdapter = {
   },
 };
 
+const kiloProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "kilo";
+    const candidates = ["kilo.json", "kilo.jsonc", ".kilo/kilo.json", ".kilo/kilo.jsonc"].map(
+      (rel) => path.join(dir, rel),
+    );
+    const { config } = await readKiloConfig(candidates, []);
+    bundle.mcpServers = parseKiloServers(config, warnings);
+    bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".kilo/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    const candidates = ["kilo.json", "kilo.jsonc", ".kilo/kilo.json", ".kilo/kilo.jsonc"].map(
+      (rel) => path.join(dir, rel),
+    );
+    files.push(
+      ...(await planKiloMcp(
+        bundle,
+        candidates,
+        (abs) => path.relative(dir, abs),
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    const sections: { title: string; body: string }[] = [];
+    if (bundle.persona) {
+      sections.push({ title: "persona (SOUL.md)", body: bundle.persona });
+      warnings.push("persona: appended to AGENTS.md (approximated)");
+    }
+    if (bundle.instructions || sections.length) {
+      files.push({ path: "AGENTS.md", content: appendSections(bundle.instructions, sections) });
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: kilo has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".kilo/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1335,6 +1381,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   codebuddy: codebuddyProject,
   qoder: qoderProject,
   auggie: auggieProject,
+  kilo: kiloProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

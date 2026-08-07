@@ -36,6 +36,7 @@ description: What AgentMove reads and writes for each client.
 | CodeBuddy | `codebuddy` | `~/.codebuddy/.mcp.json` (`mcpServers`; `type` is `stdio`/`sse`/`http` and may be omitted — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; a top-level `disabledMcpServers` name list carries the disabled state; JSONC accepted; `~/.codebuddy/mcp.json` and `~/.codebuddy.json` are read as legacy fallbacks), `~/.codebuddy/CODEBUDDY.md` (user memory file), `~/.codebuddy/skills/` (Agent Skills standard) |
 | Qoder CLI | `qoder` | `~/.qoder/settings.json` (`mcpServers` key inside the general settings file — other settings are preserved on rewrite; `type` is `stdio`/`sse`/`http`/`ws` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.qoder/AGENTS.md` (user memory file), `~/.qoder/skills/` (Agent Skills standard) |
 | Auggie CLI | `auggie` | `~/.augment/settings.json` (`mcpServers` key inside the general settings file — other settings are preserved on rewrite; `type` is `stdio`/`sse`/`http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.augment/rules/*.md` (user rules, always applied), `~/.augment/skills/` (Agent Skills standard) |
+| Kilo Code | `kilo` | `~/.config/kilo/kilo.json` (`mcp` key inside the general config file — other keys are preserved on rewrite; `kilo.jsonc`/`config.json` also read, JSONC accepted; local servers use `type: "local"` with `command` as an argv array plus `environment`, remote servers use `type: "remote"` + `url`/`headers`; native `enabled` flag round-trips), `~/.config/kilo/AGENTS.md` (global instructions), `~/.kilo/skills/` (Agent Skills standard; shared by the CLI and the VS Code/JetBrains extensions) |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -163,6 +164,12 @@ description: What AgentMove reads and writes for each client.
   (approximated). `--project` covers `.augment/settings.json` (shared team
   settings — personal `.augment/settings.local.json` is machine-private and
   not migrated), `.augment/rules/`, and `.augment/skills/`.
+- **Kilo Code** has no `sse` type — SSE servers are emitted as `remote`
+  (warned); `cwd` is not supported and dropped (warned); per-server `timeout`
+  is client-specific (warned, preserved on merge); JSONC comments are not
+  preserved on rewrite (warned); memory has no durable store — skipped
+  (warned). `--project` covers `kilo.json`/`.kilo/kilo.json(c)`, root
+  `AGENTS.md`, and `.kilo/skills/`.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
