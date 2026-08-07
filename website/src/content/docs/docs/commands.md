@@ -95,6 +95,14 @@ agentmove export claude-code --plugin -o my-agent-plugin
 agentmove import codex -i some-plugin-from-the-ecosystem --apply
 ```
 
+If `-o` ends in `.zip`, `.tgz`, or `.tar.gz`, the plugin is packaged as a
+ready-to-publish archive (e.g. a GitHub release asset) instead of a
+directory — the plugin name is the filename without the suffix:
+
+```bash
+agentmove export claude-code --plugin -o my-agent-plugin.zip
+```
+
 Agent Plugins has no slot for instructions, persona, or memory — those layers
 are skipped with a warning (use a bundle or `--mif` for them). An absolute MCP
 `cwd` is dropped with a warning (the spec only allows plugin-relative or
@@ -285,7 +293,7 @@ A global install (`npm i -g agentmove-cli`) also links a man page:
 - `--mif <file>` (on `export`, `import`) — exchange the memory layer as a
   MIF v2 document.
 - `--plugin` (on `export`) — write an Agent Plugin instead of an agentmove
-  bundle.
+  bundle; an `-o` ending in `.zip`/`.tgz`/`.tar.gz` packages it as an archive.
 - `--debug` (or `AGENTMOVE_DEBUG=1`) — print a full stack trace on unexpected
   errors; by default errors are a single readable line.
 - `--json` (on `export`, `import`, `convert`, `diff`, `pack`, `unpack`, `doctor`, `clients`) — machine-readable JSON on

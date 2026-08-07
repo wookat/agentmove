@@ -192,6 +192,8 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   that directory, a `blob` link to a `.json` file fetches the raw file, and a
   `.zip`/`.tgz`/`.tar.gz` URL (release asset, "Download ZIP" link) is
   downloaded and extracted — local archive files work too
+- `export <client> --plugin -o my-plugin.zip` — package the plugin as a
+  ready-to-publish archive (`.zip`/`.tgz`/`.tar.gz`), e.g. a release asset
 - `import <client> -i <repo>` — import a skills repository (the
   [skills.sh](https://skills.sh) / `npx skills add owner/repo` ecosystem):
   `SKILL.md` directories under `skills/`, at the top level, or a single skill
