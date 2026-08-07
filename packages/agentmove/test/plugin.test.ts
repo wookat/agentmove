@@ -9,6 +9,7 @@ import {
   PLUGIN_SCHEMA,
   readMcpFile,
   readPlugin,
+  writeMcpFile,
   writePlugin,
 } from "../src/plugin.js";
 import { CliError, emptyBundle } from "../src/model.js";
@@ -187,6 +188,52 @@ describe("standalone mcp.json import", () => {
     expect(warnings.some((w) => w.includes("bare") && w.includes("inferred"))).toBe(true);
     expect(warnings.some((w) => w.includes("broken") && w.includes("dropped"))).toBe(true);
     expect(b.skills).toEqual([]);
+  });
+
+  it("writes a standalone mcp.json with explicit types and keeps cwd", async () => {
+    const file = path.join(dir, "team-mcp.json");
+    const servers = [
+      ...bundle().mcpServers,
+      {
+        name: "local",
+        transport: "stdio" as const,
+        command: "node",
+        cwd: "/home/me/tools",
+      },
+    ];
+    const warnings = await writeMcpFile(servers, file);
+    expect(warnings).toEqual([]);
+    const data = JSON.parse(await fs.readFile(file, "utf8")) as {
+      $schema: string;
+      mcpServers: Record<string, Record<string, unknown>>;
+    };
+    expect(data.$schema).toBe(PLUGIN_MCP_SCHEMA);
+    expect(data.mcpServers.filesystem.type).toBe("stdio");
+    expect(data.mcpServers.api.type).toBe("streamable-http");
+    expect(data.mcpServers.api.headers).toEqual({ Authorization: "Bearer ${API_TOKEN}" });
+    expect(data.mcpServers.legacy.type).toBe("sse");
+    expect(data.mcpServers.local.cwd).toBe("/home/me/tools");
+  });
+
+  it("round-trips servers through writeMcpFile + readMcpFile without warnings", async () => {
+    const file = path.join(dir, "roundtrip.json");
+    await writeMcpFile(bundle().mcpServers, file);
+    const { bundle: back, warnings } = await readMcpFile(file);
+    expect(warnings).toEqual([]);
+    expect(back.mcpServers.map((s) => [s.name, s.transport])).toEqual([
+      ["filesystem", "stdio"],
+      ["api", "http"],
+      ["legacy", "sse"],
+    ]);
+  });
+
+  it("warns when a disabled server is exported to mcp.json", async () => {
+    const file = path.join(dir, "disabled.json");
+    const warnings = await writeMcpFile(
+      [{ name: "off", transport: "stdio" as const, command: "node", enabled: false }],
+      file,
+    );
+    expect(warnings.some((w) => w.includes("off") && w.includes("disabled"))).toBe(true);
   });
 
   it("rejects a json file without mcpServers", async () => {

@@ -21,7 +21,7 @@ import { completionScript } from "./completion.js";
 import { getProjectAdapter } from "./project.js";
 import { fromMif, toMif } from "./mif.js";
 import { decryptBundle, encryptBundle, isPackFile, requirePassphrase } from "./pack.js";
-import { isMcpJsonFile, isPluginDir, readMcpFile, readPlugin, writePlugin } from "./plugin.js";
+import { isMcpJsonFile, isPluginDir, readMcpFile, readPlugin, writeMcpFile, writePlugin } from "./plugin.js";
 import fs from "node:fs/promises";
 
 const program = new Command();
@@ -168,6 +168,7 @@ program
   .option("--only <layers>", "comma-separated layers to export (mcp,skills,memory,instructions,persona)")
   .option("--project <dir>", "export the client's project-scoped files from a project directory")
   .option("--mif <file>", "also write the memory layer as a MIF v2 document (.mif.json)")
+  .option("--mcp-json <file>", "also write the MCP layer as a standalone standard mcp.json")
   .option("--plugin", "write an Agent Plugin (agent-plugins.org) instead of an agentmove bundle", false)
   .option("--json", "machine-readable JSON output", false)
   .action(
@@ -179,6 +180,7 @@ program
         only?: string;
         project?: string;
         mif?: string;
+        mcpJson?: string;
         plugin: boolean;
         json: boolean;
       },
@@ -203,6 +205,11 @@ program
         const doc = toMif(bundle.memory, bundle.manifest.exportedAt ?? new Date().toISOString());
         await fs.writeFile(opts.mif, JSON.stringify(doc, null, 2) + "\n");
       }
+      if (opts.mcpJson) {
+        const mcpWarnings = await writeMcpFile(bundle.mcpServers, opts.mcpJson);
+        if (opts.json) collected.push(...mcpWarnings);
+        else printWarnings(mcpWarnings);
+      }
       if (opts.json) {
         process.stdout.write(
           JSON.stringify(
@@ -210,6 +217,7 @@ program
               out: opts.out,
               format: opts.plugin ? "agent-plugin" : "bundle",
               mif: opts.mif ?? null,
+              mcpJson: opts.mcpJson ?? null,
               summary: bundleSummary(bundle),
               warnings: collected,
             },
@@ -223,6 +231,8 @@ program
         `exported ${summaryLine(bundle)} to ${opts.out}${opts.plugin ? " (Agent Plugin)" : ""}`,
       );
       if (opts.mif) console.log(`wrote ${bundle.memory.length} memory entr(ies) as MIF to ${opts.mif}`);
+      if (opts.mcpJson)
+        console.log(`wrote ${bundle.mcpServers.length} MCP server(s) as mcp.json to ${opts.mcpJson}`);
     },
   );
 
