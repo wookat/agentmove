@@ -1,5 +1,11 @@
 # agentmove-cli
 
+## 0.44.0
+
+### Minor Changes
+
+- d10c37e: Agent Skills support for Zed (`~/.agents/skills/`, project `.agents/skills/`) and Continue (`~/.continue/skills/`, project `.continue/skills/`): skills now migrate natively in both directions instead of being skipped with a warning.
+
 ## 0.43.0
 
 ### Minor Changes
