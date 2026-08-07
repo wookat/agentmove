@@ -128,7 +128,10 @@ export async function planKiloMcp(
   const existing = isRecord(config.mcp) ? config.mcp : {};
   config.mcp = mergeMcpRecords(existing, rendered, warnings, replaceMcp);
   if (touchesMcpConfig(bundle.mcpServers.length, replaceMcp)) {
-    files.push({ path: relOf(rel), content: JSON.stringify(config, null, 2) + "\n" });
+    files.push({
+      path: relOf(rel).split(path.sep).join("/"),
+      content: JSON.stringify(config, null, 2) + "\n",
+    });
   }
   return files;
 }

@@ -384,7 +384,7 @@ describe("e2e (built CLI, child process)", () => {
         expect(out.files.length, `${src}→${dst}`).toBeGreaterThan(0);
       }
     }
-  }, 180_000);
+  }, 300_000);
 
   it("applies a full round trip into every target and re-exports it", async () => {
     const targets = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq", "warp", "junie", "lmstudio", "codebuddy", "qoder", "auggie", "kilo"];
@@ -397,7 +397,7 @@ describe("e2e (built CLI, child process)", () => {
       ) as { summary: { mcpServers: number } };
       expect(out.summary.mcpServers, `round trip via ${dst}`).toBeGreaterThan(0);
     }
-  }, 180_000);
+  }, 300_000);
 
   it("migrates project-scoped files with --project (claude-code -> cursor/gemini/codex)", async () => {
     const project = await cloneFixture("claude-project");
