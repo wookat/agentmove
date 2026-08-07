@@ -154,6 +154,12 @@ branch is taken as the first path segment after `/tree/`, so branch names
 containing slashes cannot be addressed this way; a missing directory is a data
 error (exit 3).
 
+GitLab-style URLs work too — the `/-/` marker allows arbitrarily nested
+subgroups (`https://gitlab.com/group/subgroup/repo/-/tree/main/skills/web`).
+And a pasted **blob** link to a `.json` file is rewritten to the raw file it
+renders, so `https://github.com/acme/dev/blob/main/team-mcp.json` (or GitLab's
+`/-/blob/`) fetches the config instead of the HTML page.
+
 ## Importing a skills repository: `import -i <repo>`
 
 `-i` also accepts a **skills repository** — the layout used across the
