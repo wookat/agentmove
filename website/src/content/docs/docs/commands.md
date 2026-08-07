@@ -140,6 +140,20 @@ other URL is `git clone`d (shallow) and auto-detected — an Agent Plugin
 emit an insecure-URL warning. Fetch/clone failures are data errors (exit 3).
 The usual dry-run/`--apply`, merge, and backup semantics apply.
 
+A GitHub-style **tree URL** narrows the import to one branch and directory —
+handy for repos that carry many skills when you only want one:
+
+```bash
+# just this skill directory, from the main branch
+agentmove import claude-code -i https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines
+```
+
+The repository is cloned at that branch and the directory goes through the same
+auto-detection (a directory with a `SKILL.md` imports as a single skill). The
+branch is taken as the first path segment after `/tree/`, so branch names
+containing slashes cannot be addressed this way; a missing directory is a data
+error (exit 3).
+
 ## Importing a skills repository: `import -i <repo>`
 
 `-i` also accepts a **skills repository** — the layout used across the

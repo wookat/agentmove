@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { fetchRemoteInput, isRemoteInput } from "../src/remote.js";
+import { fetchRemoteInput, isRemoteInput, parseTreeUrl } from "../src/remote.js";
 import { isMcpJsonFile, isPluginDir, readMcpFile } from "../src/plugin.js";
 import { CliError } from "../src/model.js";
 
@@ -70,6 +70,24 @@ describe("remote import inputs", () => {
     // A local path clones the same way a remote git URL does.
     const dir = await fetchRemoteInput(src, []);
     expect(await isPluginDir(dir)).toBe(true);
+  });
+
+  it("parses tree URLs into repo, branch, and subpath", () => {
+    expect(
+      parseTreeUrl("https://github.com/acme/skills/tree/main/skills/web-design"),
+    ).toEqual({ repo: "https://github.com/acme/skills", branch: "main", subpath: "skills/web-design" });
+    expect(parseTreeUrl("https://github.com/acme/skills/tree/v2")).toEqual({
+      repo: "https://github.com/acme/skills",
+      branch: "v2",
+      subpath: undefined,
+    });
+    expect(parseTreeUrl("https://github.com/acme/skills/tree/main/dir/")).toEqual({
+      repo: "https://github.com/acme/skills",
+      branch: "main",
+      subpath: "dir",
+    });
+    expect(parseTreeUrl("https://github.com/acme/skills")).toBeUndefined();
+    expect(parseTreeUrl("https://github.com/acme/skills/blob/main/SKILL.md")).toBeUndefined();
   });
 
   it("fails with a data error when git clone fails", async () => {
