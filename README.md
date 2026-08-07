@@ -2,7 +2,7 @@
 
 **Move your AI agent between clients.** The pandoc of agent ecosystems: migrate
 **config + MCP servers + skills + memory + persona/instructions** between
-thirty-five clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
+thirty-six clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
 Gemini CLI, VS Code, Cline, Continue, and more (see the full table below) — in
 any direction, with dry-run previews, diffs, and honest loss reporting.
 
@@ -53,7 +53,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all thirty-five clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all thirty-six clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -133,6 +133,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Kimi Code CLI | `kimi` | `~/.kimi-code/mcp.json` (`mcpServers` key; stdio uses `command`/`args`/`env`/`cwd`, HTTP uses plain `url`, SSE sets `transport: "sse"`; native `enabled` flag), `~/.kimi-code/AGENTS.md` (global instructions), `~/.kimi-code/skills/` (Agent Skills standard) |
 | Grok CLI | `grok` | `~/.grok/config.toml` (`[mcp_servers.*]` tables; stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.grok/AGENTS.md` (global rules), `~/.grok/skills/` (Agent Skills standard) |
 | Vibe Code CLI | `vibe` | `~/.vibe/config.toml` (`[[mcp_servers]]` array of tables with explicit `transport`; stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.vibe/AGENTS.md` (global instructions), `~/.vibe/skills/` (Agent Skills standard) |
+| Nanocoder | `nanocoder` | `~/.config/nanocoder/.mcp.json` (`mcpServers` map with explicit `transport`; stdio uses `command`/`args`/`env`, HTTP uses `url`/`headers`, `enabled` flag round-trips; websocket servers skipped); instructions live in the project-root `AGENTS.md` (`--project`), nanocoder skills use their own `skill.yaml` bundle format and are not migrated |
 
 ## Commands
 

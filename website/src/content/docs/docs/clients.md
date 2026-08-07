@@ -40,6 +40,7 @@ description: What AgentMove reads and writes for each client.
 | Kimi Code CLI | `kimi` | `~/.kimi-code/mcp.json` (`mcpServers` key; stdio uses `command`/`args`/`env`/`cwd`, HTTP uses a plain `url` with optional `headers`, legacy SSE sets `transport: "sse"`; native `enabled` flag round-trips; `bearerTokenEnvVar`/`startupTimeoutMs`/`toolTimeoutMs`/`enabledTools`/`disabledTools` are client-specific), `~/.kimi-code/AGENTS.md` (global instructions), `~/.kimi-code/skills/` (Agent Skills standard; `$KIMI_CODE_HOME` relocations are not followed) |
 | Grok CLI | `grok` | `~/.grok/config.toml` (`[mcp_servers.*]` tables inside the general config file — other tables are preserved on rewrite; stdio servers use `command`/`args`/`env`, remote servers use `url`/`headers`; `startup_timeout_sec`/`tool_timeout_sec` are client-specific; `${VAR}` placeholders expand natively at load time), `~/.grok/AGENTS.md` (global rules), `~/.grok/skills/` (Agent Skills standard) |
 | Vibe Code CLI | `vibe` | `~/.vibe/config.toml` (`[[mcp_servers]]` array of tables with explicit `transport` (`stdio`/`http`/`streamable-http`) inside the general config file — other keys are preserved on rewrite; stdio servers use `command`/`args`/`env`, remote servers use `url`/`headers`; `api_key_env`/`api_key_header`/`api_key_format`, `startup_timeout_sec`/`tool_timeout_sec`, and `enabled_tools`/`disabled_tools` are client-specific), `~/.vibe/AGENTS.md` (global instructions), `~/.vibe/skills/` (Agent Skills standard) |
+| Nanocoder | `nanocoder` | `~/.config/nanocoder/.mcp.json` (`mcpServers` map with explicit `transport` (`stdio`/`http`/`websocket`); stdio servers use `command`/`args`/`env`, HTTP servers use `url`/`headers`; the `enabled` boolean round-trips; `timeout`/`alwaysAllow`/`description`/`tags` are client-specific); instructions live in the project-root `AGENTS.md` only (`--project`); nanocoder skills use their own `skill.yaml` bundle format and are not migrated |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -196,6 +197,15 @@ description: What AgentMove reads and writes for each client.
   are client-specific (warned, preserved on merge); memory has no durable
   store — skipped (warned). `--project` covers `.vibe/config.toml`, root
   `AGENTS.md`, and `.vibe/skills/`.
+- **Nanocoder** `websocket` servers have no portable equivalent and are
+  skipped on export (warned); SSE servers are emitted as `http` entries
+  (warned); `cwd` is not supported and dropped (warned);
+  `timeout`/`alwaysAllow`/`description`/`tags` are client-specific (warned,
+  preserved on merge); user-level instructions have no slot — nanocoder reads
+  `AGENTS.md` from the project root only (use `--project`); skills use
+  nanocoder's own `skill.yaml` bundle format, not the Agent Skills standard —
+  skipped (warned); memory has no durable store — skipped (warned).
+  `--project` covers `.mcp.json` and the root `AGENTS.md`.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
