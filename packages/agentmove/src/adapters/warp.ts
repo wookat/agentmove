@@ -34,7 +34,7 @@ const SKILLS_REL = ".warp/skills";
 
 const WRAPPER_KEYS = ["mcpServers", "mcp_servers", "servers"] as const;
 
-async function readJsonMap(file: string): Promise<Record<string, unknown>> {
+export async function readJsonMap(file: string): Promise<Record<string, unknown>> {
   const raw = await readText(file);
   if (raw === undefined) return {};
   const data = parseFile<unknown>(file, raw, JSON.parse);

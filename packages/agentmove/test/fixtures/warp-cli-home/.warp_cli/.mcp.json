@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": { "FS_API_KEY": "test-not-a-real-token" },
+      "working_directory": "/tmp"
+    },
+    "api-server": {
+      "url": "https://example.com/mcp",
+      "headers": { "Authorization": "Bearer test-not-a-real-token" }
+    }
+  }
+}
