@@ -1,0 +1,15 @@
+[cli]
+theme = "dark"
+
+[mcp_servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+
+[mcp_servers.filesystem.env]
+FS_API_KEY = "test-not-a-real-token"
+
+[mcp_servers.api-server]
+url = "https://mcp.example.com/mcp"
+
+[mcp_servers.api-server.headers]
+Authorization = "Bearer test-not-a-real-token"
