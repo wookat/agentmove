@@ -1406,6 +1406,54 @@ const kimiProject: ProjectAdapter = {
   },
 };
 
+const museProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "muse";
+    bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".agents/skills"), warnings);
+    const memoryDir = path.join(dir, ".agents/memory");
+    const index = await readText(path.join(memoryDir, "MEMORY.md"));
+    if (index) bundle.memory.push({ content: index, source: "MEMORY.md", kind: "long-term" });
+    for (const f of (await listDir(memoryDir)).sort()) {
+      if (!f.endsWith(".md") || f === "MEMORY.md") continue;
+      const content = await readText(path.join(memoryDir, f));
+      if (content) bundle.memory.push({ content, source: `memory/${f}`, kind: "long-term" });
+    }
+    warnings.push("mcp: muse MCP servers are user-scoped (~/.config/muse/settings.json); none at project scope");
+    return { bundle, warnings };
+  },
+  async planImport(bundle, _dir, _opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    if (bundle.mcpServers.length) {
+      warnings.push(
+        "mcp: muse MCP servers live in ~/.config/muse/settings.json (user scope); not written at project scope",
+      );
+    }
+    const sections: { title: string; body: string }[] = [];
+    if (bundle.persona) {
+      sections.push({ title: "persona (SOUL.md)", body: bundle.persona });
+      warnings.push("persona: appended to AGENTS.md (approximated)");
+    }
+    if (bundle.instructions || sections.length) {
+      files.push({ path: "AGENTS.md", content: appendSections(bundle.instructions, sections) });
+    }
+    if (bundle.memory.length) {
+      const body = bundle.memory
+        .map((m) => `## ${m.source}\n\n${m.content.trim()}`)
+        .join("\n\n");
+      files.push({ path: ".agents/memory/agentmove.md", content: body + "\n" });
+      warnings.push(
+        "memory: written to .agents/memory/agentmove.md; add an index line to .agents/memory/MEMORY.md so muse surfaces it",
+      );
+    }
+    files.push(...planSkills(bundle.skills, ".agents/skills"));
+    return { files, warnings };
+  },
+};
+
 const grokProject: ProjectAdapter = {
   async exportProject(dir) {
     const warnings: string[] = [];
@@ -1701,6 +1749,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   vibe: vibeProject,
   nanocoder: nanocoderProject,
   librechat: librechatProject,
+  muse: museProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
