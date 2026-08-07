@@ -90,6 +90,35 @@ export async function extractArchive(file: string): Promise<string> {
 }
 
 /**
+ * Archive a directory into a .zip / .tgz / .tar.gz file (the directory itself
+ * becomes the single top-level entry). Uses system tools: `tar -czf` for
+ * tarballs; for zip, `zip -r` first then `tar -a -cf` (bsdtar on Windows and
+ * macOS creates zip natively).
+ */
+export async function createArchive(srcDir: string, outFile: string): Promise<void> {
+  const parent = path.dirname(path.resolve(srcDir));
+  const base = path.basename(path.resolve(srcDir));
+  const out = path.resolve(outFile);
+  const isZip = /\.zip$/i.test(out);
+  const attempts: [string, string[], string | undefined][] = isZip
+    ? [
+        ["zip", ["-qr", out, base], parent],
+        ["tar", ["-a", "-cf", out, "-C", parent, base], undefined],
+      ]
+    : [["tar", ["-czf", out, "-C", parent, base], undefined]];
+  let lastError = "";
+  for (const [cmd, args, cwd] of attempts) {
+    try {
+      await execFileAsync(cmd, args, cwd ? { cwd } : {});
+      return;
+    } catch (e) {
+      lastError = (e as Error).message.split("\n")[0]!;
+    }
+  }
+  throw new CliError(`${outFile}: archive creation failed (${lastError})`, EXIT_DATA);
+}
+
+/**
  * Resolve an http(s) import source to a local path the normal detection chain
  * can handle: a URL ending in .json is fetched to a temp file (standalone
  * mcp.json), a .zip / .tgz / .tar.gz URL is downloaded and extracted (an

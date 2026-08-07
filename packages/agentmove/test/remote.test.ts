@@ -5,6 +5,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import {
+  createArchive,
   extractArchive,
   fetchRemoteInput,
   isArchiveInput,
@@ -138,6 +139,18 @@ describe("remote import inputs", () => {
     const dir = await extractArchive(archive);
     expect(path.basename(dir)).toBe("my-skills");
     expect(await fs.readFile(path.join(dir, "skills", "web", "SKILL.md"), "utf8")).toBe("# web\n");
+  });
+
+  it("round-trips a directory through createArchive and extractArchive", async () => {
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-test-"));
+    const src = path.join(work, "my-plugin");
+    await fs.mkdir(path.join(src, "skills", "rev"), { recursive: true });
+    await fs.writeFile(path.join(src, "skills", "rev", "SKILL.md"), "# rev\n");
+    const archive = path.join(work, "my-plugin.tgz");
+    await createArchive(src, archive);
+    const dir = await extractArchive(archive);
+    expect(path.basename(dir)).toBe("my-plugin");
+    expect(await fs.readFile(path.join(dir, "skills", "rev", "SKILL.md"), "utf8")).toBe("# rev\n");
   });
 
   it("fails with a data error on a corrupt archive", async () => {

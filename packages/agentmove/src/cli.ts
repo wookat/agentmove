@@ -23,7 +23,7 @@ import { fromMif, toMif } from "./mif.js";
 import { decryptBundle, encryptBundle, isPackFile, requirePassphrase } from "./pack.js";
 import { isMcpJsonFile, isPluginDir, readMcpFile, readPlugin, writeMcpFile, writePlugin } from "./plugin.js";
 import { isSkillsRepo, readSkillsRepo } from "./skillsrepo.js";
-import { extractArchive, fetchRemoteInput, isArchiveInput, isRemoteInput } from "./remote.js";
+import { createArchive, extractArchive, fetchRemoteInput, isArchiveInput, isRemoteInput } from "./remote.js";
 import fs from "node:fs/promises";
 
 const program = new Command();
@@ -171,7 +171,7 @@ program
   .option("--project <dir>", "export the client's project-scoped files from a project directory")
   .option("--mif <file>", "also write the memory layer as a MIF v2 document (.mif.json)")
   .option("--mcp-json <file>", "also write the MCP layer as a standalone standard mcp.json")
-  .option("--plugin", "write an Agent Plugin (agent-plugins.org) instead of an agentmove bundle", false)
+  .option("--plugin", "write an Agent Plugin (agent-plugins.org) instead of an agentmove bundle; an -o ending in .zip/.tgz/.tar.gz writes the plugin as an archive", false)
   .option("--json", "machine-readable JSON output", false)
   .action(
     async (
@@ -196,10 +196,20 @@ program
       );
       if (opts.only) bundle = filterBundle(bundle, parseLayers(opts.only));
       if (opts.plugin) {
-        const name = path.basename(path.resolve(opts.out));
-        const pluginWarnings = await writePlugin(bundle, opts.out, name);
-        if (opts.json) collected.push(...pluginWarnings);
-        else printWarnings(pluginWarnings);
+        if (isArchiveInput(opts.out)) {
+          const name = path.basename(path.resolve(opts.out)).replace(/\.(zip|tgz|tar\.gz)$/i, "");
+          const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-plugin-"));
+          const stage = path.join(work, name);
+          const pluginWarnings = await writePlugin(bundle, stage, name);
+          await createArchive(stage, opts.out);
+          if (opts.json) collected.push(...pluginWarnings);
+          else printWarnings(pluginWarnings);
+        } else {
+          const name = path.basename(path.resolve(opts.out));
+          const pluginWarnings = await writePlugin(bundle, opts.out, name);
+          if (opts.json) collected.push(...pluginWarnings);
+          else printWarnings(pluginWarnings);
+        }
       } else {
         await writeBundle(bundle, opts.out);
       }
