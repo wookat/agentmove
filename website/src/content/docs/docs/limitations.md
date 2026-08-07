@@ -24,6 +24,7 @@ user-editable files:
 | Amp | No durable memory store — imported memory is appended to `~/AGENTS.md` (approximated, warned). |
 | CodeBuddy | Auto-memory is app-managed runtime data — imported memory is **skipped** with a warning (`CODEBUDDY.md` migrates as instructions). |
 | Qoder CLI | Auto-memory is app-managed runtime data — imported memory is **skipped** with a warning (`~/.qoder/AGENTS.md` migrates as instructions). |
+| Auggie CLI | Augment Memories are app-managed — imported memory is **skipped** with a warning (`~/.augment/rules/` migrates as instructions). |
 | Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid / Amazon Q Developer CLI / Warp / Junie / LM Studio / Trae | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
 | OpenClaw / Hermes | File-based (`MEMORY.md`, daily files, `§` entries) — migrates fully, both directions. |
 
@@ -57,6 +58,8 @@ persona, and a later export won't recover it as a separate `persona.md`.
   project skills in `.codebuddy/skills/` migrate with `--project`.
 - Qoder CLI global skills live in `~/.qoder/skills/` and migrate natively;
   project skills in `.qoder/skills/` migrate with `--project`.
+- Auggie CLI global skills live in `~/.augment/skills/` and migrate natively;
+  project skills in `.augment/skills/` migrate with `--project`.
 - Binary assets inside skill directories are currently skipped with a warning.
 
 ## MCP servers
@@ -68,7 +71,7 @@ Near-lossless, with these edges:
 - HTTP `headers` are not documented for Hermes — dropped when importing there.
 - `disabled` flags don't exist in Claude Code / Cursor / Gemini / Copilot CLI /
   Qwen Code / Windsurf / Zed / OpenHands / Amp / VS Code / Continue /
-  Claude Desktop / Warp / Junie / LM Studio / Trae / Qoder CLI — servers are emitted enabled, with a warning. (Cline,
+  Claude Desktop / Warp / Junie / LM Studio / Trae / Qoder CLI / Auggie CLI — servers are emitted enabled, with a warning. (Cline,
   OpenCode, Kiro, Roo Code, Crush, Antigravity, Droid, Amazon Q Developer
   CLI, and goose keep the
   flag natively; CodeBuddy keeps it via its top-level `disabledMcpServers`

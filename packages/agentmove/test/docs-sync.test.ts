@@ -33,6 +33,8 @@ const COUNT_WORDS: Record<number, string> = {
   28: "twenty-eight",
   29: "twenty-nine",
   30: "thirty",
+  31: "thirty-one",
+  32: "thirty-two",
 };
 
 describe("website docs stay in sync with adapters", () => {

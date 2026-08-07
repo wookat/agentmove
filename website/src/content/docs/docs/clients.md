@@ -35,6 +35,7 @@ description: What AgentMove reads and writes for each client.
 | Trae | `trae` | `~/.trae/skills/` (global Agent Skills standard); user-level MCP servers, rules, and memories are app-managed (Settings UI) — project scope is where Trae's files live: `.trae/mcp.json` (`mcpServers`; entries have no `type` field — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `.trae/rules/*.md`, and `.trae/skills/` |
 | CodeBuddy | `codebuddy` | `~/.codebuddy/.mcp.json` (`mcpServers`; `type` is `stdio`/`sse`/`http` and may be omitted — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`; a top-level `disabledMcpServers` name list carries the disabled state; JSONC accepted; `~/.codebuddy/mcp.json` and `~/.codebuddy.json` are read as legacy fallbacks), `~/.codebuddy/CODEBUDDY.md` (user memory file), `~/.codebuddy/skills/` (Agent Skills standard) |
 | Qoder CLI | `qoder` | `~/.qoder/settings.json` (`mcpServers` key inside the general settings file — other settings are preserved on rewrite; `type` is `stdio`/`sse`/`http`/`ws` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.qoder/AGENTS.md` (user memory file), `~/.qoder/skills/` (Agent Skills standard) |
+| Auggie CLI | `auggie` | `~/.augment/settings.json` (`mcpServers` key inside the general settings file — other settings are preserved on rewrite; `type` is `stdio`/`sse`/`http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`), `~/.augment/rules/*.md` (user rules, always applied), `~/.augment/skills/` (Agent Skills standard) |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -154,6 +155,14 @@ description: What AgentMove reads and writes for each client.
   and skipped on import (warned). `--project` covers `.mcp.json` at the
   project root, `AGENTS.md` (legacy `AGENTS.local.md` is read), and
   `.qoder/skills/`.
+- **Auggie CLI** has no per-server disabled flag — disabled servers are
+  emitted enabled (warned); `cwd` is not documented and dropped (warned);
+  multiple user rules files are merged into one instructions document on
+  export (warned); Augment Memories are app-managed and skipped on import
+  (warned); persona is appended to `~/.augment/rules/agentmove.md`
+  (approximated). `--project` covers `.augment/settings.json` (shared team
+  settings — personal `.augment/settings.local.json` is machine-private and
+  not migrated), `.augment/rules/`, and `.augment/skills/`.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
