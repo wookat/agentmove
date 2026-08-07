@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   Bundle,
   ClientAdapter,
+  ClientId,
   emptyBundle,
   ExportResult,
   FilePlan,
@@ -13,8 +14,6 @@ import {
 import { exists, isDir, readText } from "../fsutil.js";
 import { mergeMcpRecords, parseCommonMcpEntry, renderCommonMcpEntry, touchesMcpConfig } from "./shared.js";
 
-const SETTINGS_REL = ".gemini/settings.json";
-const CONTEXT_REL = ".gemini/GEMINI.md";
 const MEMORY_HEADING = "## Gemini Added Memories";
 
 function splitContext(content: string): { instructions?: string; memories: string[] } {
@@ -33,93 +32,119 @@ function splitContext(content: string): { instructions?: string; memories: strin
   return { instructions: instructions || undefined, memories };
 }
 
-export const gemini: ClientAdapter = {
+export interface GeminiStyleLayout {
+  id: ClientId;
+  label: string;
+  defaultPath: string;
+  /** Directory holding settings.json/GEMINI.md, relative to home. */
+  configDir: string;
+}
+
+/**
+ * Gemini CLI stores settings.json + GEMINI.md in a config directory
+ * (~/.gemini for the standalone CLI, its own root under ~/Library for
+ * Xcode's bundled Gemini agent).
+ */
+export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter {
+  const { id, configDir } = layout;
+  const SETTINGS_REL = `${configDir}/settings.json`;
+  const CONTEXT_REL = `${configDir}/GEMINI.md`;
+
+  return {
+    id,
+    label: layout.label,
+    defaultPath: layout.defaultPath,
+
+    async detect(home) {
+      return (await exists(path.join(home, SETTINGS_REL))) || (await isDir(path.join(home, configDir)));
+    },
+
+    async exportBundle(home): Promise<ExportResult> {
+      const warnings: string[] = [];
+      const bundle: Bundle = emptyBundle();
+      bundle.manifest.exportedFrom = id;
+
+      const settingsFile = path.join(home, SETTINGS_REL);
+      const raw = await readText(settingsFile);
+      let settings: Record<string, unknown> = {};
+      if (raw !== undefined) {
+        const data = parseFile<unknown>(settingsFile, raw, JSON.parse);
+        if (isRecord(data)) settings = data;
+      }
+      bundle.config.raw = settings;
+      const serversObj = isRecord(settings.mcpServers) ? settings.mcpServers : {};
+      const servers: McpServer[] = [];
+      for (const [name, entry] of Object.entries(serversObj)) {
+        const s = parseCommonMcpEntry(name, entry, warnings);
+        if (s) servers.push(s);
+      }
+      bundle.mcpServers = servers;
+
+      const context = await readText(path.join(home, CONTEXT_REL));
+      if (context) {
+        const { instructions, memories } = splitContext(context);
+        bundle.instructions = instructions;
+        bundle.memory = memories.map((content) => ({
+          content,
+          source: "GEMINI.md#gemini-added-memories",
+          kind: "long-term" as const,
+        }));
+      }
+      if (await isDir(path.join(home, `${configDir}/extensions`))) {
+        warnings.push(`${id} extensions are not exported in v0 (install them on the target machine instead)`);
+      }
+      return { bundle, warnings };
+    },
+
+    async planImport(bundle, home, opts): Promise<ImportResult> {
+      const warnings: string[] = [];
+      const files: FilePlan[] = [];
+
+      const settingsFile = path.join(home, SETTINGS_REL);
+      const raw = await readText(settingsFile);
+      let settings: Record<string, unknown> = {};
+      if (raw !== undefined) {
+        const data = parseFile<unknown>(settingsFile, raw, JSON.parse);
+        if (isRecord(data)) settings = data;
+      }
+      const mcpServers: Record<string, unknown> = {};
+      for (const s of bundle.mcpServers) {
+        if (s.enabled === false) {
+          warnings.push(`mcp:${s.name}: ${id} has no disabled flag; server emitted as enabled`);
+        }
+        mcpServers[s.name] = renderCommonMcpEntry(s, false);
+      }
+      const existing = isRecord(settings.mcpServers) ? settings.mcpServers : {};
+      settings.mcpServers = mergeMcpRecords(existing, mcpServers, warnings, opts?.replaceMcp ?? false);
+      if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+        files.push({ path: SETTINGS_REL, content: JSON.stringify(settings, null, 2) + "\n" });
+      }
+
+      const parts: string[] = [];
+      if (bundle.instructions) parts.push(bundle.instructions.trim());
+      if (bundle.persona) {
+        parts.push(`## Imported by agentmove: persona (SOUL.md)\n\n${bundle.persona.trim()}`);
+        warnings.push(`persona: ${id} has no persona file; appended to ~/${CONTEXT_REL} (approximated)`);
+      }
+      if (bundle.memory.length) {
+        parts.push(
+          `${MEMORY_HEADING}\n` +
+            bundle.memory.map((e) => `- ${e.content.trim().replace(/\n/g, " ")}`).join("\n"),
+        );
+      }
+      if (parts.length) files.push({ path: CONTEXT_REL, content: parts.join("\n\n") + "\n" });
+
+      if (bundle.skills.length) {
+        warnings.push(`skills: ${id} has no SKILL.md mechanism; skipped (consider a gemini extension)`);
+      }
+      return { files, warnings };
+    },
+  };
+}
+
+export const gemini: ClientAdapter = makeGeminiStyleAdapter({
   id: "gemini",
   label: "Gemini CLI",
   defaultPath: "~/.gemini",
-
-  async detect(home) {
-    return (await exists(path.join(home, SETTINGS_REL))) || (await isDir(path.join(home, ".gemini")));
-  },
-
-  async exportBundle(home): Promise<ExportResult> {
-    const warnings: string[] = [];
-    const bundle: Bundle = emptyBundle();
-    bundle.manifest.exportedFrom = "gemini";
-
-    const settingsFile = path.join(home, SETTINGS_REL);
-    const raw = await readText(settingsFile);
-    let settings: Record<string, unknown> = {};
-    if (raw !== undefined) {
-      const data = parseFile<unknown>(settingsFile, raw, JSON.parse);
-      if (isRecord(data)) settings = data;
-    }
-    bundle.config.raw = settings;
-    const serversObj = isRecord(settings.mcpServers) ? settings.mcpServers : {};
-    const servers: McpServer[] = [];
-    for (const [name, entry] of Object.entries(serversObj)) {
-      const s = parseCommonMcpEntry(name, entry, warnings);
-      if (s) servers.push(s);
-    }
-    bundle.mcpServers = servers;
-
-    const context = await readText(path.join(home, CONTEXT_REL));
-    if (context) {
-      const { instructions, memories } = splitContext(context);
-      bundle.instructions = instructions;
-      bundle.memory = memories.map((content) => ({
-        content,
-        source: "GEMINI.md#gemini-added-memories",
-        kind: "long-term" as const,
-      }));
-    }
-    if (await isDir(path.join(home, ".gemini/extensions"))) {
-      warnings.push("gemini extensions are not exported in v0 (install them on the target machine instead)");
-    }
-    return { bundle, warnings };
-  },
-
-  async planImport(bundle, home, opts): Promise<ImportResult> {
-    const warnings: string[] = [];
-    const files: FilePlan[] = [];
-
-    const settingsFile = path.join(home, SETTINGS_REL);
-    const raw = await readText(settingsFile);
-    let settings: Record<string, unknown> = {};
-    if (raw !== undefined) {
-      const data = parseFile<unknown>(settingsFile, raw, JSON.parse);
-      if (isRecord(data)) settings = data;
-    }
-    const mcpServers: Record<string, unknown> = {};
-    for (const s of bundle.mcpServers) {
-      if (s.enabled === false) {
-        warnings.push(`mcp:${s.name}: gemini has no disabled flag; server emitted as enabled`);
-      }
-      mcpServers[s.name] = renderCommonMcpEntry(s, false);
-    }
-    const existing = isRecord(settings.mcpServers) ? settings.mcpServers : {};
-    settings.mcpServers = mergeMcpRecords(existing, mcpServers, warnings, opts?.replaceMcp ?? false);
-    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
-      files.push({ path: SETTINGS_REL, content: JSON.stringify(settings, null, 2) + "\n" });
-    }
-
-    const parts: string[] = [];
-    if (bundle.instructions) parts.push(bundle.instructions.trim());
-    if (bundle.persona) {
-      parts.push(`## Imported by agentmove: persona (SOUL.md)\n\n${bundle.persona.trim()}`);
-      warnings.push("persona: gemini has no persona file; appended to ~/.gemini/GEMINI.md (approximated)");
-    }
-    if (bundle.memory.length) {
-      parts.push(
-        `${MEMORY_HEADING}\n` +
-          bundle.memory.map((e) => `- ${e.content.trim().replace(/\n/g, " ")}`).join("\n"),
-      );
-    }
-    if (parts.length) files.push({ path: CONTEXT_REL, content: parts.join("\n\n") + "\n" });
-
-    if (bundle.skills.length) {
-      warnings.push("skills: gemini has no SKILL.md mechanism; skipped (consider a gemini extension)");
-    }
-    return { files, warnings };
-  },
-};
+  configDir: ".gemini",
+});

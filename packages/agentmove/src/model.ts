@@ -148,7 +148,10 @@ export type ClientId =
   | "nanocoder"
   | "jan"
   | "anythingllm"
-  | "librechat";
+  | "librechat"
+  | "xcode-claude"
+  | "xcode-codex"
+  | "xcode-gemini";
 
 export const CLIENT_IDS: ClientId[] = [
   "openclaw",
@@ -190,6 +193,9 @@ export const CLIENT_IDS: ClientId[] = [
   "jan",
   "anythingllm",
   "librechat",
+  "xcode-claude",
+  "xcode-codex",
+  "xcode-gemini",
 ];
 
 export interface ExportResult {

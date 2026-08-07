@@ -340,7 +340,7 @@ describe("e2e (built CLI, child process)", () => {
   // librechat is excluded too: librechat.yaml is per-deployment, so all
   // migratable files are project-scoped (covered in librechat.test.ts).
   it("converts every source→target pair (full matrix) without errors", async () => {
-    const clients = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq", "warp", "junie", "lmstudio", "codebuddy", "qoder", "auggie", "kilo", "kimi", "grok", "vibe", "nanocoder", "jan", "anythingllm"];
+    const clients = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq", "warp", "junie", "lmstudio", "codebuddy", "qoder", "auggie", "kilo", "kimi", "grok", "vibe", "nanocoder", "jan", "anythingllm", "xcode-claude", "xcode-codex", "xcode-gemini"];
     const fixtures: Record<string, string> = {
       openclaw: "openclaw-home",
       hermes: "hermes-home",
@@ -379,6 +379,9 @@ describe("e2e (built CLI, child process)", () => {
       nanocoder: "nanocoder-home",
       jan: "jan-home",
       anythingllm: "anythingllm-home",
+      "xcode-claude": "xcode-claude-home",
+      "xcode-codex": "xcode-codex-home",
+      "xcode-gemini": "xcode-gemini-home",
     };
     for (const src of clients) {
       const home = await cloneFixture(fixtures[src]!);
@@ -395,7 +398,7 @@ describe("e2e (built CLI, child process)", () => {
   }, 300_000);
 
   it("applies a full round trip into every target and re-exports it", async () => {
-    const targets = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq", "warp", "junie", "lmstudio", "codebuddy", "qoder", "auggie", "kilo", "kimi", "grok", "vibe", "nanocoder", "jan", "anythingllm"];
+    const targets = ["openclaw", "hermes", "claude-code", "claude-desktop", "codex", "cursor", "gemini", "windsurf", "cline", "zed", "openhands", "copilot", "opencode", "qwen", "amp", "vscode", "kiro", "roo", "continue", "crush", "goose", "antigravity", "droid", "amazonq", "warp", "junie", "lmstudio", "codebuddy", "qoder", "auggie", "kilo", "kimi", "grok", "vibe", "nanocoder", "jan", "anythingllm", "xcode-claude", "xcode-codex", "xcode-gemini"];
     for (const dst of targets) {
       const home = await cloneFixture("openclaw-home");
       run(["--home", home, "convert", "openclaw", dst, "--apply"], home);
