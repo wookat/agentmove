@@ -378,6 +378,7 @@ const zedProject: ProjectAdapter = {
       bundle.instructions = rules;
       warnings.push(".rules exported as instructions");
     }
+    bundle.skills = await readSkillsDir(path.join(dir, ".agents/skills"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -419,7 +420,7 @@ const zedProject: ProjectAdapter = {
       if (bundle.persona) warnings.push("persona: appended to .rules (approximated)");
     }
     if (bundle.memory.length) warnings.push("memory: zed has no project-scoped memory store; skipped");
-    if (bundle.skills.length) warnings.push("skills: zed skills are app-managed; skipped");
+    files.push(...planSkills(bundle.skills, ".agents/skills"));
     return { files, warnings };
   },
 };
@@ -857,7 +858,7 @@ const continueProject: ProjectAdapter = {
       warnings,
       "project",
     );
-    warnings.push("skills: continue has no SKILL.md mechanism; skills not exported");
+    bundle.skills = await readSkillsDir(path.join(dir, ".continue/skills"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -884,9 +885,7 @@ const continueProject: ProjectAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: continue has no project-scoped memory store; skipped");
     }
-    if (bundle.skills.length) {
-      warnings.push("skills: continue has no SKILL.md mechanism; skills skipped");
-    }
+    files.push(...planSkills(bundle.skills, ".continue/skills"));
     return { files, warnings };
   },
 };
