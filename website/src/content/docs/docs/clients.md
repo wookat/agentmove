@@ -41,6 +41,7 @@ description: What AgentMove reads and writes for each client.
 | Grok CLI | `grok` | `~/.grok/config.toml` (`[mcp_servers.*]` tables inside the general config file — other tables are preserved on rewrite; stdio servers use `command`/`args`/`env`, remote servers use `url`/`headers`; `startup_timeout_sec`/`tool_timeout_sec` are client-specific; `${VAR}` placeholders expand natively at load time), `~/.grok/AGENTS.md` (global rules), `~/.grok/skills/` (Agent Skills standard) |
 | Vibe Code CLI | `vibe` | `~/.vibe/config.toml` (`[[mcp_servers]]` array of tables with explicit `transport` (`stdio`/`http`/`streamable-http`) inside the general config file — other keys are preserved on rewrite; stdio servers use `command`/`args`/`env`, remote servers use `url`/`headers`; `api_key_env`/`api_key_header`/`api_key_format`, `startup_timeout_sec`/`tool_timeout_sec`, and `enabled_tools`/`disabled_tools` are client-specific), `~/.vibe/AGENTS.md` (global instructions), `~/.vibe/skills/` (Agent Skills standard) |
 | Nanocoder | `nanocoder` | `~/.config/nanocoder/.mcp.json` (`mcpServers` map with explicit `transport` (`stdio`/`http`/`websocket`); stdio servers use `command`/`args`/`env`, HTTP servers use `url`/`headers`; the `enabled` boolean round-trips; `timeout`/`alwaysAllow`/`description`/`tags` are client-specific); instructions live in the project-root `AGENTS.md` only (`--project`); nanocoder skills use their own `skill.yaml` bundle format and are not migrated |
+| Jan | `jan` | `~/.local/share/Jan/data/mcp_config.json` (`mcpServers` map — the Jan data folder's config; every entry carries `command`/`args` (empty for remote servers), remote entries add `type` (`http`/`sse`) plus `url`/`headers`; the native `active` boolean round-trips as the enabled flag; `timeout`/`official` are client-specific; `mcpSettings` and other top-level keys are preserved on rewrite); assistants, models, and chats are app-managed |
 
 ## Known lossy edges (always reported as warnings)
 
@@ -206,6 +207,15 @@ description: What AgentMove reads and writes for each client.
   nanocoder's own `skill.yaml` bundle format, not the Agent Skills standard —
   skipped (warned); memory has no durable store — skipped (warned).
   `--project` covers `.mcp.json` and the root `AGENTS.md`.
+- **Jan** entries always carry `command`/`args` keys (Jan's loader requires
+  them), so remote servers are written with empty values plus `type` and
+  `url`; `timeout` (seconds) and `official` are client-specific (warned,
+  preserved on merge); `cwd` is not supported and dropped (warned); assistant
+  instructions live in app-managed `assistants/*/assistant.json` — imported
+  instructions/persona are skipped (warned); memory and skills have no slot —
+  skipped (warned). The Jan data folder defaults to `~/.local/share/Jan/data`
+  on Linux and can be relocated in Settings; relocated folders are not
+  followed.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped

@@ -35,6 +35,7 @@ import { kimi } from "./kimi.js";
 import { grok } from "./grok.js";
 import { vibe } from "./vibe.js";
 import { nanocoder } from "./nanocoder.js";
+import { jan } from "./jan.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   openclaw,
@@ -73,6 +74,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   grok,
   vibe,
   nanocoder,
+  jan,
 };
 
 function editDistance(a: string, b: string): number {
@@ -106,4 +108,4 @@ export function getAdapter(id: string): ClientAdapter {
   return adapter;
 }
 
-export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush, antigravity, droid, amazonq, warp, junie, lmstudio, trae, codebuddy, qoder, auggie, kilo, kimi, grok, vibe, nanocoder };
+export { openclaw, hermes, claudeCode, codex, cursor, gemini, windsurf, cline, zed, openhands, copilot, opencode, qwen, goose, amp, claudeDesktop, vscode, kiro, roo, continueAdapter, crush, antigravity, droid, amazonq, warp, junie, lmstudio, trae, codebuddy, qoder, auggie, kilo, kimi, grok, vibe, nanocoder, jan };
