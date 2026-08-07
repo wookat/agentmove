@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { zed } from "../src/adapters/zed.js";
+import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle } from "../src/model.js";
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
@@ -15,6 +16,7 @@ describe("zed adapter", () => {
     expect(byName.remote!.transport).toBe("http");
     expect(byName.remote!.url).toBe("https://mcp.example.com/mcp");
     expect(bundle.instructions).toContain("Use pnpm everywhere.");
+    expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
     expect(warnings.some((w) => w.includes("Rules Library"))).toBe(true);
   });
 
@@ -37,7 +39,7 @@ describe("zed adapter", () => {
     expect(warnings.some((w) => w.includes("JSONC comments"))).toBe(true);
   });
 
-  it("warns on memory/skills/disabled and skips settings on unrelated-layer imports", async () => {
+  it("warns on memory, plans skills into ~/.agents/skills, skips settings on unrelated-layer imports", async () => {
     const bundle = emptyBundle();
     bundle.persona = "You are helpful.";
     bundle.memory = [{ content: "m", source: "s", kind: "long-term" }];
@@ -48,7 +50,17 @@ describe("zed adapter", () => {
       "You are helpful.",
     );
     expect(warnings.some((w) => w.startsWith("memory:"))).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
+    expect(files.some((f) => f.path === ".agents/skills/sk/SKILL.md")).toBe(true);
     expect(warnings.some((w) => w.startsWith("persona:"))).toBe(true);
+  });
+
+  it("project scope: plans skills into .agents/skills", async () => {
+    const adapter = getProjectAdapter("zed");
+    const bundle = emptyBundle();
+    bundle.skills = [{ name: "review", files: { "SKILL.md": "# Review" } }];
+    const { files, warnings } = await adapter.planImport(bundle, "/nonexistent-project", {});
+    expect(files.some((f) => f.path === ".agents/skills/review/SKILL.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
   });
 });

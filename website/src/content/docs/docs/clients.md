@@ -14,7 +14,7 @@ description: What AgentMove reads and writes for each client.
 | Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section) |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json` (`mcpServers`, remote servers use `type: streamableHttp`/`sse` + `url`), `~/Documents/Cline/Rules/*.md`, `~/.cline/skills/` |
-| Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`; JSONC, stdio servers require `args`), `~/.config/zed/AGENTS.md` |
+| Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`; JSONC, stdio servers require `args`), `~/.config/zed/AGENTS.md`, `~/.agents/skills/` |
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]` with `stdio_servers`/`shttp_servers`/`sse_servers`), `~/.openhands/microagents/*.md` |
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json` (`mcpServers`, stdio servers use `type: local`), `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/*.instructions.md`, `~/.copilot/skills/` |
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`; local servers use `type: local` with an argv `command` array + `environment`, remote use `type: remote`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
@@ -23,7 +23,7 @@ description: What AgentMove reads and writes for each client.
 | VS Code | `vscode` | user-profile `mcp.json` (`servers`; stdio entries use `command`/`args`/`env`, remote use `type: http`/`sse` + `url`/`headers`); profile folder is `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows) — all three are checked |
 | Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`; stdio entries use `command`/`args`/`env` + native `disabled`, remote use `url`/`headers`), steering markdown in `~/.kiro/steering/` (AGENTS.md standard supported), `~/.kiro/skills/` (Agent Skills standard) |
 | Roo Code | `roo` | VS Code globalStorage `mcp_settings.json` (`mcpServers`; stdio entries use `command`/`args`/`env` + native `disabled`, remote entries require an explicit `type: streamable-http`/`sse` + `url`/`headers`) — `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows); rules markdown in `~/.roo/rules/`, `~/.roo/skills/` (Agent Skills standard) |
-| Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` **list**; each entry carries its own `name`, stdio uses `command`/`args`/`env`/`cwd`, remote uses `type: streamable-http`/`sse` + `url`), rules markdown in `~/.continue/rules/` |
+| Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` **list**; each entry carries its own `name`, stdio uses `command`/`args`/`env`/`cwd`, remote uses `type: streamable-http`/`sse` + `url`), rules markdown in `~/.continue/rules/`, `~/.continue/skills/` |
 | Crush | `crush` | `~/.config/crush/crush.json` (`mcp`; `type` is required — `stdio` uses `command`/`args`/`env`, `http`/`sse` use `url`/`headers` — plus a native `disabled` flag), `~/.config/crush/skills/` (Agent Skills standard); context files (CRUSH.md/AGENTS.md) are project-scoped only |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/` |
 | Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`; stdio uses `command`/`args`/`env`/`cwd`, remote servers require `serverUrl` — legacy `url`/`httpUrl` are not supported — plus `headers`, and a native `disabled` flag), `~/.gemini/config/skills/` (Agent Skills standard); global rules live in `~/.gemini/GEMINI.md`, shared with Gemini CLI. This shared config is used by all Antigravity 2.0 surfaces — the desktop app, the IDE, and the Antigravity CLI (`agy`) — so one migration covers all three |
@@ -66,8 +66,10 @@ description: What AgentMove reads and writes for each client.
   globalStorage; AgentMove migrates the CLI settings file (`~/.cline`) and
   global rules only. Skills migrate natively via `~/.cline/skills/`
   (project `.cline/skills/` with `--project`).
-- **Zed** Rules Library entries and Skills are app-managed — not migrated;
-  JSONC comments in `settings.json` are not preserved on rewrite (warned).
+- **Zed** Rules Library entries are app-managed — not migrated; skills
+  migrate natively via `~/.agents/skills/` (project `.agents/skills/` with
+  `--project`). JSONC comments in `settings.json` are not preserved on
+  rewrite (warned).
 - **OpenHands** remote MCP servers only support `api_key` auth — non-Bearer
   headers are dropped with a warning; per-server `timeout` is not portable.
   Skills live in repositories (`.openhands/skills`, via `--project`).
@@ -105,8 +107,9 @@ description: What AgentMove reads and writes for each client.
   memory has no durable store and is skipped on import (warned).
 - **Continue** `requestOptions` and `connectionTimeout` settings are
   client-specific and not migrated (warned); Continue has no disabled flag —
-  disabled servers are emitted enabled (warned); no SKILL.md mechanism, so
-  skills are skipped (warned); memory has no durable store and is skipped on
+  disabled servers are emitted enabled (warned); skills migrate natively via
+  `~/.continue/skills/` (project `.continue/skills/` with `--project`);
+  memory has no durable store and is skipped on
   import (warned); YAML comments in `config.yaml` are not preserved on rewrite
   (warned). Imported remote headers are written as `requestOptions.headers`.
 - **Crush** `disabled_tools` and `timeout` settings are client-specific and

@@ -28,8 +28,8 @@ describe("continue adapter", () => {
     expect(bundle.instructions).toContain("Always use pnpm.");
     expect(bundle.instructions).toContain("rule: 02-style.md");
     expect(warnings.some((w) => w.includes("rules files merged"))).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
-    expect(bundle.skills).toEqual([]);
+    expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
   });
 
   it("imports by merging the name-keyed list and writes rules markdown", async () => {
@@ -59,8 +59,17 @@ describe("continue adapter", () => {
     expect(rules.content).toContain("Do good work.");
     expect(rules.content).toContain("persona (SOUL.md)");
     expect(warnings.some((w) => w.startsWith("memory:"))).toBe(true);
-    expect(warnings.some((w) => w.includes("skills skipped"))).toBe(true);
-    expect(files.some((f) => f.path.includes("skills/sk"))).toBe(false);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
+    expect(files.some((f) => f.path === ".continue/skills/sk/SKILL.md")).toBe(true);
+  });
+
+  it("project scope: plans skills into .continue/skills", async () => {
+    const adapter = getProjectAdapter("continue");
+    const bundle = emptyBundle();
+    bundle.skills = [{ name: "review", files: { "SKILL.md": "# Review" } }];
+    const { files, warnings } = await adapter.planImport(bundle, "/nonexistent-project", {});
+    expect(files.some((f) => f.path === ".continue/skills/review/SKILL.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
   });
 
   it("creates a valid config with required metadata for a fresh home, --replace-mcp works", async () => {

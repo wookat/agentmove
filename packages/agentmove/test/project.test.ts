@@ -100,7 +100,7 @@ describe("project-scoped adapters", () => {
       if (entry.command) expect(Array.isArray(entry.args)).toBe(true);
     }
     expect(files.some((f) => f.path === ".rules")).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
     // export side: no .zed/settings.json or .rules in the fixture project
     const back = await getProjectAdapter("zed").exportProject(project);
     expect(back.bundle.mcpServers).toEqual([]);

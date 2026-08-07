@@ -12,7 +12,13 @@ import {
   parseFile,
 } from "../model.js";
 import { isDir, listDir, readText } from "../fsutil.js";
-import { appendSections, parseCommonMcpEntry, touchesMcpConfig } from "./shared.js";
+import {
+  appendSections,
+  parseCommonMcpEntry,
+  planSkills,
+  readSkillsDir,
+  touchesMcpConfig,
+} from "./shared.js";
 
 /**
  * Continue (continue.dev, IDE extensions + `cn` CLI). MCP servers live in the
@@ -22,6 +28,7 @@ import { appendSections, parseCommonMcpEntry, touchesMcpConfig } from "./shared.
  */
 const CONFIG_REL = ".continue/config.yaml";
 const RULES_REL = ".continue/rules";
+const SKILLS_REL = ".continue/skills";
 
 const CLIENT_KEYS = ["requestOptions", "connectionTimeout"] as const;
 
@@ -137,7 +144,7 @@ export async function readRulesDir(
 const continueAdapter: ClientAdapter = {
   id: "continue",
   label: "Continue",
-  defaultPath: "~/.continue (config.yaml + rules/)",
+  defaultPath: "~/.continue (config.yaml + rules/ + skills/)",
 
   async detect(home) {
     return await isDir(path.join(home, ".continue"));
@@ -152,7 +159,7 @@ const continueAdapter: ClientAdapter = {
     bundle.config.raw = config;
     bundle.mcpServers = parseContinueServers(config, warnings);
     bundle.instructions = await readRulesDir(path.join(home, RULES_REL), warnings, "global");
-    warnings.push("skills: continue has no SKILL.md mechanism; skills not exported");
+    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     return { bundle, warnings };
   },
 
@@ -195,9 +202,7 @@ const continueAdapter: ClientAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: continue has no durable memory store; skipped");
     }
-    if (bundle.skills.length) {
-      warnings.push("skills: continue has no SKILL.md mechanism; skills skipped");
-    }
+    files.push(...planSkills(bundle.skills, SKILLS_REL));
     return { files, warnings };
   },
 };

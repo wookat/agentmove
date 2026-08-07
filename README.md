@@ -76,8 +76,8 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
 - **MCP tool filters** (OpenClaw `toolFilter`, Hermes include/exclude) have no portable
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
-  claude-code, codex, cursor, gemini, windsurf, cline (`.clinerules/` + `.cline/skills/`), zed, openhands,
-  copilot (`.mcp.json` + `.github/instructions/` + `.github/skills/`), opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), roo (`.roo/mcp.json` + `.roo/rules/` + `.roo/skills/`), continue (`.continue/mcpServers/` blocks + `.continue/rules/`), crush (`crush.json`/`.crush.json` + `CRUSH.md` + `.crush/skills/`), antigravity (`.agents/mcp_config.json` + `.agents/rules/` + `.agents/skills/`), droid (`.factory/mcp.json` + `AGENTS.md` + `.factory/skills/`), amazonq (`.amazonq/mcp.json` + `AmazonQ.md`), warp (`.warp/.mcp.json` + `AGENTS.md` + `.warp/skills/`), junie (`.junie/mcp/mcp.json` + `.junie/AGENTS.md` + `.junie/skills/`), trae (`.trae/mcp.json` + `.trae/rules/` + `.trae/skills/`), jetbrains (`.ai/mcp/mcp.json` + `.aiassistant/rules/`), comate (`.comate/mcp.json` + `.comate/rules/` + `.comate/skills/`), codebuddy (`.mcp.json` + `CODEBUDDY.md` + `.codebuddy/skills/`), qoder (`.mcp.json` + `AGENTS.md` + `.qoder/skills/`), auggie (`.augment/settings.json` + `.augment/rules/` + `.augment/skills/`), kilo (`kilo.json`/`.kilo/kilo.json` + `AGENTS.md` + `.kilo/skills/`), kimi (`.kimi-code/mcp.json` + `AGENTS.md` + `.kimi-code/skills/`), librechat (`librechat.yaml` in the deployment directory), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
+  claude-code, codex, cursor, gemini, windsurf, cline (`.clinerules/` + `.cline/skills/`), zed (`.zed/settings.json` + `.rules` + `.agents/skills/`), openhands,
+  copilot (`.mcp.json` + `.github/instructions/` + `.github/skills/`), opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), roo (`.roo/mcp.json` + `.roo/rules/` + `.roo/skills/`), continue (`.continue/mcpServers/` blocks + `.continue/rules/` + `.continue/skills/`), crush (`crush.json`/`.crush.json` + `CRUSH.md` + `.crush/skills/`), antigravity (`.agents/mcp_config.json` + `.agents/rules/` + `.agents/skills/`), droid (`.factory/mcp.json` + `AGENTS.md` + `.factory/skills/`), amazonq (`.amazonq/mcp.json` + `AmazonQ.md`), warp (`.warp/.mcp.json` + `AGENTS.md` + `.warp/skills/`), junie (`.junie/mcp/mcp.json` + `.junie/AGENTS.md` + `.junie/skills/`), trae (`.trae/mcp.json` + `.trae/rules/` + `.trae/skills/`), jetbrains (`.ai/mcp/mcp.json` + `.aiassistant/rules/`), comate (`.comate/mcp.json` + `.comate/rules/` + `.comate/skills/`), codebuddy (`.mcp.json` + `CODEBUDDY.md` + `.codebuddy/skills/`), qoder (`.mcp.json` + `AGENTS.md` + `.qoder/skills/`), auggie (`.augment/settings.json` + `.augment/rules/` + `.augment/skills/`), kilo (`kilo.json`/`.kilo/kilo.json` + `AGENTS.md` + `.kilo/skills/`), kimi (`.kimi-code/mcp.json` + `AGENTS.md` + `.kimi-code/skills/`), librechat (`librechat.yaml` in the deployment directory), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
   goose extensions are user-scoped only).
 - **Cline VS Code extension** keeps its own MCP settings copy in VS Code
   globalStorage — only the CLI settings file (`~/.cline`) and global rules are
@@ -86,8 +86,9 @@ with `${VAR}` placeholders unless you pass `--include-secrets`.
 - **Windsurf Cascade memories** are app-managed — cannot be exported or imported;
   durable rules live in `global_rules.md` (migrated as instructions). Skills
   migrate natively (`~/.codeium/windsurf/skills/`, project `.windsurf/skills/`).
-- **Zed Rules Library / Skills** are app-managed — not migrated; personal
-  instructions live in `~/.config/zed/AGENTS.md`. JSONC comments in Zed's
+- **Zed Rules Library** entries are app-managed — not migrated; personal
+  instructions live in `~/.config/zed/AGENTS.md`. Skills migrate natively
+  (`~/.agents/skills/`, project `.agents/skills/`). JSONC comments in Zed's
   `settings.json` are not preserved on rewrite (warned).
 - **OpenHands remote MCP servers** only support `api_key` auth — non-Bearer
   headers are dropped with a warning; per-server `timeout` has no portable
@@ -109,7 +110,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Gemini CLI | `gemini` | `~/.gemini/settings.json`, `~/.gemini/GEMINI.md` |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json`, `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json`, `~/Documents/Cline/Rules/`, `~/.cline/skills/` |
-| Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`), `~/.config/zed/AGENTS.md` |
+| Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`), `~/.config/zed/AGENTS.md`, `~/.agents/skills/` |
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]`), `~/.openhands/microagents/` |
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json`, `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/`, `~/.copilot/skills/` |
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
@@ -118,7 +119,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | VS Code | `vscode` | user-profile `mcp.json` (`servers`; Linux `~/.config/Code/User`, macOS `~/Library/Application Support/Code/User`, Windows `%APPDATA%\Code\User`) |
 | Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`), `~/.kiro/steering/`, `~/.kiro/skills/` |
 | Roo Code | `roo` | VS Code globalStorage `mcp_settings.json` (`mcpServers`), `~/.roo/rules/`, `~/.roo/skills/` |
-| Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` list), `~/.continue/rules/` |
+| Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` list), `~/.continue/rules/`, `~/.continue/skills/` |
 | Crush | `crush` | `~/.config/crush/crush.json` (`mcp`), `~/.config/crush/skills/` |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`), `~/.config/goose/.goosehints`, `~/.config/goose/memory/`, `~/.agents/skills/` |
 | Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`), `~/.gemini/config/skills/` — the shared Antigravity 2.0 config used by the desktop app, the IDE, and the Antigravity CLI (`agy`) |

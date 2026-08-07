@@ -15,6 +15,8 @@ import { exists, isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planSkills,
+  readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./shared.js";
@@ -28,6 +30,7 @@ import {
  */
 const SETTINGS_REL = ".config/zed/settings.json";
 const AGENTS_REL = ".config/zed/AGENTS.md";
+const SKILLS_REL = ".agents/skills";
 
 async function readSettings(
   home: string,
@@ -46,7 +49,7 @@ async function readSettings(
 export const zed: ClientAdapter = {
   id: "zed",
   label: "Zed",
-  defaultPath: "~/.config/zed/settings.json (context_servers)",
+  defaultPath: "~/.config/zed/settings.json (context_servers) + ~/.agents/skills/",
 
   async detect(home) {
     return (
@@ -71,6 +74,7 @@ export const zed: ClientAdapter = {
     bundle.mcpServers = servers;
 
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
+    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     warnings.push(
       "zed Rules Library entries are app-managed and not exported; " +
         "personal instructions live in ~/.config/zed/AGENTS.md",
@@ -119,9 +123,7 @@ export const zed: ClientAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: zed has no durable memory store; skipped (consider --mif)");
     }
-    if (bundle.skills.length) {
-      warnings.push("skills: zed skills are app-managed (Rules Library/Skills); skipped");
-    }
+    files.push(...planSkills(bundle.skills, SKILLS_REL));
     return { files, warnings };
   },
 };
