@@ -44,6 +44,7 @@ import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/
 import { parseJunieServers, renderJunieServers } from "./adapters/junie.js";
 import { parseTraeServers, planTraeMcp } from "./adapters/trae.js";
 import { parseCodebuddyServers, planCodebuddyMcp, readCodebuddyMcp } from "./adapters/codebuddy.js";
+import { parseQoderServers, planQoderMcp, readQoderSettings } from "./adapters/qoder.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1215,6 +1216,52 @@ const codebuddyProject: ProjectAdapter = {
   },
 };
 
+const qoderProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "qoder";
+    const config = await readQoderSettings(path.join(dir, ".mcp.json"));
+    bundle.mcpServers = parseQoderServers(config, warnings);
+    bundle.instructions =
+      (await readText(path.join(dir, "AGENTS.md"))) ??
+      (await readText(path.join(dir, "AGENTS.local.md")));
+    if (await isDir(path.join(dir, ".qoder/rules"))) {
+      warnings.push(
+        "instructions: .qoder/rules/**/*.md are client-specific rule files; not exported (only AGENTS.md is)",
+      );
+    }
+    bundle.skills = await readSkillsDir(path.join(dir, ".qoder/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planQoderMcp(
+        bundle,
+        path.join(dir, ".mcp.json"),
+        ".mcp.json",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    const sections: { title: string; body: string }[] = [];
+    if (bundle.persona) {
+      sections.push({ title: "persona (SOUL.md)", body: bundle.persona });
+      warnings.push("persona: appended to AGENTS.md (approximated)");
+    }
+    if (bundle.instructions || sections.length) {
+      files.push({ path: "AGENTS.md", content: appendSections(bundle.instructions, sections) });
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: qoder auto-memory is app-managed; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".qoder/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1241,6 +1288,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   junie: junieProject,
   trae: traeProject,
   codebuddy: codebuddyProject,
+  qoder: qoderProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
