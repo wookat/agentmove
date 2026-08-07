@@ -28,6 +28,7 @@ user-editable files:
 | Auggie CLI | Augment Memories are app-managed — imported memory is **skipped** with a warning (`~/.augment/rules/` migrates as instructions). |
 | JetBrains AI Assistant | Chat memory and prompts are IDE-managed — imported memory is **skipped** with a warning; user-level instructions have no file slot (project rules migrate with `--project`). |
 | Baidu Comate | Chat memory is app-managed under `.comate` — imported memory is **skipped** with a warning; MCP servers and rules migrate with `--project` only. |
+| Muse Code | Personal memory and machine-wide user rules are app-managed — imported user-scope memory/instructions are **skipped** with a warning; project memory migrates via `.agents/memory/` with `--project` (imports write `.agents/memory/agentmove.md` — add an index line to `MEMORY.md`). |
 | Cline / Zed / OpenHands / Copilot CLI / OpenCode / Claude Desktop / VS Code / Kiro / Roo Code / Continue / Crush / Antigravity / Droid / Amazon Q Developer CLI / Warp / Junie / LM Studio / Trae / Kilo Code / Kimi Code CLI / Grok CLI / Vibe Code CLI / Nanocoder / Jan / AnythingLLM / LibreChat | No durable user-editable memory store — imported memory is **skipped** with a warning (carry it with `--mif` instead). |
 | OpenClaw / Hermes | File-based (`MEMORY.md`, daily files, `§` entries) — migrates fully, both directions. |
 
