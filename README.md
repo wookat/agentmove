@@ -119,7 +119,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` list), `~/.continue/rules/` |
 | Crush | `crush` | `~/.config/crush/crush.json` (`mcp`), `~/.config/crush/skills/` |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`), `~/.config/goose/.goosehints`, `~/.config/goose/memory/`, `~/.agents/skills/` |
-| Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`), `~/.gemini/config/skills/` |
+| Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`), `~/.gemini/config/skills/` — the shared Antigravity 2.0 config used by the desktop app, the IDE, and the Antigravity CLI (`agy`) |
 | Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`), `~/.factory/AGENTS.md`, `~/.factory/skills/` |
 | Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`); project scope: `.amazonq/mcp.json` + `AmazonQ.md` |
 | Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`, no `type` field); project scope: `.warp/.mcp.json` + `AGENTS.md` |

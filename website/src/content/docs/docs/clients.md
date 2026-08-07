@@ -26,7 +26,7 @@ description: What AgentMove reads and writes for each client.
 | Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` **list**; each entry carries its own `name`, stdio uses `command`/`args`/`env`/`cwd`, remote uses `type: streamable-http`/`sse` + `url`), rules markdown in `~/.continue/rules/` |
 | Crush | `crush` | `~/.config/crush/crush.json` (`mcp`; `type` is required — `stdio` uses `command`/`args`/`env`, `http`/`sse` use `url`/`headers` — plus a native `disabled` flag), `~/.config/crush/skills/` (Agent Skills standard); context files (CRUSH.md/AGENTS.md) are project-scoped only |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/` |
-| Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`; stdio uses `command`/`args`/`env`/`cwd`, remote servers require `serverUrl` — legacy `url`/`httpUrl` are not supported — plus `headers`, and a native `disabled` flag), `~/.gemini/config/skills/` (Agent Skills standard); global rules live in `~/.gemini/GEMINI.md`, shared with Gemini CLI |
+| Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`; stdio uses `command`/`args`/`env`/`cwd`, remote servers require `serverUrl` — legacy `url`/`httpUrl` are not supported — plus `headers`, and a native `disabled` flag), `~/.gemini/config/skills/` (Agent Skills standard); global rules live in `~/.gemini/GEMINI.md`, shared with Gemini CLI. This shared config is used by all Antigravity 2.0 surfaces — the desktop app, the IDE, and the Antigravity CLI (`agy`) — so one migration covers all three |
 | Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`; `type` is `stdio`/`http`/`sse` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag), `~/.factory/AGENTS.md` (personal instructions), `~/.factory/skills/` (Agent Skills standard) |
 | Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`; `type` is `stdio` or `http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag); the built-in default agent loads it via `useLegacyMcpJson` |
 | Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`; entries have **no `type` field** — stdio uses `command`/`args`/`env` + optional `working_directory`, remote uses `url`/`headers` with auto-negotiated transport); global rules live in Warp Drive (app-managed) |
@@ -108,7 +108,10 @@ description: What AgentMove reads and writes for each client.
   `~/.gemini/GEMINI.md`, shared with Gemini CLI — the instructions layer is
   owned by the `gemini` client at user scope (`--project` writes
   `.agents/rules/agentmove.md`); memory has no durable store and is skipped on
-  import (warned).
+  import (warned). Google retired the consumer tiers of Gemini CLI on
+  2026-06-18 in favor of the Antigravity CLI — `agentmove convert gemini
+  antigravity` migrates a Gemini CLI setup (MCP servers, GEMINI.md
+  instructions and memories) into the shared Antigravity config.
 - **Droid** `disabledTools`, `timeout`, `connectTimeout`, and `oauth` settings
   are client-specific and not migrated (warned); OAuth tokens live in the
   system keyring and are never exported; memory has no durable store and is
