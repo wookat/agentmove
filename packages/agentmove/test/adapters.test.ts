@@ -106,12 +106,19 @@ describe("cursor", () => {
   it("exports mcp and reports lossy layers on import", async () => {
     const { bundle } = await ADAPTERS.cursor.exportBundle(homeOf("cursor-home"));
     expect(bundle.mcpServers[0]?.url).toBe("https://api.githubcopilot.com/mcp/");
+    expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
 
     const { bundle: src } = await ADAPTERS.openclaw.exportBundle(homeOf("openclaw-home"));
     const { files, warnings } = await ADAPTERS.cursor.planImport(src, homeOf("cursor-home"));
     expect(files.some((f) => f.path === ".cursor/rules/agentmove-imported.mdc")).toBe(true);
     expect(warnings.some((w) => w.startsWith("memory:"))).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
+  });
+
+  it("plans skills into ~/.cursor/skills on import", async () => {
+    const { bundle } = await ADAPTERS.cursor.exportBundle(homeOf("cursor-home"));
+    const { files } = await ADAPTERS.cursor.planImport(bundle, homeOf("empty-home"));
+    expect(files.some((f) => f.path === ".cursor/skills/deploy-helper/SKILL.md")).toBe(true);
   });
 });
 

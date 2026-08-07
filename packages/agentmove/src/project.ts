@@ -226,6 +226,7 @@ const cursorProject: ProjectAdapter = {
         warnings.push("cursor rules concatenated into instructions (frontmatter kept as-is)");
       }
     }
+    bundle.skills = await readSkillsDir(path.join(dir, ".cursor/skills"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -259,7 +260,7 @@ const cursorProject: ProjectAdapter = {
       files.push({ path: ".cursor/rules/agentmove-imported.mdc", content: body });
     }
     if (bundle.memory.length) warnings.push("memory: cursor memories are app-managed; skipped");
-    if (bundle.skills.length) warnings.push("skills: cursor has no skills directory; skipped");
+    files.push(...planSkills(bundle.skills, ".cursor/skills"));
     return { files, warnings };
   },
 };
