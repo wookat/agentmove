@@ -1,0 +1,19 @@
+active_model = "devstral-medium"
+
+[[mcp_servers]]
+name = "filesystem"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+startup_timeout_sec = 30
+
+[mcp_servers.env]
+FS_API_KEY = "test-not-a-real-token"
+
+[[mcp_servers]]
+name = "api-server"
+transport = "http"
+url = "https://mcp.example.com/mcp"
+
+[mcp_servers.headers]
+Authorization = "Bearer test-not-a-real-token"

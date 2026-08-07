@@ -54,6 +54,7 @@ import {
 import { parseKiloServers, planKiloMcp, readKiloConfig } from "./adapters/kilo.js";
 import { parseKimiServers, planKimiMcp, readKimiMcp } from "./adapters/kimi.js";
 import { parseGrokServers, planGrokMcp, readGrokConfig } from "./adapters/grok.js";
+import { parseVibeServers, planVibeMcp, readVibeConfig } from "./adapters/vibe.js";
 import {
   parseAntigravityServers,
   readAntigravityRulesDir,
@@ -1433,6 +1434,45 @@ const grokProject: ProjectAdapter = {
   },
 };
 
+const vibeProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "vibe";
+    const config = await readVibeConfig(path.join(dir, ".vibe/config.toml"));
+    bundle.mcpServers = parseVibeServers(config, warnings);
+    bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".vibe/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planVibeMcp(
+        bundle,
+        path.join(dir, ".vibe/config.toml"),
+        ".vibe/config.toml",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    const sections: { title: string; body: string }[] = [];
+    if (bundle.persona) {
+      sections.push({ title: "persona (SOUL.md)", body: bundle.persona });
+      warnings.push("persona: appended to AGENTS.md (approximated)");
+    }
+    if (bundle.instructions || sections.length) {
+      files.push({ path: "AGENTS.md", content: appendSections(bundle.instructions, sections) });
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: vibe has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".vibe/skills"));
+    return { files, warnings };
+  },
+};
+
 const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   "claude-code": claudeCodeProject,
   codex: codexProject,
@@ -1464,6 +1504,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   kilo: kiloProject,
   kimi: kimiProject,
   grok: grokProject,
+  vibe: vibeProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {
