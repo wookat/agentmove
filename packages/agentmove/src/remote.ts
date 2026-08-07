@@ -12,10 +12,27 @@ export function isRemoteInput(input: string): boolean {
 }
 
 /**
+ * A GitHub-style tree URL pointing at a branch (and optionally a directory)
+ * inside a repository: https://host/owner/repo/tree/<branch>[/<subpath>].
+ * The branch is taken as the first path segment after /tree/ (branch names
+ * containing slashes are not resolvable from the URL alone).
+ */
+const TREE_URL = /^(https?:\/\/[^/]+\/[^/]+\/[^/]+)\/tree\/([^/]+)(?:\/(.+?))?\/?$/;
+
+export function parseTreeUrl(
+  input: string,
+): { repo: string; branch: string; subpath?: string } | undefined {
+  const m = TREE_URL.exec(input);
+  if (!m) return undefined;
+  return { repo: m[1]!, branch: m[2]!, subpath: m[3] };
+}
+
+/**
  * Resolve an http(s) import source to a local path the normal detection chain
  * can handle: a URL ending in .json is fetched to a temp file (standalone
- * mcp.json), anything else is shallow-cloned with git (an Agent Plugin or
- * agentmove bundle repository).
+ * mcp.json), a /tree/<branch>/<subpath> URL is shallow-cloned at that branch
+ * and resolved to the subdirectory, anything else is shallow-cloned with git
+ * (an Agent Plugin, agentmove bundle, or skills repository).
  */
 export async function fetchRemoteInput(
   input: string,
@@ -42,8 +59,12 @@ export async function fetchRemoteInput(
   }
 
   const dir = path.join(work, "repo");
+  const tree = parseTreeUrl(input);
+  const cloneUrl = tree ? tree.repo : input;
+  const args = ["clone", "--depth", "1"];
+  if (tree) args.push("--branch", tree.branch);
   try {
-    await execFileAsync("git", ["clone", "--depth", "1", input, dir], {
+    await execFileAsync("git", [...args, cloneUrl, dir], {
       env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
     });
   } catch (e) {
@@ -51,6 +72,21 @@ export async function fetchRemoteInput(
       `${input}: git clone failed (${(e as Error).message.split("\n")[0]})`,
       EXIT_DATA,
     );
+  }
+  if (tree?.subpath) {
+    const resolved = path.resolve(path.join(dir, ...tree.subpath.split("/")));
+    if (!resolved.startsWith(path.resolve(dir) + path.sep)) {
+      throw new CliError(`${input}: invalid path inside the repository`, EXIT_DATA);
+    }
+    try {
+      if (!(await fs.stat(resolved)).isDirectory()) throw new Error("not a directory");
+    } catch {
+      throw new CliError(
+        `${input}: path "${tree.subpath}" not found in the repository (branch ${tree.branch})`,
+        EXIT_DATA,
+      );
+    }
+    return resolved;
   }
   return dir;
 }
