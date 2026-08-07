@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "youtrack": {
+      "url": "https://youtrack.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer test-not-a-real-token"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "env": {
+        "CONTEXT7_API_KEY": "test-not-a-real-token"
+      },
+      "workingDirectory": "/tmp/ctx7"
+    }
+  }
+}
