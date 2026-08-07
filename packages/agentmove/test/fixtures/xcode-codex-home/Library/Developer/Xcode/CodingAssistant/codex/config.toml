@@ -1,0 +1,9 @@
+model = "gpt-5.2-codex"
+
+[mcp_servers.xcode]
+command = "xcrun"
+args = ["mcpbridge"]
+
+[mcp_servers.search]
+url = "https://mcp.example.com"
+http_headers = { "X-Api-Key" = "test-not-a-real-token" }

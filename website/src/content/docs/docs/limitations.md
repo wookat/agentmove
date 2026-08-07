@@ -18,6 +18,7 @@ user-editable files:
 | Claude Code | Auto-memory is session/project-scoped and client-managed. **Not exported.** Durable notes in `CLAUDE.md` migrate fine (as instructions). |
 | Codex CLI | Client-managed memories are not readable as files. **Not exported.** Imported memory is appended to `~/.codex/AGENTS.md` — the agent will *read* it, but it won't live in Codex's own memory store. |
 | Gemini CLI | Only the "Gemini Added Memories" section of `GEMINI.md` migrates. |
+| Xcode Claude Agent / Codex / Gemini | Same behavior as the corresponding standalone client, in the isolated `~/Library/Developer/Xcode/CodingAssistant` root (macOS only). |
 | Qwen Code | Only the "Qwen Added Memories" section of `QWEN.md` migrates. |
 | goose | Memory-extension files (`~/.config/goose/memory/*.txt`) migrate both directions; category names and `# tag` lines are not portable. |
 | Windsurf | Cascade memories are app-managed. **Cannot be exported or imported.** Durable rules in `global_rules.md` migrate as instructions. |

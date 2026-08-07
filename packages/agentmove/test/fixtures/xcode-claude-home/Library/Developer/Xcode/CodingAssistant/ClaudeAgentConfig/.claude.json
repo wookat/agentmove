@@ -1,0 +1,1 @@
+{ "mcpServers": { "xcode": { "type": "stdio", "command": "xcrun", "args": ["mcpbridge"] }, "notion": { "type": "stdio", "command": "npx", "args": ["-y", "@notionhq/notion-mcp-server"], "env": { "NOTION_TOKEN": "test-not-a-real-token" } } } }
