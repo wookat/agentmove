@@ -9,6 +9,7 @@ import { gemini } from "../src/adapters/gemini.js";
 import { cursor } from "../src/adapters/cursor.js";
 import { droid } from "../src/adapters/droid.js";
 import { codebuddy } from "../src/adapters/codebuddy.js";
+import { qoder } from "../src/adapters/qoder.js";
 import { kiro } from "../src/adapters/kiro.js";
 import { opencode } from "../src/adapters/opencode.js";
 import { qwen } from "../src/adapters/qwen.js";
@@ -158,6 +159,24 @@ describe("custom agents layer", () => {
     expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
   });
 
+  it("qoder exports ~/.qoder/agents/*.md byte-faithfully", async () => {
+    const { bundle } = await qoder.exportBundle(path.join(FIXTURES, "qoder-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["api-reviewer"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "qoder-home/.qoder/agents/api-reviewer.md"),
+      "utf8",
+    );
+    expect(bundle.agents[0]!.content).toBe(raw);
+  });
+
+  it("qoder plans agents into ~/.qoder/agents/*.md with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "Help.\n" }];
+    const { files, warnings } = await qoder.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".qoder/agents/helper.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
+  });
+
   it("opencode plans agents into ~/.config/opencode/agents/*.md with a warning", async () => {
     const bundle = emptyBundle();
     bundle.agents = [{ name: "helper", content: "Help.\n" }];
@@ -202,6 +221,8 @@ describe("custom agents layer", () => {
     const codebuddyFiles = (await getProjectAdapter("codebuddy").planImport(bundle, "/p", {}))
       .files;
     expect(codebuddyFiles.some((f) => f.path === ".codebuddy/agents/helper.md")).toBe(true);
+    const qoderFiles = (await getProjectAdapter("qoder").planImport(bundle, "/p", {})).files;
+    expect(qoderFiles.some((f) => f.path === ".qoder/agents/helper.md")).toBe(true);
   });
 
   it("bundle round-trips the agents layer byte-faithfully", async () => {

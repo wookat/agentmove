@@ -103,11 +103,13 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `.qwen/agents/`), Cursor (`~/.cursor/agents/`, project
   `.cursor/agents/`), Kiro (`~/.kiro/agents/`, project
   `.kiro/agents/`), Droid (`~/.factory/droids/`, project
-  `.factory/droids/`), and CodeBuddy (`~/.codebuddy/agents/`, project
-  `.codebuddy/agents/`).
+  `.factory/droids/`), CodeBuddy (`~/.codebuddy/agents/`, project
+  `.codebuddy/agents/`), and Qoder CLI (`~/.qoder/agents/`, project
+  `.qoder/agents/`).
 - Content is copied **as-is**, including YAML frontmatter. Fields like
   `tools:`, `model:`, Cursor's `read_only:`/`is_background:`, Kiro's
-  `permissions:`, Droid's `reasoningEffort:`/`mcpServers:`, and CodeBuddy's
+  `permissions:`, Droid's `reasoningEffort:`/`mcpServers:`, Qoder's
+  `skills:`/`mcpServers:` allowlists, and CodeBuddy's
   `effort:`/`maxTurns:`/`memory:`/`mcpServers:` are client-specific and may
   need review after import — a warning is emitted.
 - Kiro also accepts JSON agent configs (`.kiro/agents/*.json`); those are
