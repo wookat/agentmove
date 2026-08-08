@@ -167,17 +167,19 @@ persona, and a later export won't recover it as a separate `persona.md`.
   the secondary `~/.crush/commands/` root, project `.crush/commands/`;
   subdirectories preserved as `:`-separated namespaces), Trae
   (`~/.trae/commands/` plus the CN-edition `~/.trae-cn/commands/` root,
-  project `.trae/commands/`; subdirectories preserved), and Cortex Code
+  project `.trae/commands/`; subdirectories preserved), Cortex Code
   (`~/.snowflake/cortex/commands/`, user scope only; subdirectories
   preserved — no project-scoped commands directory is documented, project
   commands ship only inside plugins, so project-scope imports skip
-  commands with a warning).
+  commands with a warning), and goose (recipes:
+  `~/.config/goose/recipes/*.yaml|json`, project `.goose/recipes/`;
+  flat — a format conversion, see below).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`, crush `$NAME`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
   client-specific and may need review after import — a warning is
   emitted.
-- Cursor, Codex, Windsurf, Amazon Q, Roo Code, Kilo Code, Cline, and VS Code only discover top-level
+- Cursor, Codex, Windsurf, Amazon Q, Roo Code, Kilo Code, Cline, VS Code, and goose only discover top-level
   command files: nested names like `git/commit` are flattened to `git-commit` on
   import there, with a warning (name collisions after flattening skip
   the command).
@@ -216,6 +218,24 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `prompt` string are **not** migrated (warned per file); undocumented
   TOML fields are dropped with a per-file warning. `{{args}}`, `!{...}`,
   and `@{...}` placeholders are gemini-specific and copied as-is.
+- goose commands are **recipes** (YAML or JSON), so migration is a
+  format conversion, not a byte-faithful copy: on export `title` (when it
+  differs from the filename) and `description` become frontmatter and
+  `prompt`/`instructions` become the markdown body (when a recipe has
+  both, they are concatenated — warned); recipe-only fields
+  (`parameters`, `extensions`, `settings`, `sub_recipes`, `activities`,
+  `response`, …) have no portable equivalent and are dropped with a
+  per-field warning. Recipes with neither `prompt` nor `instructions`,
+  invalid recipe files, and `.yml` files (unsupported by the goose CLI)
+  are **not** migrated (warned per file). On import each command becomes
+  a recipe with the body as its `prompt`, and a `slash_commands` entry
+  pointing at the written recipe is registered in `config.yaml` so the
+  command is invokable as `/name` (goose slash commands accept at most
+  one parameter and must not clash with built-in commands — warned).
+  `{{ param }}` placeholders are goose-specific and copied as-is.
+  Project-scope imports write `.goose/recipes/` but do not touch the
+  user-level `config.yaml` (warned) — project recipes are still
+  discoverable via `goose recipe list`.
 - Crush reads two user command roots — `~/.config/crush/commands/` (XDG)
   and `~/.crush/commands/` — both recursively; exports merge them with the
   XDG root winning on name conflicts (warned), and imports write only the

@@ -1,0 +1,5 @@
+version: "1.0.0"
+title: Daily Report
+description: Generate the daily status report
+prompt: |
+  Summarize yesterday's commits and open PRs for {{ project }}.

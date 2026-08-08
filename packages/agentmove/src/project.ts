@@ -30,7 +30,12 @@ import {
   touchesMcpConfig,
 } from "./adapters/shared.js";
 import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
-import { parseGooseMemoryFile } from "./adapters/goose.js";
+import {
+  GOOSE_COMMANDS_EXPORT_WARNING,
+  parseGooseMemoryFile,
+  planGooseRecipes,
+  readGooseRecipes,
+} from "./adapters/goose.js";
 import {
   GEMINI_COMMANDS_EXPORT_WARNING,
   GEMINI_COMMANDS_IMPORT_WARNING,
@@ -883,6 +888,7 @@ const vscodeProject: ProjectAdapter = {
 };
 
 const gooseProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -897,6 +903,8 @@ const gooseProject: ProjectAdapter = {
         if (content) bundle.memory.push(...parseGooseMemoryFile(content, `goose-memory/${file}`));
       }
     }
+    bundle.commands = await readGooseRecipes(path.join(dir, ".goose/recipes"), warnings);
+    if (bundle.commands.length) warnings.push(GOOSE_COMMANDS_EXPORT_WARNING);
     warnings.push("mcp: goose has no project-scoped extension config; skipped");
     return { bundle, warnings };
   },
@@ -917,6 +925,12 @@ const gooseProject: ProjectAdapter = {
       });
     }
     files.push(...planSkills(bundle.skills, ".agents/skills"));
+    if (bundle.commands.length) {
+      files.push(...planGooseRecipes(bundle.commands, ".goose/recipes", warnings).plans);
+      warnings.push(
+        "commands: written as .goose/recipes/ recipe files (run via `goose recipe` or `/recipe`); slash-command registration lives in the user-level config.yaml and was not modified",
+      );
+    }
     return { files, warnings };
   },
 };

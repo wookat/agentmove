@@ -4,6 +4,7 @@ import {
   asStringRecord,
   Bundle,
   ClientAdapter,
+  CommandDef,
   emptyBundle,
   ExportResult,
   FilePlan,
@@ -27,8 +28,202 @@ import { mergeMcpRecords, planSkills, readSkillsDir, touchesMcpConfig } from "./
 const CONFIG_REL = ".config/goose/config.yaml";
 const HINTS_REL = ".config/goose/.goosehints";
 const MEMORY_REL = ".config/goose/memory";
+const RECIPES_REL = ".config/goose/recipes";
 const SKILLS_REL = ".agents/skills";
 const DEFAULT_TIMEOUT = 300;
+
+const RECIPE_FIELDS = ["version", "title", "description", "prompt", "instructions"];
+
+export const GOOSE_COMMANDS_EXPORT_WARNING =
+  "commands: converted from goose recipe YAML/JSON (title/description + prompt/instructions); {{ param }} placeholders are goose-specific and copied as-is";
+
+export const GOOSE_COMMANDS_IMPORT_WARNING =
+  "commands: goose commands are recipe files; markdown bodies were converted to the recipe prompt field ({{ param }} placeholders copied as-is; slash commands take at most one parameter and must not clash with built-in commands; review after import)";
+
+function frontmatterLine(key: string, value: string): string {
+  return `${key}: ${JSON.stringify(value)}`;
+}
+
+/** Convert one goose recipe file (YAML or JSON) into a portable markdown command. */
+export function gooseCommandFromRecipe(
+  name: string,
+  raw: string,
+  file: string,
+  warnings: string[],
+): CommandDef | undefined {
+  let data: unknown;
+  try {
+    data = file.endsWith(".json") ? JSON.parse(raw) : parseYaml(raw);
+  } catch {
+    warnings.push(`commands:${file}: invalid recipe file; not migrated`);
+    return undefined;
+  }
+  if (!isRecord(data)) {
+    warnings.push(`commands:${file}: not a recipe mapping; not migrated`);
+    return undefined;
+  }
+  for (const key of Object.keys(data)) {
+    if (!RECIPE_FIELDS.includes(key)) {
+      warnings.push(
+        `commands:${name}: goose recipe field "${key}" has no portable command equivalent; dropped`,
+      );
+    }
+  }
+  const prompt = typeof data.prompt === "string" ? data.prompt : undefined;
+  const instructions = typeof data.instructions === "string" ? data.instructions : undefined;
+  if (prompt === undefined && instructions === undefined) {
+    warnings.push(`commands:${file}: recipe has neither prompt nor instructions; not migrated`);
+    return undefined;
+  }
+  let body: string;
+  if (prompt !== undefined && instructions !== undefined) {
+    body = `${instructions.trimEnd()}\n\n${prompt}`;
+    warnings.push(
+      `commands:${name}: recipe has both instructions and prompt; concatenated into one command body`,
+    );
+  } else {
+    body = prompt ?? instructions ?? "";
+  }
+  if (!body.endsWith("\n")) body += "\n";
+  const fm: string[] = [];
+  const title = typeof data.title === "string" ? data.title : undefined;
+  if (title !== undefined && title !== name) fm.push(frontmatterLine("title", title));
+  if (typeof data.description === "string") {
+    fm.push(frontmatterLine("description", data.description));
+  }
+  const content = fm.length ? `---\n${fm.join("\n")}\n---\n${body}` : body;
+  return { name, content };
+}
+
+function parseFrontmatterString(line: string, key: string): string | undefined {
+  const m = new RegExp(`^${key}:\\s*(.+)$`).exec(line);
+  if (!m?.[1]) return undefined;
+  let value = m[1].trim();
+  if (value.startsWith('"')) {
+    try {
+      value = JSON.parse(value) as string;
+    } catch {
+      value = value.replace(/^"|"$/g, "");
+    }
+  } else if (value.startsWith("'") && value.endsWith("'")) {
+    value = value.slice(1, -1);
+  }
+  return value;
+}
+
+/** Convert a portable markdown command into goose recipe YAML content. */
+export function gooseCommandToRecipe(c: CommandDef, flatName: string, warnings: string[]): string {
+  let title: string | undefined;
+  let description: string | undefined;
+  let prompt = c.content;
+  const m = /^---\n([\s\S]*?)\n---\n?/.exec(c.content);
+  if (m) {
+    const lines = (m[1] ?? "").split("\n").filter((l) => l.trim() !== "");
+    const parsed = lines.map((l) => ({
+      title: parseFrontmatterString(l, "title"),
+      description: parseFrontmatterString(l, "description"),
+    }));
+    if (parsed.every((p) => p.title !== undefined || p.description !== undefined)) {
+      title = parsed.find((p) => p.title !== undefined)?.title;
+      description = parsed.find((p) => p.description !== undefined)?.description;
+      prompt = c.content.slice(m[0].length);
+    } else {
+      warnings.push(
+        `commands:${c.name}: frontmatter has fields beyond title/description, which goose recipes cannot express; kept verbatim inside prompt`,
+      );
+    }
+  }
+  const record: Record<string, string> = {
+    version: "1.0.0",
+    title: title ?? flatName,
+    description: description ?? `Imported by agentmove from command ${c.name}`,
+    prompt,
+  };
+  return stringifyYaml(record);
+}
+
+/** Read every top-level recipe file under a goose recipes root (flat scan, like goose). */
+export async function readGooseRecipes(root: string, warnings: string[]): Promise<CommandDef[]> {
+  const commands: CommandDef[] = [];
+  if (!(await isDir(root))) return commands;
+  for (const name of (await listDir(root)).sort()) {
+    if (await isDir(path.join(root, name))) continue;
+    if (name.endsWith(".yml")) {
+      warnings.push(`commands:${name}: .yml recipes are not supported by the goose CLI; not migrated`);
+      continue;
+    }
+    if (!name.endsWith(".yaml") && !name.endsWith(".json")) continue;
+    const raw = await readText(path.join(root, name));
+    if (raw === undefined) continue;
+    const stem = name.replace(/\.(yaml|json)$/, "");
+    const cmd = gooseCommandFromRecipe(stem, raw, name, warnings);
+    if (cmd) commands.push(cmd);
+  }
+  return commands;
+}
+
+/** Plan goose recipe writes into a flat recipes root (nested names flattened). */
+export function planGooseRecipes(
+  commands: CommandDef[],
+  rootRel: string,
+  warnings: string[],
+): { plans: FilePlan[]; names: string[] } {
+  const plans: FilePlan[] = [];
+  const names: string[] = [];
+  const used = new Set<string>();
+  for (const c of commands) {
+    let name = c.name;
+    if (name.includes("/")) {
+      name = name.replace(/\//g, "-");
+      warnings.push(
+        `commands:${c.name}: goose only discovers top-level recipe files; imported as ${name}`,
+      );
+    }
+    if (used.has(name)) {
+      warnings.push(`commands:${c.name}: name collides with another command after flattening; skipped`);
+      continue;
+    }
+    used.add(name);
+    plans.push({ path: `${rootRel}/${name}.yaml`, content: gooseCommandToRecipe(c, name, warnings) });
+    names.push(name);
+  }
+  return { plans, names };
+}
+
+interface SlashCommandEntry {
+  command: string;
+  recipe_path: string;
+}
+
+/** Merge slash-command registrations into config.yaml's slash_commands list (case-insensitive by command). */
+export function mergeGooseSlashCommands(
+  existing: unknown,
+  incoming: SlashCommandEntry[],
+  warnings: string[],
+): SlashCommandEntry[] {
+  const out: SlashCommandEntry[] = [];
+  const incomingByLower = new Map(incoming.map((e) => [e.command.toLowerCase(), e]));
+  if (Array.isArray(existing)) {
+    for (const entry of existing) {
+      if (!isRecord(entry) || typeof entry.command !== "string") continue;
+      const replacement = incomingByLower.get(entry.command.toLowerCase());
+      if (replacement) {
+        if (typeof entry.recipe_path === "string" && entry.recipe_path !== replacement.recipe_path) {
+          warnings.push(
+            `commands:${replacement.command}: existing slash command re-pointed to the imported recipe`,
+          );
+        }
+        continue;
+      }
+      out.push({
+        command: entry.command,
+        recipe_path: typeof entry.recipe_path === "string" ? entry.recipe_path : "",
+      });
+    }
+  }
+  out.push(...incoming);
+  return out;
+}
 
 const NON_MCP_TYPES = ["builtin", "platform", "frontend", "inline_python"];
 
@@ -123,7 +318,8 @@ export function parseGooseMemoryFile(content: string, source: string): MemoryEnt
 export const goose: ClientAdapter = {
   id: "goose",
   label: "goose",
-  defaultPath: "~/.config/goose (config.yaml + .goosehints + memory/)",
+  defaultPath: "~/.config/goose (config.yaml + .goosehints + memory/ + recipes/)",
+  supportsCommands: true,
 
   async detect(home) {
     return (await exists(path.join(home, CONFIG_REL))) || (await isDir(path.join(home, ".config/goose")));
@@ -155,6 +351,8 @@ export const goose: ClientAdapter = {
       }
     }
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.commands = await readGooseRecipes(path.join(home, RECIPES_REL), warnings);
+    if (bundle.commands.length) warnings.push(GOOSE_COMMANDS_EXPORT_WARNING);
     return { bundle, warnings };
   },
 
@@ -167,7 +365,25 @@ export const goose: ClientAdapter = {
     for (const s of bundle.mcpServers) rendered[s.name] = toGooseExtension(s, warnings);
     const existing = isRecord(config.extensions) ? config.extensions : {};
     config.extensions = mergeMcpRecords(existing, rendered, warnings, opts?.replaceMcp ?? false);
-    if (touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false)) {
+
+    let recipeNames: string[] = [];
+    if (bundle.commands.length) {
+      const { plans, names } = planGooseRecipes(bundle.commands, RECIPES_REL, warnings);
+      files.push(...plans);
+      recipeNames = names;
+      config.slash_commands = mergeGooseSlashCommands(
+        config.slash_commands,
+        names.map((name) => ({
+          command: name,
+          recipe_path: path.join(home, RECIPES_REL, `${name}.yaml`),
+        })),
+        warnings,
+      );
+      warnings.push(GOOSE_COMMANDS_IMPORT_WARNING);
+    }
+    if (
+      touchesMcpConfig(bundle.mcpServers.length, opts?.replaceMcp ?? false, recipeNames.length > 0)
+    ) {
       files.push({ path: CONFIG_REL, content: stringifyYaml(config) });
     }
 

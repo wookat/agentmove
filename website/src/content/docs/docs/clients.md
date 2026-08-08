@@ -25,7 +25,7 @@ description: What AgentMove reads and writes for each client.
 | Roo Code | `roo` | VS Code globalStorage `mcp_settings.json` (`mcpServers`; stdio entries use `command`/`args`/`env` + native `disabled`, remote entries require an explicit `type: streamable-http`/`sse` + `url`/`headers`) — `~/.config/Code/User` (Linux), `~/Library/Application Support/Code/User` (macOS), or `%APPDATA%\Code\User` (Windows); rules markdown in `~/.roo/rules/`, `~/.roo/skills/` (Agent Skills standard), `~/.roo/commands/*.md` (custom slash commands, flat; project scope adds `.roo/commands/`) |
 | Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` **list**; each entry carries its own `name`, stdio uses `command`/`args`/`env`/`cwd`, remote uses `type: streamable-http`/`sse` + `url`), rules markdown in `~/.continue/rules/`, `~/.continue/skills/`, `~/.continue/prompts/` (prompt files as slash commands; nested `*.md` preserved, `invokable: true` frontmatter required by Continue to list them, legacy v1 `.prompt` files warned and not migrated; project scope adds `.continue/prompts/`) |
 | Crush | `crush` | `~/.config/crush/crush.json` (`mcp`; `type` is required — `stdio` uses `command`/`args`/`env`, `http`/`sse` use `url`/`headers` — plus a native `disabled` flag), `~/.config/crush/skills/` (Agent Skills standard), `~/.config/crush/commands/` (custom commands, nested `*.md` preserved as `:`-separated namespaces; the secondary `~/.crush/commands/` root is also read with the XDG root winning on name conflicts, imports write only the XDG root; `$NAME` argument placeholders are client-specific; project scope adds `.crush/commands/`); context files (CRUSH.md/AGENTS.md) are project-scoped only |
-| goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/` |
+| goose | `goose` | `~/.config/goose/config.yaml` (`extensions`; stdio uses `cmd`/`args`/`envs`, remote uses `streamable_http`/`sse` + `uri`), `~/.config/goose/.goosehints`, memory-extension files in `~/.config/goose/memory/`, `~/.agents/skills/`, `~/.config/goose/recipes/*.yaml\|json` (recipe library as commands — `prompt`/`instructions` converted to/from markdown, flat scan; imports also register `slash_commands` entries in `config.yaml`; project scope adds `.goose/recipes/`) |
 | Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`; stdio uses `command`/`args`/`env`/`cwd`, remote servers require `serverUrl` — legacy `url`/`httpUrl` are not supported — plus `headers`, and a native `disabled` flag), `~/.gemini/config/skills/` (Agent Skills standard); global rules live in `~/.gemini/GEMINI.md`, shared with Gemini CLI. This shared config is used by all Antigravity 2.0 surfaces — the desktop app, the IDE, and the Antigravity CLI (`agy`) — so one migration covers all three |
 | Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`; `type` is `stdio`/`http`/`sse` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag), `~/.factory/AGENTS.md` (personal instructions), `~/.factory/skills/` (Agent Skills standard), `~/.factory/droids/*.md` (custom droids / subagents; project scope adds `.factory/droids/`; `tools`/`model`/`reasoningEffort`/`mcpServers` frontmatter is client-specific), `~/.factory/commands/` (custom slash commands, nested `*.md` preserved; project scope adds `.factory/commands/`; shebang script commands are warned, not migrated) |
 | Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`; `type` is `stdio` or `http` and may be omitted for stdio — stdio uses `command`/`args`/`env`, remote uses `url`/`headers`, plus a native `disabled` flag); the built-in default agent loads it via `useLegacyMcpJson`; `~/.aws/amazonq/prompts/` (saved prompts as commands, flat `*.md`; project scope: `.amazonq/prompts/`) |
@@ -307,7 +307,17 @@ description: What AgentMove reads and writes for each client.
 - **goose** builtin/platform extensions are goose-internal and not exported;
   `available_tools` filters, keyring `env_keys`, and non-default per-extension
   timeouts have no portable equivalent (warned). Extensions are user-scoped
-  only — `--project` covers `.goosehints`, `.goose/memory/`, and
-  `.agents/skills/`.
+  only — `--project` covers `.goosehints`, `.goose/memory/`,
+  `.agents/skills/`, and `.goose/recipes/`. Commands are goose **recipes**
+  (YAML/JSON), so migration is a format conversion, not a byte-faithful
+  copy: on export `title`/`description` become frontmatter and
+  `prompt`/`instructions` become the markdown body (recipe-only fields like
+  `parameters`, `extensions`, and `sub_recipes` have no portable equivalent
+  and are warned); on import bodies become the recipe `prompt` field and a
+  `slash_commands` entry is registered in `config.yaml` so the command is
+  invokable as `/name` (goose slash commands take at most one parameter).
+  goose only discovers top-level recipe files, so nested names are flattened
+  (warned); `.yml` recipes are not supported by the goose CLI and are not
+  migrated (warned).
 - OpenClaw `toolFilter` and Hermes `tools.include/exclude` MCP filters have no
   portable equivalent and are dropped with a warning.

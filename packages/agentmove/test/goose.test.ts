@@ -26,7 +26,11 @@ describe("goose adapter", () => {
       "The project uses pnpm workspaces.",
     ]);
     expect(bundle.skills.map((s) => s.name)).toEqual(["todo"]);
-    expect(warnings).toEqual([]);
+    expect(bundle.commands.map((c) => c.name)).toEqual(["daily-report", "lint-fix"]);
+    expect(warnings).toEqual([
+      'commands:lint-fix: goose recipe field "parameters" has no portable command equivalent; dropped',
+      "commands: converted from goose recipe YAML/JSON (title/description + prompt/instructions); {{ param }} placeholders are goose-specific and copied as-is",
+    ]);
   });
 
   it("imports MCP as extensions (merge), hints, memory, skills", async () => {
@@ -76,5 +80,20 @@ describe("goose adapter", () => {
     expect(files.some((f) => f.path === ".goose/memory/imported.txt")).toBe(true);
     expect(files.some((f) => f.path === ".agents/skills/sk/SKILL.md")).toBe(true);
     expect(warnings.some((w) => w.includes("no project-scoped extension config"))).toBe(true);
+  });
+
+  it("project scope: commands become .goose/recipes/ recipes without touching user config", async () => {
+    const adapter = getProjectAdapter("goose");
+    const bundle = emptyBundle();
+    bundle.commands = [{ name: "deploy", content: "---\ndescription: \"d\"\n---\nDeploy.\n" }];
+    const { files, warnings } = await adapter.planImport(bundle, "/nonexistent-project", {});
+    const recipe = files.find((f) => f.path === ".goose/recipes/deploy.yaml")!;
+    const parsed = parseYaml(recipe.content) as Record<string, unknown>;
+    expect(parsed.prompt).toBe("Deploy.\n");
+    expect(parsed.description).toBe("d");
+    expect(files.some((f) => f.path.includes("config.yaml"))).toBe(false);
+    expect(warnings.some((w) => w.includes("slash-command registration lives in the user-level config.yaml"))).toBe(
+      true,
+    );
   });
 });
