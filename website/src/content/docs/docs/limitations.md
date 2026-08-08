@@ -137,9 +137,14 @@ persona, and a later export won't recover it as a separate `persona.md`.
   (`~/.qwen/commands/`, project `.qwen/commands/`; subdirectories
   preserved and shown as `/git:commit`-style namespaced names),
   Windsurf (workflows: `~/.codeium/windsurf/global_workflows/`, project
-  `.windsurf/workflows/`; invoked as `/name`), and Amazon Q Developer
+  `.windsurf/workflows/`; invoked as `/name`), Amazon Q Developer
   CLI (saved prompts: `~/.aws/amazonq/prompts/`, project
-  `.amazonq/prompts/`; invoked as `@name` in `q chat`).
+  `.amazonq/prompts/`; invoked as `@name` in `q chat`), CodeBuddy
+  (`~/.codebuddy/commands/`, project `.codebuddy/commands/`;
+  subdirectories preserved and shown as `/group:command`-style
+  namespaced names), and Droid (`~/.factory/commands/`, project
+  `.factory/commands/`; subdirectories preserved; filenames are slugged
+  by the client on discovery).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
@@ -157,6 +162,9 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Qwen Code's legacy TOML command files (`*.toml`) are deprecated and
   **not** migrated — each one is warned on export; convert them to
   markdown first.
+- Droid shebang script commands (non-`.md` files under
+  `.factory/commands/`) are executable shell scripts, not portable
+  prompts — **not** migrated; each one is warned on export.
 - Every other client has no documented commands/prompts directory —
   imported commands are **skipped** with a warning.
 
