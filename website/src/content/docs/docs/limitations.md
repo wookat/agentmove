@@ -163,9 +163,11 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `.github/prompts/*.prompt.md`; flat), Gemini CLI
   (`~/.gemini/commands/**/*.toml`, project `.gemini/commands/`;
   subdirectories preserved as `:`-separated namespaces — a format
-  conversion, see below), and Crush (`~/.config/crush/commands/` plus
+  conversion, see below), Crush (`~/.config/crush/commands/` plus
   the secondary `~/.crush/commands/` root, project `.crush/commands/`;
-  subdirectories preserved as `:`-separated namespaces).
+  subdirectories preserved as `:`-separated namespaces), and Trae
+  (`~/.trae/commands/` plus the CN-edition `~/.trae-cn/commands/` root,
+  project `.trae/commands/`; subdirectories preserved).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`, crush `$NAME`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
@@ -219,6 +221,13 @@ persona, and a later export won't recover it as a separate `persona.md`.
   palette are runtime features, not files — never migrated. A custom
   `data_directory` in crush.json can move the project commands root;
   agentmove uses the default `.crush/commands/` only.
+- Trae reads two user command roots — `~/.trae/commands/` (international
+  edition) and `~/.trae-cn/commands/` (CN edition) — both recursively;
+  exports merge them with `~/.trae/commands/` winning on name conflicts
+  (warned), and imports write only `~/.trae/commands/`. Trae recognizes
+  at most 3 nested directory levels: deeper commands are still written on
+  import but warned as not recognized by Trae. Command frontmatter
+  (name/description) is client-specific and copied as-is (warned).
 - VS Code prompt files are only read from and written to the default
   profile's `User/prompts` folder (`*.prompt.md` files only — other
   customization types in that folder belong to their own layers);
