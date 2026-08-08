@@ -15,7 +15,9 @@ import {
   appendSections,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -29,11 +31,17 @@ import {
  * command/args/env, remote uses url/headers. There is no per-server disabled
  * flag (only `mcp.allowed`/`mcp.excluded` allowlists, which are preserved as
  * plain settings). User memory is ~/.qoder/AGENTS.md and user skills follow
- * the open Agent Skills standard under ~/.qoder/skills/.
+ * the open Agent Skills standard under ~/.qoder/skills/. Custom subagents
+ * are markdown files with YAML frontmatter under ~/.qoder/agents/ (user)
+ * and .qoder/agents/ (project; project overrides user on name conflicts).
  */
 const SETTINGS_REL = ".qoder/settings.json";
 const MEMORY_REL = ".qoder/AGENTS.md";
 const SKILLS_REL = ".qoder/skills";
+const AGENTS_DIR_REL = ".qoder/agents";
+
+export const QODER_AGENTS_WARNING =
+  "agents: frontmatter fields (tools/model/skills/mcpServers) are client-specific and copied as-is; review after import";
 
 export async function readQoderSettings(file: string): Promise<Record<string, unknown>> {
   const raw = await readText(file);
@@ -99,7 +107,8 @@ export async function planQoderMcp(
 export const qoder: ClientAdapter = {
   id: "qoder",
   label: "Qoder CLI",
-  defaultPath: "~/.qoder (settings.json + AGENTS.md + skills/)",
+  defaultPath: "~/.qoder (settings.json + AGENTS.md + skills/ + agents/)",
+  supportsAgents: true,
 
   async detect(home) {
     return isDir(path.join(home, ".qoder"));
@@ -120,6 +129,7 @@ export const qoder: ClientAdapter = {
       );
     }
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -151,6 +161,10 @@ export const qoder: ClientAdapter = {
       warnings.push("memory: qoder auto-memory is app-managed; skipped (consider --mif)");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
+      warnings.push(QODER_AGENTS_WARNING);
+    }
     return { files, warnings };
   },
 };

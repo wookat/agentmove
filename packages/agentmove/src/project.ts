@@ -52,7 +52,12 @@ import {
   planCodebuddyMcp,
   readCodebuddyMcp,
 } from "./adapters/codebuddy.js";
-import { parseQoderServers, planQoderMcp, readQoderSettings } from "./adapters/qoder.js";
+import {
+  parseQoderServers,
+  planQoderMcp,
+  QODER_AGENTS_WARNING,
+  readQoderSettings,
+} from "./adapters/qoder.js";
 import {
   parseAuggieServers,
   planAuggieMcp,
@@ -1325,6 +1330,7 @@ const codebuddyProject: ProjectAdapter = {
 };
 
 const qoderProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1340,6 +1346,7 @@ const qoderProject: ProjectAdapter = {
       );
     }
     bundle.skills = await readSkillsDir(path.join(dir, ".qoder/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".qoder/agents"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1366,6 +1373,10 @@ const qoderProject: ProjectAdapter = {
       warnings.push("memory: qoder auto-memory is app-managed; skipped");
     }
     files.push(...planSkills(bundle.skills, ".qoder/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".qoder/agents", ".md"));
+      warnings.push(QODER_AGENTS_WARNING);
+    }
     return { files, warnings };
   },
 };
