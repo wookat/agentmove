@@ -79,7 +79,8 @@ import {
   readAuggieRulesDir,
   readAuggieSettings,
 } from "./adapters/auggie.js";
-import { parseKiloServers, planKiloMcp, readKiloConfig } from "./adapters/kilo.js";
+import { KILO_COMMANDS_WARNING, parseKiloServers, planKiloMcp, readKiloConfig } from "./adapters/kilo.js";
+import { CLINE_COMMANDS_WARNING, warnClineNonMarkdownWorkflows } from "./adapters/cline.js";
 import {
   KIMI_AGENTS_WARNING,
   parseKimiServers,
@@ -399,6 +400,7 @@ const windsurfProject: ProjectAdapter = {
 };
 
 const clineProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -417,6 +419,8 @@ const clineProject: ProjectAdapter = {
       }
     }
     bundle.skills = await readSkillsDir(path.join(dir, ".cline/skills"), warnings);
+    bundle.commands = await readAgentsDir(path.join(dir, ".clinerules/workflows"), ".md");
+    await warnClineNonMarkdownWorkflows(path.join(dir, ".clinerules/workflows"), warnings);
     warnings.push("cline has no project-scoped MCP config; MCP servers stay user-scoped");
     return { bundle, warnings };
   },
@@ -440,6 +444,10 @@ const clineProject: ProjectAdapter = {
     }
     if (bundle.memory.length) warnings.push("memory: cline has no project-scoped memory store; skipped");
     files.push(...planSkills(bundle.skills, ".cline/skills"));
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, ".clinerules/workflows", "cline", warnings));
+      warnings.push(CLINE_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
@@ -1522,6 +1530,7 @@ const auggieProject: ProjectAdapter = {
 };
 
 const kiloProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1533,6 +1542,16 @@ const kiloProject: ProjectAdapter = {
     bundle.mcpServers = parseKiloServers(config, warnings);
     bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".kilo/skills"), warnings);
+    const legacy = await readAgentsDir(path.join(dir, ".kilocode/workflows"), ".md");
+    bundle.commands = mergeAgentLists(
+      legacy,
+      await readAgentsDir(path.join(dir, ".kilo/commands"), ".md"),
+    );
+    if (legacy.length) {
+      warnings.push(
+        "commands: legacy .kilocode/workflows/ files exported; kilo now uses .kilo/commands/ (new location wins on name conflicts)",
+      );
+    }
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1562,6 +1581,10 @@ const kiloProject: ProjectAdapter = {
       warnings.push("memory: kilo has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".kilo/skills"));
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, ".kilo/commands", "kilo", warnings));
+      warnings.push(KILO_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };

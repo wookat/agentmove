@@ -29,7 +29,9 @@ describe("kilo adapter", () => {
     });
     expect(bundle.instructions).toContain("Use pnpm");
     expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
-    expect(warnings).toEqual([]);
+    expect(warnings).toEqual([
+      "commands: legacy ~/.kilocode/workflows/ files exported; kilo now uses ~/.config/kilo/commands/ (new location wins on name conflicts)",
+    ]);
   });
 
   it("round-trips enabled:false and warns for client-specific timeout", async () => {

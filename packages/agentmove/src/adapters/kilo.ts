@@ -13,9 +13,12 @@ import {
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
 import {
+  mergeAgentLists,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planCommandsFlat,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -30,11 +33,21 @@ import {
  * boolean and a client-specific `timeout`. Global instructions are
  * ~/.config/kilo/AGENTS.md and global skills follow the Agent Skills
  * standard under ~/.kilo/skills/.
+ *
+ * Custom slash commands (formerly "workflows") are top-level markdown files
+ * under ~/.config/kilo/commands/; the legacy ~/.kilocode/workflows/ location
+ * is still read (the extension auto-migrates it) with the new location
+ * winning on name conflicts. Imports only write the new location.
  */
 const CONFIG_DIR_REL = ".config/kilo";
 const CONFIG_RELS = [".config/kilo/kilo.json", ".config/kilo/kilo.jsonc", ".config/kilo/config.json"];
 const AGENTS_REL = ".config/kilo/AGENTS.md";
 const SKILLS_REL = ".kilo/skills";
+const COMMANDS_DIR_REL = ".config/kilo/commands";
+const LEGACY_WORKFLOWS_REL = ".kilocode/workflows";
+
+export const KILO_COMMANDS_WARNING =
+  "commands: frontmatter fields (description/agent/model/subtask) and argument placeholders are client-specific and copied as-is; review after import";
 
 export async function readKiloConfig(
   candidates: string[],
@@ -139,7 +152,8 @@ export async function planKiloMcp(
 export const kilo: ClientAdapter = {
   id: "kilo",
   label: "Kilo Code",
-  defaultPath: "~/.config/kilo (kilo.json + AGENTS.md) + ~/.kilo/skills",
+  defaultPath: "~/.config/kilo (kilo.json + AGENTS.md + commands/) + ~/.kilo/skills",
+  supportsCommands: true,
 
   async detect(home) {
     for (const rel of CONFIG_RELS) {
@@ -161,6 +175,16 @@ export const kilo: ClientAdapter = {
     bundle.mcpServers = parseKiloServers(config, warnings);
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    const legacy = await readAgentsDir(path.join(home, LEGACY_WORKFLOWS_REL), ".md");
+    bundle.commands = mergeAgentLists(
+      legacy,
+      await readAgentsDir(path.join(home, COMMANDS_DIR_REL), ".md"),
+    );
+    if (legacy.length) {
+      warnings.push(
+        "commands: legacy ~/.kilocode/workflows/ files exported; kilo now uses ~/.config/kilo/commands/ (new location wins on name conflicts)",
+      );
+    }
     return { bundle, warnings };
   },
 
@@ -192,6 +216,10 @@ export const kilo: ClientAdapter = {
       warnings.push("memory: kilo has no durable memory store; skipped (consider --mif)");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, COMMANDS_DIR_REL, "kilo", warnings));
+      warnings.push(KILO_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };

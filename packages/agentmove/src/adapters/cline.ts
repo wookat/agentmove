@@ -14,7 +14,9 @@ import { exists, isDir, listDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planCommandsFlat,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -26,10 +28,34 @@ import {
  * ~/Documents/Cline/Rules/*.md (workspace rules are .clinerules/, handled by
  * the project adapter). Remote servers use `url` with `type` of
  * "streamableHttp" or "sse" (a missing type means legacy sse).
+ *
+ * Global workflows (slash commands, invoked as /name.md) are top-level
+ * markdown files in ~/Documents/Cline/Workflows (workspace workflows are
+ * .clinerules/workflows/, handled by the project adapter). Non-markdown
+ * workflow files (.txt) are not migrated.
  */
 const MCP_REL = ".cline/data/settings/cline_mcp_settings.json";
 const RULES_REL = "Documents/Cline/Rules";
 const SKILLS_REL = ".cline/skills";
+const WORKFLOWS_REL = "Documents/Cline/Workflows";
+
+export const CLINE_COMMANDS_WARNING =
+  "commands: cline workflows are invoked as /<file>.md and enable/disable toggles are app-managed; contents copied as-is, review after import";
+
+/** Warn (per file) about non-markdown cline workflow files, which are not migrated. */
+export async function warnClineNonMarkdownWorkflows(
+  dir: string,
+  warnings: string[],
+): Promise<void> {
+  if (!(await isDir(dir))) return;
+  for (const name of (await listDir(dir)).sort()) {
+    if (name.startsWith(".") || name.endsWith(".md")) continue;
+    if (await isDir(path.join(dir, name))) continue;
+    warnings.push(
+      `commands:${name}: cline non-markdown workflow files are not migrated; only markdown workflows are`,
+    );
+  }
+}
 
 async function readMcpConfig(home: string): Promise<Record<string, unknown>> {
   const file = path.join(home, MCP_REL);
@@ -62,7 +88,8 @@ export async function readRulesDir(dir: string): Promise<string | undefined> {
 export const cline: ClientAdapter = {
   id: "cline",
   label: "Cline",
-  defaultPath: "~/.cline (settings + skills/) + ~/Documents/Cline/Rules",
+  defaultPath: "~/.cline (settings + skills/) + ~/Documents/Cline (Rules + Workflows)",
+  supportsCommands: true,
 
   async detect(home) {
     return (
@@ -91,6 +118,8 @@ export const cline: ClientAdapter = {
 
     bundle.instructions = await readRulesDir(path.join(home, RULES_REL));
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.commands = await readAgentsDir(path.join(home, WORKFLOWS_REL), ".md");
+    await warnClineNonMarkdownWorkflows(path.join(home, WORKFLOWS_REL), warnings);
     warnings.push(
       "cline VS Code extension keeps its own MCP settings copy in VS Code globalStorage; " +
         "only the CLI settings file (~/.cline) and global rules are migrated",
@@ -137,6 +166,10 @@ export const cline: ClientAdapter = {
       warnings.push("memory: cline has no durable memory store; skipped (consider --mif)");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, WORKFLOWS_REL, "cline", warnings));
+      warnings.push(CLINE_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
