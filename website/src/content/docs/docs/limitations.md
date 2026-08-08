@@ -154,16 +154,19 @@ persona, and a later export won't recover it as a separate `persona.md`.
   location), Cline (workflows: `~/Documents/Cline/Workflows/`,
   project `.clinerules/workflows/`; flat, invoked as `/name.md`),
   Auggie CLI (`~/.augment/commands/`, project `.augment/commands/`;
-  subdirectories preserved and shown as `/namespace:command`), and
+  subdirectories preserved and shown as `/namespace:command`),
   Nanocoder (`~/.config/nanocoder/commands/`, project
   `.nanocoder/commands/`; subdirectories preserved as `:`-separated
-  namespaces).
+  namespaces), Continue (prompt files: `~/.continue/prompts/`, project
+  `.continue/prompts/`; subdirectories preserved), and VS Code (Copilot
+  prompt files: default-profile `User/prompts/*.prompt.md`, project
+  `.github/prompts/*.prompt.md`; flat).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
   client-specific and may need review after import — a warning is
   emitted.
-- Cursor, Codex, Windsurf, Amazon Q, Roo Code, Kilo Code, and Cline only discover top-level
+- Cursor, Codex, Windsurf, Amazon Q, Roo Code, Kilo Code, Cline, and VS Code only discover top-level
   command files: nested names like `git/commit` are flattened to `git-commit` on
   import there, with a warning (name collisions after flattening skip
   the command).
@@ -187,6 +190,16 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Nanocoder directory-as-command bundles (a directory containing
   `<dirname>.md`) export only the command markdown; their `resources/`
   files are client-specific and **not** migrated — warned on export.
+- Continue only lists a prompt file as a slash command when its
+  frontmatter sets `invokable: true` — imports copy frontmatter as-is
+  with a warning. Legacy v1 `.prompt` files are **not** migrated (warned
+  per file); Hub prompt blocks (`uses: owner/slug` in `config.yaml`) are
+  remote references and are not migrated either.
+- VS Code prompt files are only read from and written to the default
+  profile's `User/prompts` folder (`*.prompt.md` files only — other
+  customization types in that folder belong to their own layers);
+  non-default profiles are app-managed and not covered. The folder is
+  also synced by Settings Sync — noted as a warning on import.
 - Every other client has no documented commands/prompts directory —
   imported commands are **skipped** with a warning.
 
