@@ -174,15 +174,18 @@ persona, and a later export won't recover it as a separate `persona.md`.
   (`~/.snowflake/cortex/commands/`, user scope only; subdirectories
   preserved — no project-scoped commands directory is documented, project
   commands ship only inside plugins, so project-scope imports skip
-  commands with a warning), and goose (recipes:
+  commands with a warning), goose (recipes:
   `~/.config/goose/recipes/*.yaml|json`, project `.goose/recipes/`;
-  flat — a format conversion, see below).
+  flat — a format conversion, see below), and Antigravity (workflows:
+  `~/.gemini/config/global_workflows/`, project `.agents/workflows/`;
+  flat, triggered as `/name` in AGY and AGY IDE — AGY CLI lists
+  workflows but cannot trigger them).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`, crush `$NAME`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
   client-specific and may need review after import — a warning is
   emitted.
-- Cursor, Codex, Windsurf, Amazon Q, Kiro, Roo Code, Kilo Code, Cline, VS Code, and goose only discover top-level
+- Cursor, Codex, Windsurf, Amazon Q, Kiro, Roo Code, Kilo Code, Cline, VS Code, goose, and Antigravity only discover top-level
   command files: nested names like `git/commit` are flattened to `git-commit` on
   import there, with a warning (name collisions after flattening skip
   the command).

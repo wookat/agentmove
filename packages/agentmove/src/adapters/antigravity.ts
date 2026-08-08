@@ -14,7 +14,9 @@ import { exists, isDir, listDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planCommandsFlat,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -27,10 +29,14 @@ import {
  * url/httpUrl are not supported — plus `headers`; native `disabled` flag).
  * Global Agent Skills live in ~/.gemini/config/skills/. Global rules live in
  * ~/.gemini/GEMINI.md, which is shared with Gemini CLI — the instructions
- * layer is owned by the `gemini` client to avoid double writes.
+ * layer is owned by the `gemini` client to avoid double writes. Workflows are
+ * flat markdown files in ~/.gemini/config/global_workflows/ (global) or
+ * .agents/workflows/ (workspace), triggered as /name slash commands in AGY
+ * and AGY IDE (AGY CLI lists them but cannot trigger them).
  */
 const MCP_REL = ".gemini/config/mcp_config.json";
 const SKILLS_REL = ".gemini/config/skills";
+const WORKFLOWS_REL = ".gemini/config/global_workflows";
 
 const CLIENT_KEYS = ["disabledTools", "authProviderType", "oauth"] as const;
 
@@ -110,7 +116,8 @@ export async function readAntigravityRulesDir(
 export const antigravity: ClientAdapter = {
   id: "antigravity",
   label: "Antigravity",
-  defaultPath: "~/.gemini/config (mcp_config.json + skills/)",
+  defaultPath: "~/.gemini/config (mcp_config.json + skills/ + global_workflows/)",
+  supportsCommands: true,
 
   async detect(home) {
     return (
@@ -129,6 +136,7 @@ export const antigravity: ClientAdapter = {
     bundle.config.raw = config;
     bundle.mcpServers = parseAntigravityServers(config, warnings);
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.commands = await readAgentsDir(path.join(home, WORKFLOWS_REL), ".md");
     warnings.push(
       "instructions: antigravity global rules live in ~/.gemini/GEMINI.md shared with Gemini CLI; use the gemini client for that layer",
     );
@@ -163,6 +171,12 @@ export const antigravity: ClientAdapter = {
       warnings.push("memory: antigravity has no durable memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, WORKFLOWS_REL, "antigravity", warnings));
+      warnings.push(
+        "commands: workflows are triggered as /name in AGY and AGY IDE; AGY CLI lists them but cannot trigger them",
+      );
+    }
     return { files, warnings };
   },
 };
