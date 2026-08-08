@@ -31,7 +31,45 @@ describe("kilo adapter", () => {
     expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
     expect(warnings).toEqual([
       "commands: legacy ~/.kilocode/workflows/ files exported; kilo now uses ~/.config/kilo/commands/ (new location wins on name conflicts)",
+      "agents: legacy ~/.kilocode/ and ~/.kilo/ agent files exported; kilo's primary location is ~/.config/kilo/ (which wins on name conflicts)",
     ]);
+  });
+
+  it("exports custom agents recursively with the XDG root winning on conflicts", async () => {
+    const { bundle } = await kilo.exportBundle(HOME);
+    expect(bundle.agents.map((a) => a.name)).toEqual([
+      "backend/sql",
+      "docs-writer",
+      "old-reviewer",
+    ]);
+    const raw = await fs.readFile(
+      path.join(HOME, ".config/kilo/agents/backend/sql.md"),
+      "utf8",
+    );
+    expect(bundle.agents.find((a) => a.name === "backend/sql")!.content).toBe(raw);
+    // ~/.config/kilo wins over the legacy ~/.kilocode duplicate
+    expect(bundle.agents.find((a) => a.name === "docs-writer")!.content).toContain(
+      "You are a docs writer.",
+    );
+    expect(bundle.agents.find((a) => a.name === "old-reviewer")!.content).toContain(
+      "Legacy reviewer body.",
+    );
+  });
+
+  it("imports agents into ~/.config/kilo/agents/ preserving nested names", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [
+      { name: "reviewer", content: "Review.\n" },
+      { name: "backend/sql", content: "SQL.\n" },
+    ];
+    const { files, warnings } = await kilo.planImport(bundle, "/nonexistent-home", {});
+    expect(files.find((f) => f.path === ".config/kilo/agents/reviewer.md")!.content).toBe(
+      "Review.\n",
+    );
+    expect(files.find((f) => f.path === ".config/kilo/agents/backend/sql.md")!.content).toBe(
+      "SQL.\n",
+    );
+    expect(warnings.some((w) => w.includes("client-specific"))).toBe(true);
   });
 
   it("round-trips enabled:false and warns for client-specific timeout", async () => {
@@ -146,6 +184,24 @@ describe("kilo adapter", () => {
     expect(exported.mcpServers.map((s) => s.name)).toEqual(["existing"]);
     expect(exported.instructions).toContain("Team notes");
     expect(expWarnings).toEqual([]);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("project scope: agents round-trip via .kilo/agents (legacy .kilocode read)", async () => {
+    const adapter = getProjectAdapter("kilo");
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-proj-agents-"));
+    await fs.mkdir(path.join(dir, ".kilo/agents"), { recursive: true });
+    await fs.mkdir(path.join(dir, ".kilocode/agent"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".kilo/agents/planner.md"), "Plan things.\n");
+    await fs.writeFile(path.join(dir, ".kilocode/agent/old.md"), "Old agent.\n");
+    const { bundle: exported } = await adapter.exportProject(dir);
+    expect(exported.agents.map((a) => a.name)).toEqual(["old", "planner"]);
+
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "analyzer", content: "Analyze.\n" }];
+    const { files, warnings } = await adapter.planImport(bundle, dir, {});
+    expect(files.find((f) => f.path === ".kilo/agents/analyzer.md")!.content).toBe("Analyze.\n");
+    expect(warnings.some((w) => w.includes("client-specific"))).toBe(true);
     await fs.rm(dir, { recursive: true, force: true });
   });
 });
