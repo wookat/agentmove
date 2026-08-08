@@ -15,6 +15,8 @@ import { codebuddy } from "../src/adapters/codebuddy.js";
 import { droid } from "../src/adapters/droid.js";
 import { qoder } from "../src/adapters/qoder.js";
 import { roo } from "../src/adapters/roo.js";
+import { kilo } from "../src/adapters/kilo.js";
+import { cline } from "../src/adapters/cline.js";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
 import { readBundle, writeBundle } from "../src/bundle.js";
@@ -377,6 +379,81 @@ describe("custom commands layer", () => {
     expect(claude.bundle.commands.map((c) => c.name)).toEqual(["git/commit"]);
     const cur = await getProjectAdapter("cursor").exportProject(dir);
     expect(cur.bundle.commands.map((c) => c.name)).toEqual(["review"]);
+  });
+
+  it("kilo exports ~/.config/kilo/commands plus legacy workflows (new wins)", async () => {
+    const { bundle, warnings } = await kilo.exportBundle(path.join(FIXTURES, "kilo-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["release", "submit-pr"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "kilo-home/.config/kilo/commands/submit-pr.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "submit-pr")!.content).toBe(raw);
+    const legacy = await fs.readFile(
+      path.join(FIXTURES, "kilo-home/.kilocode/workflows/release.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "release")!.content).toBe(legacy);
+    expect(warnings.some((w) => w.includes("legacy ~/.kilocode/workflows/"))).toBe(true);
+  });
+
+  it("kilo plans commands flat into ~/.config/kilo/commands with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "submit-pr", content: "Submit.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await kilo.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".config/kilo/commands/submit-pr.md")).toBe(true);
+    expect(files.some((f) => f.path === ".config/kilo/commands/git-commit.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("description/agent/model/subtask"))).toBe(true);
+  });
+
+  it("cline exports ~/Documents/Cline/Workflows/*.md, warning on non-markdown files", async () => {
+    const { bundle, warnings } = await cline.exportBundle(path.join(FIXTURES, "cline-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["deploy"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "cline-home/Documents/Cline/Workflows/deploy.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+    expect(
+      warnings.some((w) => w.includes("commands:release.txt") && w.includes("not migrated")),
+    ).toBe(true);
+  });
+
+  it("cline plans commands flat into ~/Documents/Cline/Workflows with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "deploy", content: "Deploy.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await cline.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === "Documents/Cline/Workflows/deploy.md")).toBe(true);
+    expect(files.some((f) => f.path === "Documents/Cline/Workflows/git-commit.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("toggles are app-managed"))).toBe(true);
+  });
+
+  it("project scope: kilo and cline commands round-trip", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-cmd-proj6-"));
+    await fs.mkdir(path.join(dir, ".kilo/commands"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".kilo/commands/submit-pr.md"), "Submit.\n");
+    await fs.mkdir(path.join(dir, ".kilocode/workflows"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".kilocode/workflows/release.md"), "Release.\n");
+    await fs.mkdir(path.join(dir, ".clinerules/workflows"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".clinerules/workflows/deploy.md"), "Deploy.\n");
+    const ki = await getProjectAdapter("kilo").exportProject(dir);
+    expect(ki.bundle.commands.map((c) => c.name)).toEqual(["release", "submit-pr"]);
+    expect(ki.warnings.some((w) => w.includes("legacy .kilocode/workflows/"))).toBe(true);
+    const cl = await getProjectAdapter("cline").exportProject(dir);
+    expect(cl.bundle.commands.map((c) => c.name)).toEqual(["deploy"]);
+    const kiFiles = (await getProjectAdapter("kilo").planImport(ki.bundle, "/p", {})).files;
+    expect(kiFiles.some((f) => f.path === ".kilo/commands/submit-pr.md")).toBe(true);
+    expect(kiFiles.some((f) => f.path === ".kilo/commands/release.md")).toBe(true);
+    const clFiles = (await getProjectAdapter("cline").planImport(cl.bundle, "/p", {})).files;
+    expect(clFiles.some((f) => f.path === ".clinerules/workflows/deploy.md")).toBe(true);
   });
 
   it("bundle round-trips the commands layer byte-faithfully (nested names)", async () => {

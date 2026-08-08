@@ -146,14 +146,19 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `.factory/commands/`; subdirectories preserved; filenames are slugged
   by the client on discovery), Qoder CLI (`~/.qoder/commands/`, project
   `.qoder/commands/`; subdirectories preserved and shown as
-  `/group:command`-style namespaced names), and Roo Code
-  (`~/.roo/commands/`, project `.roo/commands/`; flat).
+  `/group:command`-style namespaced names), Roo Code
+  (`~/.roo/commands/`, project `.roo/commands/`; flat), Kilo Code
+  (`~/.config/kilo/commands/`, project `.kilo/commands/`; flat; legacy
+  `~/.kilocode/workflows/` / `.kilocode/workflows/` still read with the
+  new location winning on name conflicts — imports write only the new
+  location), and Cline (workflows: `~/Documents/Cline/Workflows/`,
+  project `.clinerules/workflows/`; flat, invoked as `/name.md`).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
   client-specific and may need review after import — a warning is
   emitted.
-- Cursor, Codex, Windsurf, Amazon Q, and Roo Code only discover top-level
+- Cursor, Codex, Windsurf, Amazon Q, Roo Code, Kilo Code, and Cline only discover top-level
   command files: nested names like `git/commit` are flattened to `git-commit` on
   import there, with a warning (name collisions after flattening skip
   the command).
@@ -168,6 +173,9 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Droid shebang script commands (non-`.md` files under
   `.factory/commands/`) are executable shell scripts, not portable
   prompts — **not** migrated; each one is warned on export.
+- Cline non-markdown workflow files (`.txt`, extensionless) are **not**
+  migrated — each one is warned on export; enable/disable toggles are
+  app-managed and not migrated.
 - Every other client has no documented commands/prompts directory —
   imported commands are **skipped** with a warning.
 
