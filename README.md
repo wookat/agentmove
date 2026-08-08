@@ -201,7 +201,9 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 - `export <client> --skills-repo <dir>` — also write the skills layer as a
   skills repository (`skills/<name>/SKILL.md`), ready to commit and publish
   with `gh skill publish` or install with `npx skills add`; a path ending in
-  `.zip`/`.tgz`/`.tar.gz` writes it as an archive
+  `.zip`/`.tgz`/`.tar.gz` writes it as an archive; `gh skill install`
+  source-tracking metadata (`metadata.github-*`) is stripped with a warning
+  so the result passes `gh skill publish` validation
 - `agentmove diff <from> <to>` — layer-by-layer comparison
 - `agentmove doctor` — detect installed clients and inventory migratable data
 - `agentmove clients` — list supported clients and default config locations

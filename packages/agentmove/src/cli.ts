@@ -225,15 +225,18 @@ program
         else printWarnings(mcpWarnings);
       }
       if (opts.skillsRepo) {
+        let repoWarnings: string[];
         if (isArchiveInput(opts.skillsRepo)) {
           const name = path.basename(path.resolve(opts.skillsRepo)).replace(/\.(zip|tgz|tar\.gz)$/i, "");
           const work = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-skills-"));
           const stage = path.join(work, name);
-          await writeSkillsRepo(bundle.skills, stage);
+          repoWarnings = await writeSkillsRepo(bundle.skills, stage);
           await createArchive(stage, opts.skillsRepo);
         } else {
-          await writeSkillsRepo(bundle.skills, opts.skillsRepo);
+          repoWarnings = await writeSkillsRepo(bundle.skills, opts.skillsRepo);
         }
+        if (opts.json) collected.push(...repoWarnings);
+        else printWarnings(repoWarnings);
       }
       if (opts.json) {
         process.stdout.write(
