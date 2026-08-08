@@ -58,7 +58,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
 | Skills | `SKILL.md` directories (the de-facto cross-client standard) |
-| Custom agents | Subagent markdown definitions — Claude Code `~/.claude/agents/`, Copilot CLI `~/.copilot/agents/*.agent.md`, Gemini CLI `~/.gemini/agents/` (experimental); frontmatter is copied as-is with a warning, other clients skip with a warning |
+| Custom agents | Subagent markdown definitions — Claude Code `~/.claude/agents/`, Copilot CLI `~/.copilot/agents/*.agent.md`, Gemini CLI `~/.gemini/agents/` (experimental), OpenCode `~/.config/opencode/agents/`, Qwen Code `~/.qwen/agents/`; frontmatter is copied as-is with a warning, other clients skip with a warning |
 | Config | Default model plus the raw source config preserved in the bundle for reference |
 
 Every lossy or approximated step is reported as a warning — nothing is silently
@@ -114,8 +114,8 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`), `~/.config/zed/AGENTS.md`, `~/.agents/skills/` |
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]`), `~/.openhands/microagents/` |
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json`, `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/`, `~/.copilot/skills/`, `~/.copilot/agents/*.agent.md` |
-| OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
-| Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`), `~/.qwen/QWEN.md` (incl. "Qwen Added Memories"), `~/.qwen/skills/` |
+| OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/`, `~/.config/opencode/agents/` (custom agents) |
+| Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`), `~/.qwen/QWEN.md` (incl. "Qwen Added Memories"), `~/.qwen/skills/`, `~/.qwen/agents/` (custom subagents) |
 | Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
 | VS Code | `vscode` | user-profile `mcp.json` (`servers`; Linux `~/.config/Code/User`, macOS `~/Library/Application Support/Code/User`, Windows `%APPDATA%\Code\User`) + `~/.agents/skills/` |
 | Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`), `~/.kiro/steering/`, `~/.kiro/skills/` |
@@ -167,8 +167,8 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   `.windsurf/rules`, `.clinerules`, `.zed/settings.json`/`.rules`,
   `.openhands/microagents`+`.openhands/skills`,
   `.mcp.json`+`.github/copilot-instructions.md` for copilot,
-  `opencode.json`+`AGENTS.md`+`.opencode/skills` for opencode,
-  `.qwen/settings.json`+`QWEN.md`+`.qwen/skills` for qwen) instead of
+  `opencode.json`+`AGENTS.md`+`.opencode/skills`+`.opencode/agents` for opencode,
+  `.qwen/settings.json`+`QWEN.md`+`.qwen/skills`+`.qwen/agents` for qwen) instead of
   user-scoped config; openclaw/hermes have no project scope
 - `--mif <file>` (on `export`) / `import <client> --mif <file>` — exchange the
   memory layer as a vendor-neutral [MIF v2](https://github.com/varun29ankuS/mif-spec)

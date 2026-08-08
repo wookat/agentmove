@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { copilot } from "../src/adapters/copilot.js";
 import { claudeCode } from "../src/adapters/claude-code.js";
 import { gemini } from "../src/adapters/gemini.js";
+import { opencode } from "../src/adapters/opencode.js";
+import { qwen } from "../src/adapters/qwen.js";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
 import { readBundle, writeBundle } from "../src/bundle.js";
@@ -59,6 +61,42 @@ describe("custom agents layer", () => {
     expect(warnings.some((w) => w.includes("experimental"))).toBe(true);
   });
 
+  it("opencode exports agents/ plus legacy agent/ (agents/ wins on name clashes)", async () => {
+    const { bundle } = await opencode.exportBundle(path.join(FIXTURES, "opencode-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["legacy-helper", "reviewer"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "opencode-home/.config/opencode/agents/reviewer.md"),
+      "utf8",
+    );
+    expect(bundle.agents.find((a) => a.name === "reviewer")!.content).toBe(raw);
+  });
+
+  it("qwen exports ~/.qwen/agents/*.md byte-faithfully", async () => {
+    const { bundle } = await qwen.exportBundle(path.join(FIXTURES, "qwen-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["test-writer"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "qwen-home/.qwen/agents/test-writer.md"),
+      "utf8",
+    );
+    expect(bundle.agents[0]!.content).toBe(raw);
+  });
+
+  it("opencode plans agents into ~/.config/opencode/agents/*.md with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "Help.\n" }];
+    const { files, warnings } = await opencode.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".config/opencode/agents/helper.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
+  });
+
+  it("qwen plans agents into ~/.qwen/agents/*.md with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "Help.\n" }];
+    const { files, warnings } = await qwen.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".qwen/agents/helper.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
+  });
+
   it("does not plan or warn when the bundle has no agents", async () => {
     const { files, warnings } = await copilot.planImport(emptyBundle(), "/nonexistent-home", {});
     expect(files.some((f) => f.path.startsWith(".copilot/agents/"))).toBe(false);
@@ -74,6 +112,10 @@ describe("custom agents layer", () => {
     expect(claudeFiles.some((f) => f.path === ".claude/agents/helper.md")).toBe(true);
     const geminiFiles = (await getProjectAdapter("gemini").planImport(bundle, "/p", {})).files;
     expect(geminiFiles.some((f) => f.path === ".gemini/agents/helper.md")).toBe(true);
+    const opencodeFiles = (await getProjectAdapter("opencode").planImport(bundle, "/p", {})).files;
+    expect(opencodeFiles.some((f) => f.path === ".opencode/agents/helper.md")).toBe(true);
+    const qwenFiles = (await getProjectAdapter("qwen").planImport(bundle, "/p", {})).files;
+    expect(qwenFiles.some((f) => f.path === ".qwen/agents/helper.md")).toBe(true);
   });
 
   it("bundle round-trips the agents layer byte-faithfully", async () => {

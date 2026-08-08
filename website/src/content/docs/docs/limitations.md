@@ -97,7 +97,10 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Custom agent / subagent markdown definitions migrate natively between
   Claude Code (`~/.claude/agents/`, project `.claude/agents/`), GitHub
   Copilot CLI (`~/.copilot/agents/*.agent.md`, project `.github/agents/`),
-  and Gemini CLI (`~/.gemini/agents/`, project `.gemini/agents/`).
+  Gemini CLI (`~/.gemini/agents/`, project `.gemini/agents/`), OpenCode
+  (`~/.config/opencode/agents/`, legacy `agent/` also read, project
+  `.opencode/agents/`), and Qwen Code (`~/.qwen/agents/`, project
+  `.qwen/agents/`).
 - Content is copied **as-is**, including YAML frontmatter. Fields like
   `tools:` and `model:` are client-specific and may need review after
   import — a warning is emitted.

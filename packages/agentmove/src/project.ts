@@ -568,6 +568,7 @@ const copilotProject: ProjectAdapter = {
 };
 
 const opencodeProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -583,6 +584,11 @@ const opencodeProject: ProjectAdapter = {
     }
     bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".opencode/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".opencode/agents"), ".md");
+    for (const a of await readAgentsDir(path.join(dir, ".opencode/agent"), ".md")) {
+      if (!bundle.agents.some((b) => b.name === a.name)) bundle.agents.push(a);
+    }
+    bundle.agents.sort((a, b) => a.name.localeCompare(b.name));
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -606,6 +612,12 @@ const opencodeProject: ProjectAdapter = {
     }
     if (parts.length) files.push({ path: "AGENTS.md", content: parts.join("\n\n") + "\n" });
     files.push(...planSkills(bundle.skills, ".opencode/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".opencode/agents", ".md"));
+      warnings.push(
+        "agents: frontmatter fields (mode/model/permission) are client-specific and copied as-is; review after import",
+      );
+    }
     if (bundle.memory.length) {
       warnings.push("memory: opencode has no project-scoped memory store; skipped");
     }
@@ -614,6 +626,7 @@ const opencodeProject: ProjectAdapter = {
 };
 
 const qwenProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -624,6 +637,7 @@ const qwenProject: ProjectAdapter = {
     );
     bundle.instructions = await readText(path.join(dir, "QWEN.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".qwen/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".qwen/agents"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -644,6 +658,12 @@ const qwenProject: ProjectAdapter = {
     if (bundle.persona) warnings.push("persona: no project-scoped slot in qwen; skipped");
     if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in qwen; skipped");
     files.push(...planSkills(bundle.skills, ".qwen/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".qwen/agents", ".md"));
+      warnings.push(
+        "agents: frontmatter fields (tools/model/approvalMode) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };

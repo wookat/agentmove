@@ -14,7 +14,9 @@ import { exists, isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -24,11 +26,13 @@ import {
  * Qwen Code (a Gemini CLI fork). MCP servers live under the `mcpServers` key
  * of ~/.qwen/settings.json; context/instructions are ~/.qwen/QWEN.md with
  * saved memories under a "## Qwen Added Memories" section; skills are native
- * SKILL.md directories under ~/.qwen/skills/.
+ * SKILL.md directories under ~/.qwen/skills/ and custom agents/subagents are
+ * markdown files under ~/.qwen/agents/.
  */
 const SETTINGS_REL = ".qwen/settings.json";
 const CONTEXT_REL = ".qwen/QWEN.md";
 const SKILLS_REL = ".qwen/skills";
+const AGENTS_DIR_REL = ".qwen/agents";
 const MEMORY_HEADING = "## Qwen Added Memories";
 
 function splitContext(content: string): { instructions?: string; memories: string[] } {
@@ -58,7 +62,8 @@ async function readSettings(home: string): Promise<Record<string, unknown>> {
 export const qwen: ClientAdapter = {
   id: "qwen",
   label: "Qwen Code",
-  defaultPath: "~/.qwen (settings.json + QWEN.md + skills/)",
+  defaultPath: "~/.qwen (settings.json + QWEN.md + skills/ + agents/)",
+  supportsAgents: true,
 
   async detect(home) {
     return (await exists(path.join(home, SETTINGS_REL))) || (await isDir(path.join(home, ".qwen")));
@@ -90,6 +95,7 @@ export const qwen: ClientAdapter = {
       }));
     }
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -126,6 +132,12 @@ export const qwen: ClientAdapter = {
     if (parts.length) files.push({ path: CONTEXT_REL, content: parts.join("\n\n") + "\n" });
 
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
+      warnings.push(
+        "agents: frontmatter fields (tools/model/approvalMode) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };
