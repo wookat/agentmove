@@ -1,8 +1,10 @@
 import path from "node:path";
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import {
   Bundle,
   ClientAdapter,
   ClientId,
+  CommandDef,
   emptyBundle,
   ExportResult,
   FilePlan,
@@ -11,7 +13,7 @@ import {
   McpServer,
   parseFile,
 } from "../model.js";
-import { exists, isDir, readText } from "../fsutil.js";
+import { exists, isDir, listDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
@@ -24,6 +26,113 @@ import {
 } from "./shared.js";
 
 const MEMORY_HEADING = "## Gemini Added Memories";
+
+export const GEMINI_COMMANDS_EXPORT_WARNING =
+  "commands: converted from gemini TOML (prompt/description); {{args}}, !{...}, and @{...} placeholders are gemini-specific and copied as-is";
+
+export const GEMINI_COMMANDS_IMPORT_WARNING =
+  "commands: gemini custom commands are TOML files; markdown bodies were converted to the prompt field ({{args}}, !{...}, and @{...} placeholders copied as-is; review after import)";
+
+/** Convert one gemini `*.toml` command file into a portable markdown command. */
+export function geminiCommandFromToml(
+  name: string,
+  raw: string,
+  warnings: string[],
+): CommandDef | undefined {
+  let data: unknown;
+  try {
+    data = parseToml(raw);
+  } catch {
+    warnings.push(`commands:${name}.toml: invalid TOML; not migrated`);
+    return undefined;
+  }
+  if (!isRecord(data)) {
+    warnings.push(`commands:${name}.toml: not a TOML table; not migrated`);
+    return undefined;
+  }
+  for (const key of Object.keys(data)) {
+    if (key !== "prompt" && key !== "description") {
+      warnings.push(`commands:${name}: TOML field "${key}" is not a documented gemini command field; dropped`);
+    }
+  }
+  if (typeof data.prompt !== "string") {
+    warnings.push(`commands:${name}.toml: no prompt string field; not migrated`);
+    return undefined;
+  }
+  const description = typeof data.description === "string" ? data.description : undefined;
+  const body = data.prompt.endsWith("\n") ? data.prompt : data.prompt + "\n";
+  const content =
+    description !== undefined
+      ? `---\ndescription: ${JSON.stringify(description)}\n---\n${body}`
+      : body;
+  return { name, content };
+}
+
+/** Convert a portable markdown command into gemini TOML file content. */
+export function geminiCommandToToml(c: CommandDef, warnings: string[]): string {
+  let description: string | undefined;
+  let prompt = c.content;
+  const m = /^---\n([\s\S]*?)\n---\n?/.exec(c.content);
+  if (m) {
+    const lines = (m[1] ?? "").split("\n").filter((l) => l.trim() !== "");
+    const descMatch = lines.length === 1 ? /^description:\s*(.+)$/.exec(lines[0] ?? "") : null;
+    if (descMatch?.[1]) {
+      let value = descMatch[1].trim();
+      if (value.startsWith('"')) {
+        try {
+          value = JSON.parse(value) as string;
+        } catch {
+          value = value.replace(/^"|"$/g, "");
+        }
+      } else if (value.startsWith("'") && value.endsWith("'")) {
+        value = value.slice(1, -1);
+      }
+      description = value;
+      prompt = c.content.slice(m[0].length);
+    } else {
+      warnings.push(
+        `commands:${c.name}: frontmatter has fields beyond description, which gemini TOML cannot express; kept verbatim inside prompt`,
+      );
+    }
+  }
+  const record: Record<string, string> = {};
+  if (description !== undefined) record.description = description;
+  record.prompt = prompt;
+  return stringifyToml(record) + "\n";
+}
+
+/** Read every `*.toml` command under a gemini commands root (recursive). */
+export async function readGeminiCommands(root: string, warnings: string[]): Promise<CommandDef[]> {
+  const commands: CommandDef[] = [];
+  const walk = async (dir: string, prefix: string): Promise<void> => {
+    for (const name of (await listDir(dir)).sort()) {
+      const full = path.join(dir, name);
+      if (await isDir(full)) {
+        if (!name.startsWith(".")) await walk(full, `${prefix}${name}/`);
+        continue;
+      }
+      if (!name.endsWith(".toml")) continue;
+      const raw = await readText(full);
+      if (raw === undefined) continue;
+      const cmd = geminiCommandFromToml(`${prefix}${name.slice(0, -".toml".length)}`, raw, warnings);
+      if (cmd) commands.push(cmd);
+    }
+  };
+  if (await isDir(root)) await walk(root, "");
+  return commands;
+}
+
+/** Plan gemini TOML command writes into a commands root (nested names preserved). */
+export function planGeminiCommands(
+  commands: CommandDef[],
+  rootRel: string,
+  warnings: string[],
+): FilePlan[] {
+  return commands.map((c) => ({
+    path: `${rootRel}/${c.name}.toml`,
+    content: geminiCommandToToml(c, warnings),
+  }));
+}
 
 function splitContext(content: string): { instructions?: string; memories: string[] } {
   const idx = content.indexOf(MEMORY_HEADING);
@@ -51,6 +160,8 @@ export interface GeminiStyleLayout {
   skillsDir?: string;
   /** Custom subagents directory relative to home; omitted when the client has none. */
   agentsDir?: string;
+  /** TOML custom commands directory relative to home; omitted when unverified. */
+  commandsDir?: string;
 }
 
 /**
@@ -60,7 +171,7 @@ export interface GeminiStyleLayout {
  * Skills under ~/.gemini/skills/ (with ~/.agents/skills/ as an alias).
  */
 export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter {
-  const { id, configDir, skillsDir, agentsDir } = layout;
+  const { id, configDir, skillsDir, agentsDir, commandsDir } = layout;
   const SETTINGS_REL = `${configDir}/settings.json`;
   const CONTEXT_REL = `${configDir}/GEMINI.md`;
 
@@ -69,6 +180,7 @@ export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter
     label: layout.label,
     defaultPath: layout.defaultPath,
     supportsAgents: Boolean(agentsDir),
+    supportsCommands: Boolean(commandsDir),
 
     async detect(home) {
       return (await exists(path.join(home, SETTINGS_REL))) || (await isDir(path.join(home, configDir)));
@@ -110,6 +222,10 @@ export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter
       }
       if (agentsDir) {
         bundle.agents = await readAgentsDir(path.join(home, agentsDir), ".md");
+      }
+      if (commandsDir) {
+        bundle.commands = await readGeminiCommands(path.join(home, commandsDir), warnings);
+        if (bundle.commands.length) warnings.push(GEMINI_COMMANDS_EXPORT_WARNING);
       }
       if (await isDir(path.join(home, `${configDir}/extensions`))) {
         warnings.push(`${id} extensions are not exported in v0 (install them on the target machine instead)`);
@@ -167,6 +283,10 @@ export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter
             "frontmatter fields are client-specific and copied as-is",
         );
       }
+      if (commandsDir && bundle.commands.length) {
+        files.push(...planGeminiCommands(bundle.commands, commandsDir, warnings));
+        warnings.push(GEMINI_COMMANDS_IMPORT_WARNING);
+      }
       return { files, warnings };
     },
   };
@@ -179,4 +299,5 @@ export const gemini: ClientAdapter = makeGeminiStyleAdapter({
   configDir: ".gemini",
   skillsDir: ".gemini/skills",
   agentsDir: ".gemini/agents",
+  commandsDir: ".gemini/commands",
 });

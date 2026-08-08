@@ -158,9 +158,12 @@ persona, and a later export won't recover it as a separate `persona.md`.
   Nanocoder (`~/.config/nanocoder/commands/`, project
   `.nanocoder/commands/`; subdirectories preserved as `:`-separated
   namespaces), Continue (prompt files: `~/.continue/prompts/`, project
-  `.continue/prompts/`; subdirectories preserved), and VS Code (Copilot
+  `.continue/prompts/`; subdirectories preserved), VS Code (Copilot
   prompt files: default-profile `User/prompts/*.prompt.md`, project
-  `.github/prompts/*.prompt.md`; flat).
+  `.github/prompts/*.prompt.md`; flat), and Gemini CLI
+  (`~/.gemini/commands/**/*.toml`, project `.gemini/commands/`;
+  subdirectories preserved as `:`-separated namespaces — a format
+  conversion, see below).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
@@ -195,6 +198,16 @@ persona, and a later export won't recover it as a separate `persona.md`.
   with a warning. Legacy v1 `.prompt` files are **not** migrated (warned
   per file); Hub prompt blocks (`uses: owner/slug` in `config.yaml`) are
   remote references and are not migrated either.
+- Gemini CLI commands are **TOML files** (`prompt` required,
+  `description` optional), so migration is a format conversion, not a
+  byte-faithful copy: on export the `prompt` string becomes the markdown
+  body and `description` becomes a one-line frontmatter; on import a
+  frontmatter containing only `description:` is lifted into the TOML
+  field, any other frontmatter is kept verbatim inside `prompt` (warned;
+  gemini TOML has no equivalent fields). Invalid TOML or files without a
+  `prompt` string are **not** migrated (warned per file); undocumented
+  TOML fields are dropped with a per-file warning. `{{args}}`, `!{...}`,
+  and `@{...}` placeholders are gemini-specific and copied as-is.
 - VS Code prompt files are only read from and written to the default
   profile's `User/prompts` folder (`*.prompt.md` files only — other
   customization types in that folder belong to their own layers);

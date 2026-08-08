@@ -1,0 +1,6 @@
+description = "Adds a new entry to the CHANGELOG file."
+prompt = """
+# Task: Update Changelog
+
+Parse the version and message from {{args}} and update CHANGELOG.md.
+"""
