@@ -14,7 +14,9 @@ import { exists, isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -22,11 +24,14 @@ import {
 
 const MCP_REL = ".cursor/mcp.json";
 const SKILLS_REL = ".cursor/skills";
+const AGENTS_DIR_REL = ".cursor/agents";
 
 export const cursor: ClientAdapter = {
   id: "cursor",
   label: "Cursor",
-  defaultPath: "~/.cursor/mcp.json + ~/.cursor/skills (rules & memories are project/app-scoped)",
+  defaultPath:
+    "~/.cursor/mcp.json + ~/.cursor/skills + ~/.cursor/agents (rules & memories are project/app-scoped)",
+  supportsAgents: true,
 
   async detect(home) {
     return (await exists(path.join(home, MCP_REL))) || (await isDir(path.join(home, ".cursor")));
@@ -50,6 +55,7 @@ export const cursor: ClientAdapter = {
       bundle.mcpServers = servers;
     }
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
     warnings.push(
       "cursor rules live per-project (.cursor/rules/*.mdc) and memories in the app database; " +
         "only global MCP servers are exported — run agentmove in a project for project rules (planned)",
@@ -101,6 +107,12 @@ export const cursor: ClientAdapter = {
       warnings.push("memory: cursor memories are app-managed and cannot be imported; skipped");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
+      warnings.push(
+        "agents: frontmatter fields (model/read_only/is_background) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { copilot } from "../src/adapters/copilot.js";
 import { claudeCode } from "../src/adapters/claude-code.js";
 import { gemini } from "../src/adapters/gemini.js";
+import { cursor } from "../src/adapters/cursor.js";
 import { opencode } from "../src/adapters/opencode.js";
 import { qwen } from "../src/adapters/qwen.js";
 import { getProjectAdapter } from "../src/project.js";
@@ -81,6 +82,24 @@ describe("custom agents layer", () => {
     expect(bundle.agents[0]!.content).toBe(raw);
   });
 
+  it("cursor exports ~/.cursor/agents/*.md byte-faithfully", async () => {
+    const { bundle } = await cursor.exportBundle(path.join(FIXTURES, "cursor-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["verifier"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "cursor-home/.cursor/agents/verifier.md"),
+      "utf8",
+    );
+    expect(bundle.agents[0]!.content).toBe(raw);
+  });
+
+  it("cursor plans agents into ~/.cursor/agents/*.md with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "Help.\n" }];
+    const { files, warnings } = await cursor.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".cursor/agents/helper.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
+  });
+
   it("opencode plans agents into ~/.config/opencode/agents/*.md with a warning", async () => {
     const bundle = emptyBundle();
     bundle.agents = [{ name: "helper", content: "Help.\n" }];
@@ -116,6 +135,8 @@ describe("custom agents layer", () => {
     expect(opencodeFiles.some((f) => f.path === ".opencode/agents/helper.md")).toBe(true);
     const qwenFiles = (await getProjectAdapter("qwen").planImport(bundle, "/p", {})).files;
     expect(qwenFiles.some((f) => f.path === ".qwen/agents/helper.md")).toBe(true);
+    const cursorFiles = (await getProjectAdapter("cursor").planImport(bundle, "/p", {})).files;
+    expect(cursorFiles.some((f) => f.path === ".cursor/agents/helper.md")).toBe(true);
   });
 
   it("bundle round-trips the agents layer byte-faithfully", async () => {
