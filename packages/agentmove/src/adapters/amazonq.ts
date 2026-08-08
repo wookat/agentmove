@@ -14,6 +14,8 @@ import { exists, isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planCommandsFlat,
+  readAgentsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./shared.js";
@@ -25,8 +27,12 @@ import {
  * stdio or http (stdio may omit it); stdio uses command/args/env, remote uses
  * url/headers plus OAuth handled by the CLI; native `disabled` flag. Agents
  * themselves are JSON files under cli-agents/ and are not migrated.
+ *
+ * Saved prompts are flat markdown files under ~/.aws/amazonq/prompts/ (global)
+ * or .amazonq/prompts/ (project), invoked as @name or via /prompts.
  */
 const MCP_REL = ".aws/amazonq/mcp.json";
+const COMMANDS_DIR_REL = ".aws/amazonq/prompts";
 
 const CLIENT_KEYS = ["timeout", "oauth", "oauthScopes"] as const;
 
@@ -77,7 +83,8 @@ export function renderAmazonqServers(bundle: Bundle, warnings: string[]): Record
 export const amazonq: ClientAdapter = {
   id: "amazonq",
   label: "Amazon Q Developer CLI",
-  defaultPath: "~/.aws/amazonq/mcp.json",
+  defaultPath: "~/.aws/amazonq (mcp.json + prompts/)",
+  supportsCommands: true,
 
   async detect(home) {
     return (
@@ -93,6 +100,7 @@ export const amazonq: ClientAdapter = {
     const config = await readJsonMap(path.join(home, MCP_REL));
     bundle.config.raw = config;
     bundle.mcpServers = parseAmazonqServers(config, warnings);
+    bundle.commands = await readAgentsDir(path.join(home, COMMANDS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -125,6 +133,12 @@ export const amazonq: ClientAdapter = {
     }
     if (bundle.skills.length) {
       warnings.push("skills: amazonq has no SKILL.md mechanism; skipped");
+    }
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, COMMANDS_DIR_REL, "amazonq", warnings));
+      warnings.push(
+        "commands: saved prompts are invoked as @name in q chat; argument placeholders are client-specific and copied as-is",
+      );
     }
     return { files, warnings };
   },

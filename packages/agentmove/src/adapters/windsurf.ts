@@ -14,7 +14,9 @@ import { exists, isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planCommandsFlat,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -23,6 +25,10 @@ import {
 const MCP_REL = ".codeium/windsurf/mcp_config.json";
 const RULES_REL = ".codeium/windsurf/memories/global_rules.md";
 const SKILLS_REL = ".codeium/windsurf/skills";
+// Global workflows (slash commands): flat *.md files, filename becomes /name.
+// Workflow files are limited to 12000 characters each.
+const COMMANDS_DIR_REL = ".codeium/windsurf/global_workflows";
+const WORKFLOW_CHAR_LIMIT = 12000;
 
 async function readMcpConfig(home: string): Promise<Record<string, unknown>> {
   const file = path.join(home, MCP_REL);
@@ -45,7 +51,9 @@ function normalizeEntry(entry: unknown): unknown {
 export const windsurf: ClientAdapter = {
   id: "windsurf",
   label: "Windsurf",
-  defaultPath: "~/.codeium/windsurf (mcp_config.json + global_rules.md + skills/; memories are app-managed)",
+  defaultPath:
+    "~/.codeium/windsurf (mcp_config.json + global_rules.md + skills/ + global_workflows/; memories are app-managed)",
+  supportsCommands: true,
 
   async detect(home) {
     return (
@@ -71,6 +79,7 @@ export const windsurf: ClientAdapter = {
 
     bundle.instructions = await readText(path.join(home, RULES_REL));
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.commands = await readAgentsDir(path.join(home, COMMANDS_DIR_REL), ".md");
     warnings.push(
       "windsurf Cascade memories are app-managed and not exported; " +
         "durable rules live in global_rules.md (exported as instructions)",
@@ -117,6 +126,19 @@ export const windsurf: ClientAdapter = {
       warnings.push("memory: windsurf Cascade memories are app-managed and cannot be imported; skipped");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      for (const c of bundle.commands) {
+        if (c.content.length > WORKFLOW_CHAR_LIMIT) {
+          warnings.push(
+            `commands:${c.name}: exceeds windsurf's ${WORKFLOW_CHAR_LIMIT}-character workflow limit; written as-is but Cascade may reject it`,
+          );
+        }
+      }
+      files.push(...planCommandsFlat(bundle.commands, COMMANDS_DIR_REL, "windsurf", warnings));
+      warnings.push(
+        "commands: workflow frontmatter (description/auto_execution_mode) is client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };
