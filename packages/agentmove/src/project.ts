@@ -74,6 +74,7 @@ import {
   readQoderSettings,
 } from "./adapters/qoder.js";
 import {
+  AUGGIE_COMMANDS_WARNING,
   parseAuggieServers,
   planAuggieMcp,
   readAuggieRulesDir,
@@ -90,7 +91,13 @@ import {
 import { parseCortexServers, planCortexMcp, readCortexMcp } from "./adapters/cortex.js";
 import { parseGrokServers, planGrokMcp, readGrokConfig } from "./adapters/grok.js";
 import { parseVibeServers, planVibeMcp, readVibeConfig } from "./adapters/vibe.js";
-import { parseNanocoderServers, planNanocoderMcp, readNanocoderMcp } from "./adapters/nanocoder.js";
+import {
+  NANOCODER_COMMANDS_WARNING,
+  parseNanocoderServers,
+  planNanocoderMcp,
+  readNanocoderCommandsDir,
+  readNanocoderMcp,
+} from "./adapters/nanocoder.js";
 import { parseLibrechatServers, planLibrechatMcp, readLibrechatConfig } from "./adapters/librechat.js";
 import {
   parseJetbrainsServers,
@@ -1491,6 +1498,7 @@ const qoderProject: ProjectAdapter = {
 };
 
 const auggieProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1503,6 +1511,7 @@ const auggieProject: ProjectAdapter = {
       "project",
     );
     bundle.skills = await readSkillsDir(path.join(dir, ".augment/skills"), warnings);
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".augment/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1525,6 +1534,10 @@ const auggieProject: ProjectAdapter = {
       warnings.push("memory: auggie has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".augment/skills"));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".augment/commands", ".md"));
+      warnings.push(AUGGIE_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
@@ -1803,6 +1816,7 @@ const vibeProject: ProjectAdapter = {
 };
 
 const nanocoderProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1810,6 +1824,10 @@ const nanocoderProject: ProjectAdapter = {
     const config = await readNanocoderMcp(path.join(dir, ".mcp.json"));
     bundle.mcpServers = parseNanocoderServers(config, warnings);
     bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
+    bundle.commands = await readNanocoderCommandsDir(
+      path.join(dir, ".nanocoder/commands"),
+      warnings,
+    );
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1839,6 +1857,10 @@ const nanocoderProject: ProjectAdapter = {
       warnings.push(
         "skills: nanocoder skills use their own skill.yaml bundle format, not the Agent Skills standard; skipped",
       );
+    }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".nanocoder/commands", ".md"));
+      warnings.push(NANOCODER_COMMANDS_WARNING);
     }
     return { files, warnings };
   },

@@ -151,8 +151,13 @@ persona, and a later export won't recover it as a separate `persona.md`.
   (`~/.config/kilo/commands/`, project `.kilo/commands/`; flat; legacy
   `~/.kilocode/workflows/` / `.kilocode/workflows/` still read with the
   new location winning on name conflicts — imports write only the new
-  location), and Cline (workflows: `~/Documents/Cline/Workflows/`,
-  project `.clinerules/workflows/`; flat, invoked as `/name.md`).
+  location), Cline (workflows: `~/Documents/Cline/Workflows/`,
+  project `.clinerules/workflows/`; flat, invoked as `/name.md`),
+  Auggie CLI (`~/.augment/commands/`, project `.augment/commands/`;
+  subdirectories preserved and shown as `/namespace:command`), and
+  Nanocoder (`~/.config/nanocoder/commands/`, project
+  `.nanocoder/commands/`; subdirectories preserved as `:`-separated
+  namespaces).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
@@ -176,6 +181,12 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Cline non-markdown workflow files (`.txt`, extensionless) are **not**
   migrated — each one is warned on export; enable/disable toggles are
   app-managed and not migrated.
+- Auggie also reads `~/.claude/commands/` and `~/.agents/commands/` for
+  compatibility — those roots belong to other adapters and are not read
+  or written by the auggie adapter.
+- Nanocoder directory-as-command bundles (a directory containing
+  `<dirname>.md`) export only the command markdown; their `resources/`
+  files are client-specific and **not** migrated — warned on export.
 - Every other client has no documented commands/prompts directory —
   imported commands are **skipped** with a warning.
 

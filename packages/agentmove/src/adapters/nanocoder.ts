@@ -1,5 +1,6 @@
 import path from "node:path";
 import {
+  AgentDef,
   asStringRecord,
   Bundle,
   ClientAdapter,
@@ -13,8 +14,8 @@ import {
   stringArgs,
   Transport,
 } from "../model.js";
-import { exists, isDir, readText } from "../fsutil.js";
-import { mergeMcpRecords, touchesMcpConfig } from "./shared.js";
+import { exists, isDir, listDir, readText } from "../fsutil.js";
+import { mergeMcpRecords, planAgents, touchesMcpConfig } from "./shared.js";
 
 /**
  * Nanocoder (Nano Collective). Global MCP servers live under the `mcpServers`
@@ -24,8 +25,58 @@ import { mergeMcpRecords, touchesMcpConfig } from "./shared.js";
  * Instructions (AGENTS.md) load from the project root only, and nanocoder
  * skills use their own skill.yaml bundle format rather than the Agent Skills
  * standard, so both stay project-/client-specific at user scope.
+ *
+ * Custom slash commands are markdown files under ~/.config/nanocoder/commands/
+ * (personal) and .nanocoder/commands/ (project, which wins on name conflicts);
+ * subdirectories become `:`-separated namespaces, so nested layouts are
+ * preserved. A directory containing <dirname>.md is a directory-as-command
+ * bundle whose optional resources/ files are client-specific.
  */
 const MCP_REL = ".config/nanocoder/.mcp.json";
+const COMMANDS_DIR_REL = ".config/nanocoder/commands";
+
+export const NANOCODER_COMMANDS_WARNING =
+  "commands: frontmatter fields (description/aliases/triggers/tags) and {{parameter}} placeholders are client-specific and copied as-is; review after import";
+
+/**
+ * Read a nanocoder commands tree. Subdirectories are namespaces unless they
+ * contain <dirname>.md, in which case the directory is a single command whose
+ * markdown is exported (resources/ files are not portable and warned).
+ */
+export async function readNanocoderCommandsDir(
+  root: string,
+  warnings: string[],
+  prefix = "",
+): Promise<AgentDef[]> {
+  if (!(await isDir(root))) return [];
+  const out: AgentDef[] = [];
+  for (const entry of (await listDir(root)).sort()) {
+    if (entry.startsWith(".")) continue;
+    const full = path.join(root, entry);
+    if (await isDir(full)) {
+      const bundleFile = path.join(full, `${entry}.md`);
+      if (await exists(bundleFile)) {
+        const content = await readText(bundleFile);
+        if (content !== undefined) {
+          out.push({ name: `${prefix}${entry}`, content });
+        }
+        if (await isDir(path.join(full, "resources"))) {
+          warnings.push(
+            `commands:${prefix}${entry}: nanocoder resources/ files are client-specific; only the command markdown is migrated`,
+          );
+        }
+      } else {
+        out.push(...(await readNanocoderCommandsDir(full, warnings, `${prefix}${entry}/`)));
+      }
+    } else if (entry.endsWith(".md")) {
+      const content = await readText(full);
+      if (content !== undefined) {
+        out.push({ name: `${prefix}${entry.slice(0, -3)}`, content });
+      }
+    }
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
 
 const CLIENT_KEYS = ["timeout", "alwaysAllow", "description", "tags"] as const;
 
@@ -140,7 +191,8 @@ export async function planNanocoderMcp(
 export const nanocoder: ClientAdapter = {
   id: "nanocoder",
   label: "Nanocoder",
-  defaultPath: "~/.config/nanocoder/.mcp.json",
+  defaultPath: "~/.config/nanocoder (.mcp.json + commands/)",
+  supportsCommands: true,
 
   async detect(home) {
     return (
@@ -157,6 +209,10 @@ export const nanocoder: ClientAdapter = {
     const config = await readNanocoderMcp(path.join(home, MCP_REL));
     bundle.config.raw = config;
     bundle.mcpServers = parseNanocoderServers(config, warnings);
+    bundle.commands = await readNanocoderCommandsDir(
+      path.join(home, COMMANDS_DIR_REL),
+      warnings,
+    );
     return { bundle, warnings };
   },
 
@@ -189,6 +245,10 @@ export const nanocoder: ClientAdapter = {
       warnings.push(
         "skills: nanocoder skills use their own skill.yaml bundle format, not the Agent Skills standard; skipped",
       );
+    }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_DIR_REL, ".md"));
+      warnings.push(NANOCODER_COMMANDS_WARNING);
     }
     return { files, warnings };
   },
