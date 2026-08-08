@@ -54,6 +54,7 @@ import {
 } from "./adapters/auggie.js";
 import { parseKiloServers, planKiloMcp, readKiloConfig } from "./adapters/kilo.js";
 import { parseKimiServers, planKimiMcp, readKimiMcp } from "./adapters/kimi.js";
+import { parseCortexServers, planCortexMcp, readCortexMcp } from "./adapters/cortex.js";
 import { parseGrokServers, planGrokMcp, readGrokConfig } from "./adapters/grok.js";
 import { parseVibeServers, planVibeMcp, readVibeConfig } from "./adapters/vibe.js";
 import { parseNanocoderServers, planNanocoderMcp, readNanocoderMcp } from "./adapters/nanocoder.js";
@@ -1406,6 +1407,45 @@ const kimiProject: ProjectAdapter = {
   },
 };
 
+const cortexProject: ProjectAdapter = {
+  async exportProject(dir) {
+    const warnings: string[] = [];
+    const bundle = emptyBundle();
+    bundle.manifest.exportedFrom = "cortex";
+    const config = await readCortexMcp(path.join(dir, ".cortex/mcp.json"));
+    bundle.mcpServers = parseCortexServers(config, warnings);
+    bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".cortex/skills"), warnings);
+    return { bundle, warnings };
+  },
+  async planImport(bundle, dir, opts) {
+    const warnings: string[] = [];
+    const files: FilePlan[] = [];
+    files.push(
+      ...(await planCortexMcp(
+        bundle,
+        path.join(dir, ".cortex/mcp.json"),
+        ".cortex/mcp.json",
+        warnings,
+        opts?.replaceMcp ?? false,
+      )),
+    );
+    const sections: { title: string; body: string }[] = [];
+    if (bundle.persona) {
+      sections.push({ title: "persona (SOUL.md)", body: bundle.persona });
+      warnings.push("persona: appended to AGENTS.md (approximated)");
+    }
+    if (bundle.instructions || sections.length) {
+      files.push({ path: "AGENTS.md", content: appendSections(bundle.instructions, sections) });
+    }
+    if (bundle.memory.length) {
+      warnings.push("memory: cortex has no project-scoped memory store; skipped");
+    }
+    files.push(...planSkills(bundle.skills, ".cortex/skills"));
+    return { files, warnings };
+  },
+};
+
 const museProject: ProjectAdapter = {
   async exportProject(dir) {
     const warnings: string[] = [];
@@ -1789,6 +1829,7 @@ const PROJECT_ADAPTERS: Partial<Record<ClientId, ProjectAdapter>> = {
   librechat: librechatProject,
   muse: museProject,
   "warp-cli": warpCliProject,
+  cortex: cortexProject,
 };
 
 export function getProjectAdapter(id: ClientId): ProjectAdapter {

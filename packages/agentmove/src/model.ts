@@ -155,7 +155,8 @@ export type ClientId =
   | "jetbrains"
   | "comate"
   | "muse"
-  | "warp-cli";
+  | "warp-cli"
+  | "cortex";
 
 export const CLIENT_IDS: ClientId[] = [
   "openclaw",
@@ -204,6 +205,7 @@ export const CLIENT_IDS: ClientId[] = [
   "comate",
   "muse",
   "warp-cli",
+  "cortex",
 ];
 
 export interface ExportResult {
