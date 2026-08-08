@@ -142,16 +142,19 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `.amazonq/prompts/`; invoked as `@name` in `q chat`), CodeBuddy
   (`~/.codebuddy/commands/`, project `.codebuddy/commands/`;
   subdirectories preserved and shown as `/group:command`-style
-  namespaced names), and Droid (`~/.factory/commands/`, project
+  namespaced names), Droid (`~/.factory/commands/`, project
   `.factory/commands/`; subdirectories preserved; filenames are slugged
-  by the client on discovery).
+  by the client on discovery), Qoder CLI (`~/.qoder/commands/`, project
+  `.qoder/commands/`; subdirectories preserved and shown as
+  `/group:command`-style namespaced names), and Roo Code
+  (`~/.roo/commands/`, project `.roo/commands/`; flat).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
   client-specific and may need review after import — a warning is
   emitted.
-- Cursor, Codex, Windsurf, and Amazon Q only discover top-level command
-  files: nested names like `git/commit` are flattened to `git-commit` on
+- Cursor, Codex, Windsurf, Amazon Q, and Roo Code only discover top-level
+  command files: nested names like `git/commit` are flattened to `git-commit` on
   import there, with a warning (name collisions after flattening skip
   the command).
 - Windsurf workflow files are limited to 12000 characters — oversize

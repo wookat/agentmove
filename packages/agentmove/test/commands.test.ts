@@ -13,6 +13,8 @@ import { windsurf } from "../src/adapters/windsurf.js";
 import { amazonq } from "../src/adapters/amazonq.js";
 import { codebuddy } from "../src/adapters/codebuddy.js";
 import { droid } from "../src/adapters/droid.js";
+import { qoder } from "../src/adapters/qoder.js";
+import { roo } from "../src/adapters/roo.js";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
 import { readBundle, writeBundle } from "../src/bundle.js";
@@ -183,6 +185,67 @@ describe("custom commands layer", () => {
     expect(cbFiles.some((f) => f.path === ".codebuddy/commands/team/deploy.md")).toBe(true);
     const drFiles = (await getProjectAdapter("droid").planImport(dr.bundle, "/p", {})).files;
     expect(drFiles.some((f) => f.path === ".factory/commands/review.md")).toBe(true);
+  });
+
+  it("qoder exports ~/.qoder/commands recursively, byte-faithfully", async () => {
+    const { bundle } = await qoder.exportBundle(path.join(FIXTURES, "qoder-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["git/commit"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "qoder-home/.qoder/commands/git/commit.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+  });
+
+  it("roo exports ~/.roo/commands/*.md byte-faithfully", async () => {
+    const { bundle } = await roo.exportBundle(path.join(FIXTURES, "roo-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["review"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "roo-home/.roo/commands/review.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+  });
+
+  it("qoder plans commands into ~/.qoder/commands (nested names kept) with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "deploy", content: "Deploy.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await qoder.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".qoder/commands/deploy.md")).toBe(true);
+    expect(files.some((f) => f.path === ".qoder/commands/git/commit.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("name/description"))).toBe(true);
+  });
+
+  it("roo plans commands flat into ~/.roo/commands with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "review", content: "Review.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await roo.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".roo/commands/review.md")).toBe(true);
+    expect(files.some((f) => f.path === ".roo/commands/git-commit.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("argument-hint/mode"))).toBe(true);
+  });
+
+  it("project scope: qoder and roo commands round-trip", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-cmd-proj5-"));
+    await fs.mkdir(path.join(dir, ".qoder/commands/git"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".qoder/commands/git/commit.md"), "Commit.\n");
+    await fs.mkdir(path.join(dir, ".roo/commands"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".roo/commands/review.md"), "Review.\n");
+    const qd = await getProjectAdapter("qoder").exportProject(dir);
+    expect(qd.bundle.commands.map((c) => c.name)).toEqual(["git/commit"]);
+    const ro = await getProjectAdapter("roo").exportProject(dir);
+    expect(ro.bundle.commands.map((c) => c.name)).toEqual(["review"]);
+    const qdFiles = (await getProjectAdapter("qoder").planImport(qd.bundle, "/p", {})).files;
+    expect(qdFiles.some((f) => f.path === ".qoder/commands/git/commit.md")).toBe(true);
+    const roFiles = (await getProjectAdapter("roo").planImport(ro.bundle, "/p", {})).files;
+    expect(roFiles.some((f) => f.path === ".roo/commands/review.md")).toBe(true);
   });
 
   it("claude-code plans commands into ~/.claude/commands (nested names kept) with a warning", async () => {

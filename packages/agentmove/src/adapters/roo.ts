@@ -15,7 +15,9 @@ import {
   appendSections,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planCommandsFlat,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -27,7 +29,9 @@ import {
  * globalStorage folder; remote servers require an explicit `type` of
  * "streamable-http" or "sse" (a bare `url` is an error in Roo). Global rules
  * are markdown files under ~/.roo/rules/; skills follow the Agent Skills
- * standard under ~/.roo/skills/.
+ * standard under ~/.roo/skills/. Custom slash commands are markdown files
+ * under ~/.roo/commands/ (global) and .roo/commands/ (project); the flat
+ * filename becomes the /name, and project commands override global ones.
  */
 const CANDIDATE_RELS = [
   ".config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json",
@@ -36,6 +40,10 @@ const CANDIDATE_RELS = [
 ];
 const RULES_REL = ".roo/rules";
 const SKILLS_REL = ".roo/skills";
+const COMMANDS_DIR_REL = ".roo/commands";
+
+export const ROO_COMMANDS_WARNING =
+  "commands: frontmatter fields (description/argument-hint/mode) are client-specific and copied as-is; review after import";
 
 const CLIENT_KEYS = ["alwaysAllow", "disabledTools", "timeout", "watchPaths"] as const;
 
@@ -117,7 +125,8 @@ export async function readRulesDir(
 export const roo: ClientAdapter = {
   id: "roo",
   label: "Roo Code",
-  defaultPath: "~/.roo (rules/ + skills/) + VS Code globalStorage mcp_settings.json",
+  defaultPath: "~/.roo (rules/ + skills/ + commands/) + VS Code globalStorage mcp_settings.json",
+  supportsCommands: true,
 
   async detect(home) {
     return (await findConfigRel(home)) !== undefined || (await isDir(path.join(home, ".roo")));
@@ -134,6 +143,7 @@ export const roo: ClientAdapter = {
     bundle.mcpServers = parseRooServers(config, warnings);
     bundle.instructions = await readRulesDir(path.join(home, RULES_REL), warnings, "global");
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.commands = await readAgentsDir(path.join(home, COMMANDS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -169,6 +179,10 @@ export const roo: ClientAdapter = {
       warnings.push("memory: roo has no durable memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, COMMANDS_DIR_REL, "roo", warnings));
+      warnings.push(ROO_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
