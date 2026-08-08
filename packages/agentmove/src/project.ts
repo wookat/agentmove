@@ -109,9 +109,11 @@ import {
   readQoderSettings,
 } from "./adapters/qoder.js";
 import {
+  AUGGIE_AGENTS_WARNING,
   AUGGIE_COMMANDS_WARNING,
   parseAuggieServers,
   planAuggieMcp,
+  readAuggieAgents,
   readAuggieRulesDir,
   readAuggieSettings,
 } from "./adapters/auggie.js";
@@ -1629,11 +1631,13 @@ const qoderProject: ProjectAdapter = {
 };
 
 const auggieProject: ProjectAdapter = {
+  supportsAgents: true,
   supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
     bundle.manifest.exportedFrom = "auggie";
+    bundle.agents = await readAuggieAgents(path.join(dir, ".augment/agents"), warnings);
     const config = await readAuggieSettings(path.join(dir, ".augment/settings.json"));
     bundle.mcpServers = parseAuggieServers(config, warnings);
     bundle.instructions = await readAuggieRulesDir(
@@ -1668,6 +1672,10 @@ const auggieProject: ProjectAdapter = {
     if (bundle.commands.length) {
       files.push(...planAgents(bundle.commands, ".augment/commands", ".md"));
       warnings.push(AUGGIE_COMMANDS_WARNING);
+    }
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".augment/agents", ".md"));
+      warnings.push(AUGGIE_AGENTS_WARNING);
     }
     return { files, warnings };
   },

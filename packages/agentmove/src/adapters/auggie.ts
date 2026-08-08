@@ -1,5 +1,6 @@
 import path from "node:path";
 import {
+  AgentDef,
   Bundle,
   ClientAdapter,
   emptyBundle,
@@ -13,6 +14,7 @@ import {
 import { isDir, listDir, readText } from "../fsutil.js";
 import {
   appendSections,
+  mergeAgentLists,
   mergeMcpRecords,
   parseCommonMcpEntry,
   planAgents,
@@ -38,14 +40,48 @@ import {
  * nested layouts are preserved. Auggie also reads ~/.claude/commands/ and
  * ~/.agents/commands/ for compatibility — those roots belong to other
  * adapters and are not read or written here.
+ *
+ * Custom agents (subagents) are markdown files with YAML frontmatter under
+ * ~/.augment/agents/ (user) and .augment/agents/ (workspace). The loader
+ * scans recursively (subdirectories become `:`-separated namespaces), skips
+ * dotfiles, and accepts both .md and .txt; every frontmatter field (name,
+ * description, color, model, tools, disabled_tools, ...) is optional — the
+ * name falls back to the file path. Compatibility roots ~/.claude/agents/ and
+ * ~/.agents/agents/ belong to other adapters and are not read or written
+ * here.
  */
 const SETTINGS_REL = ".augment/settings.json";
 const RULES_REL = ".augment/rules";
 const SKILLS_REL = ".augment/skills";
 const COMMANDS_DIR_REL = ".augment/commands";
+const AGENTS_DIR_REL = ".augment/agents";
 
 export const AUGGIE_COMMANDS_WARNING =
   "commands: frontmatter fields (description/argument-hint) and $ARGUMENTS placeholders are client-specific and copied as-is; review after import";
+
+export const AUGGIE_AGENTS_WARNING =
+  "agents: frontmatter fields (name/description/color/model/tools/disabled_tools) are client-specific and copied as-is; review after import";
+
+function visibleAgents(agents: AgentDef[]): AgentDef[] {
+  return agents.filter((a) => !a.name.split("/").some((seg) => seg.startsWith(".")));
+}
+
+export async function readAuggieAgents(root: string, warnings: string[]): Promise<AgentDef[]> {
+  const md = visibleAgents(await readAgentsDirRecursive(root, ".md"));
+  const names = new Set(md.map((a) => a.name));
+  const txt: AgentDef[] = [];
+  for (const a of visibleAgents(await readAgentsDirRecursive(root, ".txt"))) {
+    if (names.has(a.name)) {
+      warnings.push(
+        `agents:${a.name}: both .md and .txt agent files exist; the .md file was exported`,
+      );
+      continue;
+    }
+    txt.push(a);
+    warnings.push(`agents:${a.name}: auggie .txt agent exported; imported elsewhere as markdown`);
+  }
+  return mergeAgentLists(md, txt);
+}
 
 export async function readAuggieSettings(file: string): Promise<Record<string, unknown>> {
   const raw = await readText(file);
@@ -122,7 +158,8 @@ export async function readAuggieRulesDir(
 export const auggie: ClientAdapter = {
   id: "auggie",
   label: "Auggie CLI",
-  defaultPath: "~/.augment (settings.json + rules/ + skills/ + commands/)",
+  defaultPath: "~/.augment (settings.json + rules/ + skills/ + commands/ + agents/)",
+  supportsAgents: true,
   supportsCommands: true,
 
   async detect(home) {
@@ -140,6 +177,7 @@ export const auggie: ClientAdapter = {
     bundle.instructions = await readAuggieRulesDir(path.join(home, RULES_REL), warnings, "user");
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_DIR_REL), ".md");
+    bundle.agents = await readAuggieAgents(path.join(home, AGENTS_DIR_REL), warnings);
     return { bundle, warnings };
   },
 
@@ -177,6 +215,10 @@ export const auggie: ClientAdapter = {
     if (bundle.commands.length) {
       files.push(...planAgents(bundle.commands, COMMANDS_DIR_REL, ".md"));
       warnings.push(AUGGIE_COMMANDS_WARNING);
+    }
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
+      warnings.push(AUGGIE_AGENTS_WARNING);
     }
     return { files, warnings };
   },

@@ -3,7 +3,7 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { auggie } from "../src/adapters/auggie.js";
+import { auggie, readAuggieAgents } from "../src/adapters/auggie.js";
 import { emptyBundle } from "../src/model.js";
 import { getProjectAdapter } from "../src/project.js";
 
@@ -29,6 +29,62 @@ describe("auggie adapter", () => {
     expect(bundle.instructions).toContain("Use pnpm");
     expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
     expect(warnings).toEqual([]);
+  });
+
+  it("exports custom agents recursively, excluding decoys and hidden entries", async () => {
+    const { bundle, warnings } = await auggie.exportBundle(HOME);
+    expect(bundle.agents.map((a) => a.name)).toEqual(["backend/sql", "code-reviewer"]);
+    const reviewer = bundle.agents.find((a) => a.name === "code-reviewer")!;
+    expect(reviewer.content).toContain("name: code-reviewer");
+    expect(reviewer.content).toContain("You are a code review specialist.");
+    expect(warnings).toEqual([]);
+  });
+
+  it("exports .txt agents with a warning; .md wins a same-name collision", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "auggie-agents-"));
+    const root = path.join(home, ".augment/agents");
+    await fs.mkdir(root, { recursive: true });
+    await fs.writeFile(path.join(root, "dual.md"), "Markdown wins.\n");
+    await fs.writeFile(path.join(root, "dual.txt"), "Text loses.\n");
+    await fs.writeFile(path.join(root, "plain.txt"), "Plain text agent.\n");
+    await fs.writeFile(path.join(root, ".hidden.md"), "Hidden, skipped.\n");
+    const warnings: string[] = [];
+    const agents = await readAuggieAgents(root, warnings);
+    expect(agents.map((a) => a.name)).toEqual(["dual", "plain"]);
+    expect(agents.find((a) => a.name === "dual")!.content).toBe("Markdown wins.\n");
+    expect(warnings).toContain(
+      "agents:dual: both .md and .txt agent files exist; the .md file was exported",
+    );
+    expect(warnings).toContain(
+      "agents:plain: auggie .txt agent exported; imported elsewhere as markdown",
+    );
+    await fs.rm(home, { recursive: true, force: true });
+  });
+
+  it("imports agents into ~/.augment/agents preserving nested names, with review warning", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [
+      { name: "backend/sql", content: "---\ndescription: SQL helper\n---\nSQL body.\n" },
+      { name: "reviewer", content: "Just a prompt.\n" },
+    ];
+    const { files, warnings } = await auggie.planImport(bundle, HOME, {});
+    const nested = files.find((f) => f.path === ".augment/agents/backend/sql.md")!;
+    expect(nested.content).toContain("SQL body.");
+    expect(files.find((f) => f.path === ".augment/agents/reviewer.md")!.content).toBe(
+      "Just a prompt.\n",
+    );
+    expect(warnings).toContain(
+      "agents: frontmatter fields (name/description/color/model/tools/disabled_tools) are client-specific and copied as-is; review after import",
+    );
+  });
+
+  it("round-trips agents byte-for-byte through export -> import", async () => {
+    const { bundle } = await auggie.exportBundle(HOME);
+    const { files } = await auggie.planImport(bundle, HOME, {});
+    const reviewer = bundle.agents.find((a) => a.name === "code-reviewer")!;
+    expect(files.find((f) => f.path === ".augment/agents/code-reviewer.md")!.content).toBe(
+      reviewer.content,
+    );
   });
 
   it("merges multiple user rules files into one document with a warning", async () => {
@@ -117,6 +173,29 @@ describe("auggie adapter", () => {
     expect(exported.mcpServers.map((s) => s.name)).toEqual(["existing"]);
     expect(exported.instructions).toContain("Project notes");
     expect(expWarnings).toEqual([]);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("project scope: exports and imports .augment/agents", async () => {
+    const adapter = getProjectAdapter("auggie");
+    expect(adapter.supportsAgents).toBe(true);
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "auggie-proj-agents-"));
+    await fs.mkdir(path.join(dir, ".augment/agents"), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, ".augment/agents/tester.md"),
+      "---\nname: tester\n---\nTest things.\n",
+    );
+    const { bundle: exported, warnings: expWarnings } = await adapter.exportProject(dir);
+    expect(exported.agents.map((a) => a.name)).toEqual(["tester"]);
+    expect(expWarnings).toEqual([]);
+
+    const bundle = emptyBundle();
+    bundle.agents = exported.agents;
+    const { files, warnings } = await adapter.planImport(bundle, dir, {});
+    expect(files.find((f) => f.path === ".augment/agents/tester.md")!.content).toBe(
+      "---\nname: tester\n---\nTest things.\n",
+    );
+    expect(warnings.some((w) => w.includes("client-specific"))).toBe(true);
     await fs.rm(dir, { recursive: true, force: true });
   });
 });
