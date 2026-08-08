@@ -57,7 +57,8 @@ describe("gemini import into non-empty home", () => {
       Object.keys((JSON.parse(settings.content) as { mcpServers: object }).mcpServers).sort(),
     ).toEqual(["docs", "fetch", "remote"]);
     expect(warnings.some((w) => w.startsWith("persona:"))).toBe(true);
-    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(true);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
+    expect(files.some((f) => f.path === ".gemini/skills/todo/SKILL.md")).toBe(true);
   });
 });
 

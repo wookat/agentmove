@@ -181,6 +181,7 @@ const geminiProject: ProjectAdapter = {
       warnings,
     );
     bundle.instructions = await readText(path.join(dir, "GEMINI.md"));
+    bundle.skills = await readSkillsDir(path.join(dir, ".gemini/skills"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -200,7 +201,7 @@ const geminiProject: ProjectAdapter = {
     if (bundle.instructions) files.push({ path: "GEMINI.md", content: bundle.instructions });
     if (bundle.persona) warnings.push("persona: no project-scoped slot in gemini; skipped");
     if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in gemini; skipped");
-    if (bundle.skills.length) warnings.push("skills: gemini has no SKILL.md mechanism; skipped");
+    files.push(...planSkills(bundle.skills, ".gemini/skills"));
     return { files, warnings };
   },
 };

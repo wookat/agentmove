@@ -11,7 +11,7 @@ description: What AgentMove reads and writes for each client.
 | Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`); located at `~/Library/Application Support/Claude` (macOS), `%APPDATA%\Claude` (Windows), or `~/.config/Claude` (Linux) — all three are checked; `~/.claude/skills/` (personal Agent Skills, loaded by Desktop local sessions, shared with Claude Code) |
 | Codex CLI | `codex` | `~/.codex/config.toml` (`[mcp_servers.*]`, model; `bearer_token_env_var`/`env_http_headers` round-trip as `${VAR}` placeholder headers; `startup_timeout_sec`, `tool_timeout_sec`, `env_vars`, tool approval settings are client-specific and kept on merge), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
 | Cursor | `cursor` | `~/.cursor/mcp.json`, `~/.cursor/skills/` (global Agent Skills standard; project scope covers `.cursor/skills/`); instructions/persona imported as `~/.cursor/rules/agentmove-imported.mdc` |
-| Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section) |
+| Gemini CLI | `gemini` | `~/.gemini/settings.json` (`mcpServers`), `~/.gemini/GEMINI.md` (including the "Gemini Added Memories" section), `~/.gemini/skills/` (Agent Skills standard; `~/.agents/skills/` is a native alias); project scope adds `.gemini/skills/` |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json` (`mcpServers`, remote servers use `type: streamableHttp`/`sse` + `url`), `~/Documents/Cline/Rules/*.md`, `~/.cline/skills/` |
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`; JSONC, stdio servers require `args`), `~/.config/zed/AGENTS.md`, `~/.agents/skills/` |
@@ -60,7 +60,6 @@ description: What AgentMove reads and writes for each client.
 - **Cursor** memories are app-managed and cannot be imported; global skills
   migrate via `~/.cursor/skills/` (project skills via `.cursor/skills/` with
   `--project`).
-- **Gemini CLI** has no `SKILL.md` mechanism; skills are skipped with a warning.
 - **Codex / Claude Code** client-managed memories are not exported in v0.
 - **Codex CLI** `bearer_token_env_var` exports as an `Authorization: Bearer ${VAR}`
   placeholder header and `env_http_headers` entries export as `${VAR}` placeholder
