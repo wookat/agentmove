@@ -102,12 +102,14 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `.opencode/agents/`), Qwen Code (`~/.qwen/agents/`, project
   `.qwen/agents/`), Cursor (`~/.cursor/agents/`, project
   `.cursor/agents/`), Kiro (`~/.kiro/agents/`, project
-  `.kiro/agents/`), and Droid (`~/.factory/droids/`, project
-  `.factory/droids/`).
+  `.kiro/agents/`), Droid (`~/.factory/droids/`, project
+  `.factory/droids/`), and CodeBuddy (`~/.codebuddy/agents/`, project
+  `.codebuddy/agents/`).
 - Content is copied **as-is**, including YAML frontmatter. Fields like
   `tools:`, `model:`, Cursor's `read_only:`/`is_background:`, Kiro's
-  `permissions:`, and Droid's `reasoningEffort:`/`mcpServers:` are
-  client-specific and may need review after import — a warning is emitted.
+  `permissions:`, Droid's `reasoningEffort:`/`mcpServers:`, and CodeBuddy's
+  `effort:`/`maxTurns:`/`memory:`/`mcpServers:` are client-specific and may
+  need review after import — a warning is emitted.
 - Kiro also accepts JSON agent configs (`.kiro/agents/*.json`); those are
   **not** migrated (warned) — Kiro supports the same fields in markdown.
 - Gemini CLI subagents are experimental (enabled by default;

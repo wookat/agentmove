@@ -16,7 +16,9 @@ import {
   appendSections,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -30,11 +32,17 @@ import {
  * (`type` stdio/sse/http optional and inferred; stdio uses command/args/env,
  * remote uses url/headers) plus a top-level `disabledMcpServers` name list.
  * User memory lives in ~/.codebuddy/CODEBUDDY.md and user skills follow the
- * open Agent Skills standard under ~/.codebuddy/skills/.
+ * open Agent Skills standard under ~/.codebuddy/skills/. Custom sub-agents
+ * are markdown files with YAML frontmatter under ~/.codebuddy/agents/ (user)
+ * and .codebuddy/agents/ (project; project overrides user on name conflicts).
  */
 const MCP_CANDIDATES = [".codebuddy/.mcp.json", ".codebuddy/mcp.json", ".codebuddy.json"] as const;
 const MEMORY_REL = ".codebuddy/CODEBUDDY.md";
 const SKILLS_REL = ".codebuddy/skills";
+const AGENTS_DIR_REL = ".codebuddy/agents";
+
+export const CODEBUDDY_AGENTS_WARNING =
+  "agents: frontmatter fields (tools/model/effort/maxTurns/memory/mcpServers) are client-specific and copied as-is; review after import";
 
 export async function readCodebuddyMcp(
   candidates: string[],
@@ -119,7 +127,8 @@ export async function planCodebuddyMcp(
 export const codebuddy: ClientAdapter = {
   id: "codebuddy",
   label: "CodeBuddy",
-  defaultPath: "~/.codebuddy (.mcp.json + CODEBUDDY.md + skills/)",
+  defaultPath: "~/.codebuddy (.mcp.json + CODEBUDDY.md + skills/ + agents/)",
+  supportsAgents: true,
 
   async detect(home) {
     return (
@@ -146,6 +155,7 @@ export const codebuddy: ClientAdapter = {
       );
     }
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -177,6 +187,10 @@ export const codebuddy: ClientAdapter = {
       warnings.push("memory: codebuddy auto-memory is app-managed; skipped (consider --mif)");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
+      warnings.push(CODEBUDDY_AGENTS_WARNING);
+    }
     return { files, warnings };
   },
 };

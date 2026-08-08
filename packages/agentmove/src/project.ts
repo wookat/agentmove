@@ -46,7 +46,12 @@ import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/
 import { parseJunieServers, renderJunieServers } from "./adapters/junie.js";
 import { parseTraeServers, planTraeMcp } from "./adapters/trae.js";
 import { parseComateServers, planComateMcp } from "./adapters/comate.js";
-import { parseCodebuddyServers, planCodebuddyMcp, readCodebuddyMcp } from "./adapters/codebuddy.js";
+import {
+  CODEBUDDY_AGENTS_WARNING,
+  parseCodebuddyServers,
+  planCodebuddyMcp,
+  readCodebuddyMcp,
+} from "./adapters/codebuddy.js";
 import { parseQoderServers, planQoderMcp, readQoderSettings } from "./adapters/qoder.js";
 import {
   parseAuggieServers,
@@ -1265,6 +1270,7 @@ const traeProject: ProjectAdapter = {
 };
 
 const codebuddyProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1283,6 +1289,7 @@ const codebuddyProject: ProjectAdapter = {
       );
     }
     bundle.skills = await readSkillsDir(path.join(dir, ".codebuddy/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".codebuddy/agents"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1309,6 +1316,10 @@ const codebuddyProject: ProjectAdapter = {
       warnings.push("memory: codebuddy auto-memory is app-managed; skipped");
     }
     files.push(...planSkills(bundle.skills, ".codebuddy/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".codebuddy/agents", ".md"));
+      warnings.push(CODEBUDDY_AGENTS_WARNING);
+    }
     return { files, warnings };
   },
 };
