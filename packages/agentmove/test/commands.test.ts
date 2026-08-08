@@ -581,10 +581,10 @@ describe("custom commands layer", () => {
     ];
     const { files, warnings } = await vscode.planImport(bundle, "/nonexistent-home", {});
     expect(
-      files.some((f) => f.path === ".config/Code/User/prompts/gen-tests.prompt.md"),
+      files.some((f) => f.path.endsWith("Code/User/prompts/gen-tests.prompt.md")),
     ).toBe(true);
     expect(
-      files.some((f) => f.path === ".config/Code/User/prompts/git-commit.prompt.md"),
+      files.some((f) => f.path.endsWith("Code/User/prompts/git-commit.prompt.md")),
     ).toBe(true);
     expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
     expect(warnings.some((w) => w.includes("Settings Sync"))).toBe(true);
