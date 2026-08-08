@@ -196,8 +196,10 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
   ready-to-publish archive (`.zip`/`.tgz`/`.tar.gz`), e.g. a release asset
 - `import <client> -i <repo>` — import a skills repository (the
   [skills.sh](https://skills.sh) / `npx skills add owner/repo` ecosystem):
-  `SKILL.md` directories under `skills/`, at the top level, or a single skill
-  at the repository root, installed into any client's skills location
+  `SKILL.md` directories under `skills/`, namespaced under
+  `skills/<scope>/` (the `gh skill` convention), at the top level, or a
+  single skill at the repository root, installed into any client's skills
+  location
 - `export <client> --skills-repo <dir>` — also write the skills layer as a
   skills repository (`skills/<name>/SKILL.md`), ready to commit and publish
   with `gh skill publish` or install with `npx skills add`; a path ending in
