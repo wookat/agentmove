@@ -14,7 +14,9 @@ import { isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -26,12 +28,20 @@ import {
  * stdio/http/sse; stdio entries take command/args/env/cwd and remote entries
  * take url/headers, plus a client-specific per-server `timeout`. Global
  * instructions are ~/.snowflake/cortex/AGENTS.md and user skills follow the
- * Agent Skills standard under ~/.snowflake/cortex/skills/.
+ * Agent Skills standard under ~/.snowflake/cortex/skills/. Custom slash
+ * commands are markdown files under ~/.snowflake/cortex/commands/ (part of
+ * the documented install layout, managed via /commands); nested layouts are
+ * preserved. No project-scoped commands directory is documented — project
+ * commands ship only inside plugins — so project scope skips commands.
  */
 const CONFIG_DIR_REL = ".snowflake/cortex";
 const MCP_REL = ".snowflake/cortex/mcp.json";
 const AGENTS_REL = ".snowflake/cortex/AGENTS.md";
 const SKILLS_REL = ".snowflake/cortex/skills";
+const COMMANDS_REL = ".snowflake/cortex/commands";
+
+export const CORTEX_COMMANDS_WARNING =
+  "commands: frontmatter and argument conventions from other clients are client-specific and copied as-is; review after import";
 
 export async function readCortexMcp(file: string): Promise<Record<string, unknown>> {
   const raw = await readText(file);
@@ -88,7 +98,8 @@ export async function planCortexMcp(
 export const cortex: ClientAdapter = {
   id: "cortex",
   label: "Cortex Code",
-  defaultPath: "~/.snowflake/cortex (mcp.json + AGENTS.md + skills/)",
+  defaultPath: "~/.snowflake/cortex (mcp.json + AGENTS.md + skills/ + commands/)",
+  supportsCommands: true,
 
   async detect(home) {
     return isDir(path.join(home, CONFIG_DIR_REL));
@@ -104,6 +115,7 @@ export const cortex: ClientAdapter = {
     bundle.mcpServers = parseCortexServers(config, warnings);
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -137,6 +149,10 @@ export const cortex: ClientAdapter = {
       );
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_REL, ".md"));
+      warnings.push(CORTEX_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
