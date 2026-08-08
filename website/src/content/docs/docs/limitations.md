@@ -131,6 +131,19 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Kilo Code's legacy `custom_modes.yaml` / `.kilocodemodes` definitions are
   **not** migrated — Kilo itself auto-converts them to agent markdown files
   on startup.
+- Amazon Q Developer CLI custom agents are **JSON** files
+  (`~/.aws/amazonq/cli-agents/*.json`, project `.amazonq/cli-agents/`;
+  the filename stem is the agent name), so a documented conversion runs
+  instead of a byte-faithful copy: `description` maps to a frontmatter
+  line and `prompt` to the markdown body. Amazonq-specific fields
+  (`tools`, `allowedTools`, `mcpServers`, `toolAliases`, `toolsSettings`,
+  `resources`, `hooks`, `useLegacyMcpJson`, `model`) have no portable
+  equivalent and are dropped **with a per-field warning**. On import,
+  markdown agents become `{description, prompt}` JSON files; frontmatter
+  with fields beyond `description` is kept verbatim inside the prompt
+  (warned), nested names are flattened (`backend/sql` → `backend-sql`,
+  warned), and invalid or prompt-less agent files are skipped with a
+  warning rather than silently.
 - Every other client has no custom agents directory — imported agents are
   **skipped** with a warning.
 

@@ -73,7 +73,14 @@ import {
   renderDroidServers,
   warnDroidScriptCommands,
 } from "./adapters/droid.js";
-import { parseAmazonqServers, renderAmazonqServers } from "./adapters/amazonq.js";
+import {
+  AMAZONQ_AGENTS_EXPORT_WARNING,
+  AMAZONQ_AGENTS_IMPORT_WARNING,
+  parseAmazonqServers,
+  planAmazonqAgents,
+  readAmazonqAgents,
+  renderAmazonqServers,
+} from "./adapters/amazonq.js";
 import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/warp.js";
 import { parseJunieServers, renderJunieServers } from "./adapters/junie.js";
 import {
@@ -1278,6 +1285,7 @@ const droidProject: ProjectAdapter = {
 };
 
 const amazonqProject: ProjectAdapter = {
+  supportsAgents: true,
   supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
@@ -1287,6 +1295,8 @@ const amazonqProject: ProjectAdapter = {
     bundle.mcpServers = parseAmazonqServers(config, warnings);
     bundle.instructions = await readText(path.join(dir, "AmazonQ.md"));
     bundle.commands = await readAgentsDir(path.join(dir, ".amazonq/prompts"), ".md");
+    bundle.agents = await readAmazonqAgents(path.join(dir, ".amazonq/cli-agents"), warnings);
+    if (bundle.agents.length) warnings.push(AMAZONQ_AGENTS_EXPORT_WARNING);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1318,6 +1328,10 @@ const amazonqProject: ProjectAdapter = {
       warnings.push(
         "commands: saved prompts are invoked as @name in q chat; argument placeholders are client-specific and copied as-is",
       );
+    }
+    if (bundle.agents.length) {
+      files.push(...planAmazonqAgents(bundle.agents, ".amazonq/cli-agents", warnings));
+      warnings.push(AMAZONQ_AGENTS_IMPORT_WARNING);
     }
     return { files, warnings };
   },
