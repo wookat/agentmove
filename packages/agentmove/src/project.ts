@@ -1168,6 +1168,7 @@ const crushProject: ProjectAdapter = {
 };
 
 const antigravityProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1177,6 +1178,7 @@ const antigravityProject: ProjectAdapter = {
     const rules = await readAntigravityRulesDir(path.join(dir, ".agents/rules"), warnings);
     bundle.instructions = rules ?? (await readText(path.join(dir, "AGENTS.md")));
     bundle.skills = await readSkillsDir(path.join(dir, ".agents/skills"), warnings);
+    bundle.commands = await readAgentsDir(path.join(dir, ".agents/workflows"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1204,6 +1206,12 @@ const antigravityProject: ProjectAdapter = {
       warnings.push("memory: antigravity has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".agents/skills"));
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, ".agents/workflows", "antigravity", warnings));
+      warnings.push(
+        "commands: workflows are triggered as /name in AGY and AGY IDE; AGY CLI lists them but cannot trigger them",
+      );
+    }
     return { files, warnings };
   },
 };

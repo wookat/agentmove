@@ -27,7 +27,31 @@ describe("antigravity adapter", () => {
     expect(warnings.some((w) => w.includes("disabledTools"))).toBe(true);
     expect(warnings.some((w) => w.includes("authProviderType"))).toBe(true);
     expect(bundle.skills.map((s) => s.name)).toEqual(["review"]);
+    expect(bundle.commands.map((c) => c.name)).toEqual(["code-review"]);
     expect(warnings.some((w) => w.includes("GEMINI.md"))).toBe(true);
+  });
+
+  it("exports workflows byte-faithfully and imports them flat with warnings", async () => {
+    const { bundle } = await antigravity.exportBundle(HOME);
+    const raw = await fs.readFile(
+      path.join(HOME, ".gemini/config/global_workflows/code-review.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+
+    const incoming = emptyBundle();
+    incoming.commands = [
+      { name: "deploy", content: "Deploy.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await antigravity.planImport(incoming, "/nonexistent-home", {});
+    const deploy = files.find((f) => f.path === ".gemini/config/global_workflows/deploy.md")!;
+    expect(deploy.content).toBe("Deploy.\n");
+    expect(
+      files.some((f) => f.path === ".gemini/config/global_workflows/git-commit.md"),
+    ).toBe(true);
+    expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("triggered as /name"))).toBe(true);
   });
 
   it("imports by merging mcpServers, renders serverUrl + disabled, plans skills", async () => {
@@ -71,7 +95,7 @@ describe("antigravity adapter", () => {
     expect(bundle.mcpServers).toEqual([]);
   });
 
-  it("project scope: .agents/mcp_config.json + rules/ + skills/", async () => {
+  it("project scope: .agents/mcp_config.json + rules/ + skills/ + workflows/", async () => {
     const adapter = getProjectAdapter("antigravity");
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-antigravity-"));
     await fs.mkdir(path.join(dir, ".agents/rules"), { recursive: true });
@@ -80,14 +104,18 @@ describe("antigravity adapter", () => {
       JSON.stringify({ mcpServers: { local: { command: "node" } } }),
     );
     await fs.writeFile(path.join(dir, ".agents/rules/01-style.md"), "# Repo rules\n");
+    await fs.mkdir(path.join(dir, ".agents/workflows"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".agents/workflows/release.md"), "Release steps.\n");
     const exported = await adapter.exportProject(dir);
     expect(exported.bundle.mcpServers.map((s) => s.name)).toEqual(["local"]);
     expect(exported.bundle.instructions).toContain("Repo rules");
+    expect(exported.bundle.commands.map((c) => c.name)).toEqual(["release"]);
 
     const bundle = emptyBundle();
     bundle.mcpServers = [{ name: "db", transport: "http", url: "https://db.example.com" }];
     bundle.instructions = "Project rules.";
     bundle.skills = [{ name: "review", files: { "SKILL.md": "y" } }];
+    bundle.commands = [{ name: "analyze", content: "Analyze.\n" }];
     const { files } = await adapter.planImport(bundle, dir, {});
     const config = JSON.parse(
       files.find((f) => f.path === ".agents/mcp_config.json")!.content,
@@ -96,5 +124,7 @@ describe("antigravity adapter", () => {
     expect(config.mcpServers.db!.serverUrl).toBe("https://db.example.com");
     expect(files.some((f) => f.path === ".agents/rules/agentmove.md")).toBe(true);
     expect(files.some((f) => f.path === ".agents/skills/review/SKILL.md")).toBe(true);
+    const wf = files.find((f) => f.path === ".agents/workflows/analyze.md")!;
+    expect(wf.content).toBe("Analyze.\n");
   });
 });
