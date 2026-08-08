@@ -1,1 +1,2 @@
 *.toml text eol=lf
+packages/agentmove/test/fixtures/** text eol=lf
