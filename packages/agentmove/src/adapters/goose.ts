@@ -375,7 +375,7 @@ export const goose: ClientAdapter = {
         config.slash_commands,
         names.map((name) => ({
           command: name,
-          recipe_path: path.join(home, RECIPES_REL, `${name}.yaml`),
+          recipe_path: `${home.replace(/\\/g, "/")}/${RECIPES_REL}/${name}.yaml`,
         })),
         warnings,
       );
