@@ -24,6 +24,8 @@ import { vscode } from "../src/adapters/vscode.js";
 import { gemini, geminiCommandToToml } from "../src/adapters/gemini.js";
 import { crush } from "../src/adapters/crush.js";
 import { cortex } from "../src/adapters/cortex.js";
+import { goose, gooseCommandToRecipe } from "../src/adapters/goose.js";
+import { parse as parseYaml } from "yaml";
 import { trae } from "../src/adapters/trae.js";
 import { parse as parseToml } from "smol-toml";
 import { getProjectAdapter } from "../src/project.js";
@@ -799,6 +801,77 @@ describe("custom commands layer", () => {
     )!;
     expect(written.content).toBe("Optimize $1.\n");
     expect(warnings.some((w) => w.includes("client-specific and copied as-is"))).toBe(true);
+  });
+
+  it("goose exports ~/.config/goose/recipes as converted commands (yaml + json, flat scan)", async () => {
+    const { bundle, warnings } = await goose.exportBundle(path.join(FIXTURES, "goose-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["daily-report", "lint-fix"]);
+    const daily = bundle.commands.find((c) => c.name === "daily-report")!;
+    expect(daily.content).toBe(
+      '---\ntitle: "Daily Report"\ndescription: "Generate the daily status report"\n---\n' +
+        "Summarize yesterday's commits and open PRs for {{ project }}.\n",
+    );
+    const lint = bundle.commands.find((c) => c.name === "lint-fix")!;
+    expect(lint.content).toBe(
+      '---\ndescription: "Fix lint errors"\n---\nRun the linter and fix all reported errors.\n',
+    );
+    expect(
+      warnings.some((w) => w.includes('recipe field "parameters" has no portable command equivalent')),
+    ).toBe(true);
+    expect(warnings.some((w) => w.includes("goose-specific and copied as-is"))).toBe(true);
+  });
+
+  it("goose plans commands as recipes (nested flattened) and registers slash_commands", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "git/commit", content: "---\ndescription: \"Commit helper\"\n---\nCommit $ARGUMENTS.\n" },
+    ];
+    const { files, warnings } = await goose.planImport(bundle, "/nonexistent-home", {});
+    const recipe = files.find((f) => f.path === ".config/goose/recipes/git-commit.yaml")!;
+    const parsed = parseYaml(recipe.content) as Record<string, unknown>;
+    expect(parsed.title).toBe("git-commit");
+    expect(parsed.description).toBe("Commit helper");
+    expect(parsed.prompt).toBe("Commit $ARGUMENTS.\n");
+    const config = files.find((f) => f.path === ".config/goose/config.yaml")!;
+    const cfg = parseYaml(config.content) as Record<string, unknown>;
+    expect(cfg.slash_commands).toEqual([
+      {
+        command: "git-commit",
+        recipe_path: "/nonexistent-home/.config/goose/recipes/git-commit.yaml",
+      },
+    ]);
+    expect(warnings.some((w) => w.includes("only discovers top-level recipe files"))).toBe(true);
+    expect(warnings.some((w) => w.includes("converted to the recipe prompt field"))).toBe(true);
+  });
+
+  it("goose→goose round-trip is recipe-parse equivalent", async () => {
+    const { bundle } = await goose.exportBundle(path.join(FIXTURES, "goose-home"));
+    const daily = bundle.commands.find((c) => c.name === "daily-report")!;
+    const warnings: string[] = [];
+    const back = parseYaml(gooseCommandToRecipe(daily, "daily-report", warnings)) as Record<
+      string,
+      unknown
+    >;
+    const original = parseYaml(
+      await fs.readFile(
+        path.join(FIXTURES, "goose-home/.config/goose/recipes/daily-report.yaml"),
+        "utf8",
+      ),
+    ) as Record<string, unknown>;
+    expect(back.title).toBe(original.title);
+    expect(back.description).toBe(original.description);
+    expect(back.prompt).toBe(original.prompt);
+    expect(warnings).toEqual([]);
+  });
+
+  it("goose keeps multi-field frontmatter verbatim inside the recipe prompt with warning", () => {
+    const warnings: string[] = [];
+    const content = "---\ndescription: d\nmodel: gpt-x\n---\nBody.\n";
+    const recipe = parseYaml(
+      gooseCommandToRecipe({ name: "c", content }, "c", warnings),
+    ) as Record<string, unknown>;
+    expect(recipe.prompt).toBe(content);
+    expect(warnings.some((w) => w.includes("kept verbatim inside prompt"))).toBe(true);
   });
 
   it("bundle round-trips the commands layer byte-faithfully (nested names)", async () => {

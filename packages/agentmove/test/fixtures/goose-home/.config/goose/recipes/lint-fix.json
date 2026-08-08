@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "title": "lint-fix",
+  "description": "Fix lint errors",
+  "instructions": "Run the linter and fix all reported errors.",
+  "parameters": [
+    { "key": "scope", "input_type": "string", "requirement": "optional", "default": "all" }
+  ]
+}
