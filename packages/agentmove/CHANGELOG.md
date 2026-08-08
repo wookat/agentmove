@@ -1,5 +1,11 @@
 # agentmove-cli
 
+## 0.87.0
+
+### Minor Changes
+
+- bfc58ce: Custom agents layer for Amazon Q Developer CLI: `~/.aws/amazonq/cli-agents/*.json` (project scope `.amazonq/cli-agents/`) converts to/from portable markdown agents — `description` maps to frontmatter and `prompt` to the body; amazonq-specific fields (tools/allowedTools/mcpServers/hooks/...) are dropped with per-field warnings. Imports write `{description, prompt}` agent JSON, flattening nested names with a warning.
+
 ## 0.86.0
 
 ### Minor Changes
