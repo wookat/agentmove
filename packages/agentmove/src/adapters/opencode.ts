@@ -15,7 +15,9 @@ import { exists, isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -28,12 +30,16 @@ import {
  * `environment`, remote servers use `type: "remote"` + `url`; both take an
  * `enabled` boolean. Instructions are ~/.config/opencode/AGENTS.md and
  * skills are native SKILL.md directories under ~/.config/opencode/skills/.
+ * Custom agents/subagents are markdown files under ~/.config/opencode/agents/
+ * (legacy singular agent/ also read).
  */
 const CONFIG_DIR_REL = ".config/opencode";
 const CONFIG_REL = ".config/opencode/opencode.json";
 const CONFIG_JSONC_REL = ".config/opencode/opencode.jsonc";
 const AGENTS_REL = ".config/opencode/AGENTS.md";
 const SKILLS_REL = ".config/opencode/skills";
+const AGENTS_DIR_REL = ".config/opencode/agents";
+const AGENT_DIR_LEGACY_REL = ".config/opencode/agent";
 
 async function readConfig(
   home: string,
@@ -91,10 +97,21 @@ export function toOpencodeEntry(s: McpServer, warnings: string[]): Record<string
   return out;
 }
 
+/** OpenCode loads agent markdown from both agents/ and the legacy agent/ directory. */
+async function readAgentsDirs(home: string) {
+  const agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
+  const names = new Set(agents.map((a) => a.name));
+  for (const a of await readAgentsDir(path.join(home, AGENT_DIR_LEGACY_REL), ".md")) {
+    if (!names.has(a.name)) agents.push(a);
+  }
+  return agents.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export const opencode: ClientAdapter = {
   id: "opencode",
   label: "OpenCode",
-  defaultPath: "~/.config/opencode (opencode.json + AGENTS.md + skills/)",
+  defaultPath: "~/.config/opencode (opencode.json + AGENTS.md + skills/ + agents/)",
+  supportsAgents: true,
 
   async detect(home) {
     return (
@@ -124,6 +141,7 @@ export const opencode: ClientAdapter = {
 
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.agents = await readAgentsDirs(home);
     return { bundle, warnings };
   },
 
@@ -153,6 +171,13 @@ export const opencode: ClientAdapter = {
     if (parts.length) files.push({ path: AGENTS_REL, content: parts.join("\n\n") + "\n" });
 
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
+      warnings.push(
+        "agents: frontmatter fields (mode/model/permission) are client-specific and copied as-is; review after import",
+      );
+    }
 
     if (bundle.memory.length) {
       warnings.push("memory: opencode has no durable memory store; skipped (consider --mif)");
