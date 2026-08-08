@@ -17,6 +17,7 @@ import {
   planAgents,
   planSkills,
   readAgentsDir,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -27,12 +28,15 @@ import {
  * of ~/.qwen/settings.json; context/instructions are ~/.qwen/QWEN.md with
  * saved memories under a "## Qwen Added Memories" section; skills are native
  * SKILL.md directories under ~/.qwen/skills/ and custom agents/subagents are
- * markdown files under ~/.qwen/agents/.
+ * markdown files under ~/.qwen/agents/. Custom commands are markdown files
+ * under ~/.qwen/commands/ (subdirectories become `/git:commit`-style names;
+ * the legacy TOML format is deprecated and not migrated).
  */
 const SETTINGS_REL = ".qwen/settings.json";
 const CONTEXT_REL = ".qwen/QWEN.md";
 const SKILLS_REL = ".qwen/skills";
 const AGENTS_DIR_REL = ".qwen/agents";
+const COMMANDS_DIR_REL = ".qwen/commands";
 const MEMORY_HEADING = "## Qwen Added Memories";
 
 function splitContext(content: string): { instructions?: string; memories: string[] } {
@@ -62,8 +66,9 @@ async function readSettings(home: string): Promise<Record<string, unknown>> {
 export const qwen: ClientAdapter = {
   id: "qwen",
   label: "Qwen Code",
-  defaultPath: "~/.qwen (settings.json + QWEN.md + skills/ + agents/)",
+  defaultPath: "~/.qwen (settings.json + QWEN.md + skills/ + agents/ + commands/)",
   supportsAgents: true,
+  supportsCommands: true,
 
   async detect(home) {
     return (await exists(path.join(home, SETTINGS_REL))) || (await isDir(path.join(home, ".qwen")));
@@ -96,6 +101,13 @@ export const qwen: ClientAdapter = {
     }
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
+    const commandsRoot = path.join(home, COMMANDS_DIR_REL);
+    bundle.commands = await readAgentsDirRecursive(commandsRoot, ".md");
+    for (const t of await readAgentsDirRecursive(commandsRoot, ".toml")) {
+      warnings.push(
+        `commands:${t.name}: qwen TOML commands are deprecated and not migrated; convert to markdown first`,
+      );
+    }
     return { bundle, warnings };
   },
 
@@ -132,6 +144,12 @@ export const qwen: ClientAdapter = {
     if (parts.length) files.push({ path: CONTEXT_REL, content: parts.join("\n\n") + "\n" });
 
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_DIR_REL, ".md"));
+      warnings.push(
+        "commands: argument placeholders ({{args}}/!{...}/@{...}) and frontmatter are client-specific and copied as-is; review after import",
+      );
+    }
     if (bundle.agents.length) {
       files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
       warnings.push(

@@ -59,7 +59,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
 | Skills | `SKILL.md` directories (the de-facto cross-client standard) |
 | Custom agents | Subagent markdown definitions — Claude Code `~/.claude/agents/`, Copilot CLI `~/.copilot/agents/*.agent.md`, Gemini CLI `~/.gemini/agents/` (experimental), OpenCode `~/.config/opencode/agents/`, Qwen Code `~/.qwen/agents/`, Cursor `~/.cursor/agents/`; frontmatter is copied as-is with a warning, other clients skip with a warning |
-| Commands / prompts | Markdown slash commands & custom prompts — Claude Code `~/.claude/commands/` (nested subdirectories preserved), Cursor `~/.cursor/commands/`, Codex `~/.codex/prompts/` (deprecated in favor of skills but still supported); argument placeholders and frontmatter are client-specific (warned), other clients skip with a warning |
+| Commands / prompts | Markdown slash commands & custom prompts — Claude Code `~/.claude/commands/` (nested subdirectories preserved), Cursor `~/.cursor/commands/`, Codex `~/.codex/prompts/` (deprecated in favor of skills but still supported), OpenCode `~/.config/opencode/commands/` (nested preserved), Qwen Code `~/.qwen/commands/` (nested preserved; deprecated TOML commands are warned, not migrated); argument placeholders and frontmatter are client-specific (warned), other clients skip with a warning |
 | Config | Default model plus the raw source config preserved in the bundle for reference |
 
 Every lossy or approximated step is reported as a warning — nothing is silently
@@ -115,8 +115,8 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`), `~/.config/zed/AGENTS.md`, `~/.agents/skills/` |
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]`), `~/.openhands/microagents/` |
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json`, `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/`, `~/.copilot/skills/`, `~/.copilot/agents/*.agent.md` |
-| OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/`, `~/.config/opencode/agents/` (custom agents) |
-| Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`), `~/.qwen/QWEN.md` (incl. "Qwen Added Memories"), `~/.qwen/skills/`, `~/.qwen/agents/` (custom subagents) |
+| OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/`, `~/.config/opencode/agents/` (custom agents), `~/.config/opencode/commands/` (custom commands) |
+| Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`), `~/.qwen/QWEN.md` (incl. "Qwen Added Memories"), `~/.qwen/skills/`, `~/.qwen/agents/` (custom subagents), `~/.qwen/commands/` (custom commands; markdown only) |
 | Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
 | VS Code | `vscode` | user-profile `mcp.json` (`servers`; Linux `~/.config/Code/User`, macOS `~/Library/Application Support/Code/User`, Windows `%APPDATA%\Code\User`) + `~/.agents/skills/` |
 | Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`), `~/.kiro/steering/`, `~/.kiro/skills/`, `~/.kiro/agents/` (markdown custom agents; JSON configs warned) |
