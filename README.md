@@ -59,6 +59,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
 | Skills | `SKILL.md` directories (the de-facto cross-client standard) |
 | Custom agents | Subagent markdown definitions — Claude Code `~/.claude/agents/`, Copilot CLI `~/.copilot/agents/*.agent.md`, Gemini CLI `~/.gemini/agents/` (experimental), OpenCode `~/.config/opencode/agents/`, Qwen Code `~/.qwen/agents/`, Cursor `~/.cursor/agents/`; frontmatter is copied as-is with a warning, other clients skip with a warning |
+| Commands / prompts | Markdown slash commands & custom prompts — Claude Code `~/.claude/commands/` (nested subdirectories preserved), Cursor `~/.cursor/commands/`, Codex `~/.codex/prompts/` (deprecated in favor of skills but still supported); argument placeholders and frontmatter are client-specific (warned), other clients skip with a warning |
 | Config | Default model plus the raw source config preserved in the bundle for reference |
 
 Every lossy or approximated step is reported as a warning — nothing is silently
@@ -105,9 +106,9 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | OpenClaw | `openclaw` | `~/.openclaw/openclaw.json`, workspace (`SOUL.md`, `AGENTS.md`, `MEMORY.md`, `memory/`, `skills/`) |
 | Hermes Agent | `hermes` | `~/.hermes/config.yaml`, `SOUL.md`, `memories/`, `skills/` |
 | Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`; macOS `~/Library/Application Support/Claude`, Windows `%APPDATA%\Claude`, Linux `~/.config/Claude`) + `~/.claude/skills/` |
-| Claude Code | `claude-code` | `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/skills/`, `~/.claude/agents/` |
-| Codex CLI | `codex` | `~/.codex/config.toml` (incl. `bearer_token_env_var`/`env_http_headers` as `${VAR}` placeholder headers), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
-| Cursor | `cursor` | `~/.cursor/mcp.json` + `~/.cursor/skills/` + `~/.cursor/agents/` (custom subagents; rules/memories are project/app-scoped) |
+| Claude Code | `claude-code` | `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/skills/`, `~/.claude/agents/`, `~/.claude/commands/` |
+| Codex CLI | `codex` | `~/.codex/config.toml` (incl. `bearer_token_env_var`/`env_http_headers` as `${VAR}` placeholder headers), `~/.codex/AGENTS.md`, `~/.agents/skills/`, `~/.codex/prompts/` (custom prompts) |
+| Cursor | `cursor` | `~/.cursor/mcp.json` + `~/.cursor/skills/` + `~/.cursor/agents/` + `~/.cursor/commands/` (rules/memories are project/app-scoped) |
 | Gemini CLI | `gemini` | `~/.gemini/settings.json`, `~/.gemini/GEMINI.md`, `~/.gemini/skills/`, `~/.gemini/agents/` (experimental subagents) |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json`, `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json`, `~/Documents/Cline/Rules/`, `~/.cline/skills/` |

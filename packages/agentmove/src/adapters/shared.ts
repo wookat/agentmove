@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   AgentDef,
   asStringRecord,
+  CommandDef,
   isRecord,
   McpServer,
   Skill,
@@ -176,6 +177,37 @@ export function planAgents(
   ext: string,
 ): { path: string; content: string }[] {
   return agents.map((a) => ({ path: `${rootRel}/${a.name}${ext}`, content: a.content }));
+}
+
+/**
+ * Plan writes for commands into a flat-scan commands root: clients that only
+ * discover top-level files get nested names (`git/commit`) flattened to
+ * `git-commit`, with a warning; a resulting name collision skips the command.
+ */
+export function planCommandsFlat(
+  commands: CommandDef[],
+  rootRel: string,
+  clientId: string,
+  warnings: string[],
+): { path: string; content: string }[] {
+  const plans: { path: string; content: string }[] = [];
+  const used = new Set<string>();
+  for (const c of commands) {
+    let name = c.name;
+    if (name.includes("/")) {
+      name = name.replace(/\//g, "-");
+      warnings.push(
+        `commands:${c.name}: ${clientId} only discovers top-level command files; imported as ${name}`,
+      );
+    }
+    if (used.has(name)) {
+      warnings.push(`commands:${c.name}: name collides with another command after flattening; skipped`);
+      continue;
+    }
+    used.add(name);
+    plans.push({ path: `${rootRel}/${name}.md`, content: c.content });
+  }
+  return plans;
 }
 
 export function mergeSkills(existing: Skill[], incoming: Skill[]): Skill[] {

@@ -21,6 +21,7 @@ import {
   mergeMcpRecords,
   parseCommonMcpEntry,
   planAgents,
+  planCommandsFlat,
   planSkills,
   readAgentsDir,
   readAgentsDirRecursive,
@@ -97,6 +98,8 @@ import {
 export interface ProjectAdapter {
   /** Whether the client has a project-scoped custom agents directory. */
   supportsAgents?: boolean;
+  /** Whether the client has a project-scoped custom commands directory. */
+  supportsCommands?: boolean;
   exportProject(dir: string): Promise<ExportResult>;
   planImport(bundle: Bundle, dir: string, opts?: ImportOptions): Promise<ImportResult>;
 }
@@ -135,6 +138,7 @@ function renderMcpMap(
 
 const claudeCodeProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -143,6 +147,7 @@ const claudeCodeProject: ProjectAdapter = {
     bundle.instructions = await readText(path.join(dir, "CLAUDE.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".claude/skills"), warnings);
     bundle.agents = await readAgentsDir(path.join(dir, ".claude/agents"), ".md");
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".claude/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -167,6 +172,12 @@ const claudeCodeProject: ProjectAdapter = {
       files.push(...planAgents(bundle.agents, ".claude/agents", ".md"));
       warnings.push(
         "agents: frontmatter fields (tools/model) are client-specific and copied as-is; review after import",
+      );
+    }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".claude/commands", ".md"));
+      warnings.push(
+        "commands: argument placeholders and frontmatter fields (allowed-tools/model) are client-specific and copied as-is; review after import",
       );
     }
     return { files, warnings };
@@ -246,6 +257,7 @@ const geminiProject: ProjectAdapter = {
 
 const cursorProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -269,6 +281,7 @@ const cursorProject: ProjectAdapter = {
     }
     bundle.skills = await readSkillsDir(path.join(dir, ".cursor/skills"), warnings);
     bundle.agents = await readAgentsDir(path.join(dir, ".cursor/agents"), ".md");
+    bundle.commands = await readAgentsDir(path.join(dir, ".cursor/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -307,6 +320,12 @@ const cursorProject: ProjectAdapter = {
       files.push(...planAgents(bundle.agents, ".cursor/agents", ".md"));
       warnings.push(
         "agents: frontmatter fields (model/read_only/is_background) are client-specific and copied as-is; review after import",
+      );
+    }
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, ".cursor/commands", "cursor", warnings));
+      warnings.push(
+        "commands: argument placeholders are client-specific and copied as-is; review after import",
       );
     }
     return { files, warnings };

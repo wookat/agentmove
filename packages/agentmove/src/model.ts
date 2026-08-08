@@ -58,6 +58,12 @@ export interface AgentDef {
   content: string;
 }
 
+/** A custom slash command / reusable prompt (markdown prompt file). */
+export interface CommandDef {
+  name: string;
+  content: string;
+}
+
 export interface BundleManifest {
   schemaVersion: 1;
   exportedFrom?: string;
@@ -76,11 +82,12 @@ export interface Bundle {
   memory: MemoryEntry[];
   skills: Skill[];
   agents: AgentDef[];
+  commands: CommandDef[];
 }
 
-export type Layer = "mcp" | "skills" | "agents" | "memory" | "instructions" | "persona";
+export type Layer = "mcp" | "skills" | "agents" | "commands" | "memory" | "instructions" | "persona";
 
-export const LAYERS: Layer[] = ["mcp", "skills", "agents", "memory", "instructions", "persona"];
+export const LAYERS: Layer[] = ["mcp", "skills", "agents", "commands", "memory", "instructions", "persona"];
 
 /** Parse a comma-separated `--only` value into layers (usage error on unknowns). */
 export function parseLayers(only: string): Layer[] {
@@ -101,6 +108,7 @@ export function filterBundle(bundle: Bundle, layers: Layer[]): Bundle {
     mcpServers: keep.has("mcp") ? bundle.mcpServers : [],
     skills: keep.has("skills") ? bundle.skills : [],
     agents: keep.has("agents") ? bundle.agents : [],
+    commands: keep.has("commands") ? bundle.commands : [],
     memory: keep.has("memory") ? bundle.memory : [],
     instructions: keep.has("instructions") ? bundle.instructions : undefined,
     persona: keep.has("persona") ? bundle.persona : undefined,
@@ -115,6 +123,7 @@ export function emptyBundle(): Bundle {
     memory: [],
     skills: [],
     agents: [],
+    commands: [],
   };
 }
 
@@ -245,6 +254,8 @@ export interface ClientAdapter {
   defaultPath: string;
   /** Whether the client has a custom agents (subagents) directory. */
   supportsAgents?: boolean;
+  /** Whether the client has a custom slash commands / prompts directory. */
+  supportsCommands?: boolean;
   /** Whether the client appears to be configured under the given home dir. */
   detect(home: string): Promise<boolean>;
   exportBundle(home: string): Promise<ExportResult>;

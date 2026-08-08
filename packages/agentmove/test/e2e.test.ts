@@ -303,7 +303,7 @@ describe("e2e (built CLI, child process)", () => {
   it("prints a migration summary after --apply", async () => {
     const home = await cloneFixture("openclaw-home");
     const out = run(["--home", home, "convert", "openclaw", "hermes", "--apply"], home);
-    expect(out).toMatch(/migrated: \d+ MCP server\(s\), \d+ skill\(s\), \d+ agent\(s\), \d+ memory entr\(ies\)/);
+    expect(out).toMatch(/migrated: \d+ MCP server\(s\), \d+ skill\(s\), \d+ agent\(s\), \d+ command\(s\), \d+ memory entr\(ies\)/);
   });
 
   it("supports partial migration with --only and rejects unknown layers", async () => {

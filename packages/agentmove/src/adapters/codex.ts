@@ -15,7 +15,15 @@ import {
   stringArgs,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { appendSections, mergeMcpRecords, planSkills, readSkillsDir, touchesMcpConfig } from "./shared.js";
+import {
+  appendSections,
+  mergeMcpRecords,
+  planCommandsFlat,
+  planSkills,
+  readAgentsDir,
+  readSkillsDir,
+  touchesMcpConfig,
+} from "./shared.js";
 
 export interface CodexStyleLayout {
   id: ClientId;
@@ -25,6 +33,8 @@ export interface CodexStyleLayout {
   configDir: string;
   /** Agent Skills root relative to home, or undefined when unsupported. */
   skillsRel?: string;
+  /** Custom prompts root relative to home, or undefined when unsupported. */
+  promptsRel?: string;
 }
 
 /**
@@ -33,7 +43,7 @@ export interface CodexStyleLayout {
  * Xcode's bundled Codex agent).
  */
 export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
-  const { id, configDir, skillsRel } = layout;
+  const { id, configDir, skillsRel, promptsRel } = layout;
   const CONFIG_REL = `${configDir}/config.toml`;
   const AGENTS_REL = `${configDir}/AGENTS.md`;
   const agentsTilde = `~/${AGENTS_REL}`;
@@ -62,6 +72,7 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
     id,
     label: layout.label,
     defaultPath: layout.defaultPath,
+    supportsCommands: promptsRel !== undefined,
 
     async detect(home) {
       return (await exists(path.join(home, CONFIG_REL))) || (await isDir(path.join(home, configDir)));
@@ -134,6 +145,9 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
         (await readText(path.join(home, AGENTS_REL)));
       if (skillsRel) {
         bundle.skills = await readSkillsDir(path.join(home, skillsRel), warnings);
+      }
+      if (promptsRel) {
+        bundle.commands = await readAgentsDir(path.join(home, promptsRel), ".md");
       }
       warnings.push(`${id} memories are managed by the client and not exported in v0`);
       return { bundle, warnings };
@@ -214,6 +228,13 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
       } else if (bundle.skills.length) {
         warnings.push(`skills: ${id} has no documented skills directory; skipped`);
       }
+      if (promptsRel && bundle.commands.length) {
+        files.push(...planCommandsFlat(bundle.commands, promptsRel, id, warnings));
+        warnings.push(
+          `commands: written to ~/${promptsRel} (invoked as /prompts:<name>); ` +
+            `${id} custom prompts are deprecated in favor of skills but still supported`,
+        );
+      }
       return { files, warnings };
     },
   };
@@ -222,7 +243,8 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
 export const codex: ClientAdapter = makeCodexStyleAdapter({
   id: "codex",
   label: "OpenAI Codex CLI",
-  defaultPath: "~/.codex (skills: ~/.agents/skills)",
+  defaultPath: "~/.codex (skills: ~/.agents/skills, prompts: ~/.codex/prompts)",
   configDir: ".codex",
   skillsRel: ".agents/skills",
+  promptsRel: ".codex/prompts",
 });
