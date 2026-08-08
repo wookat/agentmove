@@ -1,0 +1,5 @@
+{
+  "name": "legacy-config",
+  "description": "A JSON-format kiro agent",
+  "tools": ["read"]
+}

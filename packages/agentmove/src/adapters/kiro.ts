@@ -15,7 +15,9 @@ import {
   appendSections,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -32,6 +34,7 @@ const MCP_REL = ".kiro/settings/mcp.json";
 const STEERING_REL = ".kiro/steering";
 const AGENTS_REL = ".kiro/steering/AGENTS.md";
 const SKILLS_REL = ".kiro/skills";
+const AGENTS_DIR_REL = ".kiro/agents";
 
 const CLIENT_KEYS = ["autoApprove", "disabledTools", "oauth", "oauthScopes"] as const;
 
@@ -62,6 +65,16 @@ export function parseKiroServers(
     servers.push(s);
   }
   return servers;
+}
+
+export async function warnKiroJsonAgents(root: string, warnings: string[]): Promise<void> {
+  if (!(await isDir(root))) return;
+  const json = (await listDir(root)).filter((f) => f.endsWith(".json")).sort();
+  if (json.length) {
+    warnings.push(
+      `agents: ${json.length} kiro JSON agent config(s) not exported (${json.join(", ")}); only markdown agents migrate — kiro supports the same fields in markdown`,
+    );
+  }
 }
 
 export function renderKiroServers(bundle: Bundle): Record<string, unknown> {
@@ -99,7 +112,8 @@ async function readSteering(
 export const kiro: ClientAdapter = {
   id: "kiro",
   label: "Kiro",
-  defaultPath: "~/.kiro (settings/mcp.json + steering/ + skills/)",
+  defaultPath: "~/.kiro (settings/mcp.json + steering/ + skills/ + agents/)",
+  supportsAgents: true,
 
   async detect(home) {
     return (await exists(path.join(home, MCP_REL))) || (await isDir(path.join(home, ".kiro")));
@@ -115,6 +129,8 @@ export const kiro: ClientAdapter = {
     bundle.mcpServers = parseKiroServers(config, warnings);
     bundle.instructions = await readSteering(path.join(home, STEERING_REL), warnings);
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
+    await warnKiroJsonAgents(path.join(home, AGENTS_DIR_REL), warnings);
     return { bundle, warnings };
   },
 
@@ -146,6 +162,12 @@ export const kiro: ClientAdapter = {
       warnings.push("memory: kiro has no durable memory store; skipped (use steering files for persistent context)");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
+      warnings.push(
+        "agents: frontmatter fields (tools/model/permissions) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };

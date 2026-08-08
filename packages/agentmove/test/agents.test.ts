@@ -7,6 +7,7 @@ import { copilot } from "../src/adapters/copilot.js";
 import { claudeCode } from "../src/adapters/claude-code.js";
 import { gemini } from "../src/adapters/gemini.js";
 import { cursor } from "../src/adapters/cursor.js";
+import { kiro } from "../src/adapters/kiro.js";
 import { opencode } from "../src/adapters/opencode.js";
 import { qwen } from "../src/adapters/qwen.js";
 import { getProjectAdapter } from "../src/project.js";
@@ -100,6 +101,25 @@ describe("custom agents layer", () => {
     expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
   });
 
+  it("kiro exports ~/.kiro/agents/*.md byte-faithfully and warns on JSON agent configs", async () => {
+    const { bundle, warnings } = await kiro.exportBundle(path.join(FIXTURES, "kiro-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["refactorer"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "kiro-home/.kiro/agents/refactorer.md"),
+      "utf8",
+    );
+    expect(bundle.agents[0]!.content).toBe(raw);
+    expect(warnings.some((w) => w.includes("legacy-config.json"))).toBe(true);
+  });
+
+  it("kiro plans agents into ~/.kiro/agents/*.md with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "Help.\n" }];
+    const { files, warnings } = await kiro.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".kiro/agents/helper.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
+  });
+
   it("opencode plans agents into ~/.config/opencode/agents/*.md with a warning", async () => {
     const bundle = emptyBundle();
     bundle.agents = [{ name: "helper", content: "Help.\n" }];
@@ -137,6 +157,8 @@ describe("custom agents layer", () => {
     expect(qwenFiles.some((f) => f.path === ".qwen/agents/helper.md")).toBe(true);
     const cursorFiles = (await getProjectAdapter("cursor").planImport(bundle, "/p", {})).files;
     expect(cursorFiles.some((f) => f.path === ".cursor/agents/helper.md")).toBe(true);
+    const kiroFiles = (await getProjectAdapter("kiro").planImport(bundle, "/p", {})).files;
+    expect(kiroFiles.some((f) => f.path === ".kiro/agents/helper.md")).toBe(true);
   });
 
   it("bundle round-trips the agents layer byte-faithfully", async () => {

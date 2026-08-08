@@ -30,7 +30,7 @@ import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
 import { parseGooseMemoryFile } from "./adapters/goose.js";
 import { renderAmpEntry } from "./adapters/amp.js";
 import { parseVscodeServers, renderVscodeServers } from "./adapters/vscode.js";
-import { parseKiroServers, renderKiroServers } from "./adapters/kiro.js";
+import { parseKiroServers, renderKiroServers, warnKiroJsonAgents } from "./adapters/kiro.js";
 import { parseRooServers, readRulesDir, renderRooServers } from "./adapters/roo.js";
 import {
   mergeContinueServers,
@@ -797,6 +797,7 @@ const gooseProject: ProjectAdapter = {
 };
 
 const kiroProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -819,6 +820,8 @@ const kiroProject: ProjectAdapter = {
     }
     if (parts.length) bundle.instructions = parts.join("\n\n") + "\n";
     bundle.skills = await readSkillsDir(path.join(dir, ".kiro/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".kiro/agents"), ".md");
+    await warnKiroJsonAgents(path.join(dir, ".kiro/agents"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -843,6 +846,12 @@ const kiroProject: ProjectAdapter = {
       warnings.push("memory: kiro has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".kiro/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".kiro/agents", ".md"));
+      warnings.push(
+        "agents: frontmatter fields (tools/model/permissions) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };
