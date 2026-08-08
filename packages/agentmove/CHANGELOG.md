@@ -1,5 +1,14 @@
 # agentmove-cli
 
+## 0.69.0
+
+### Minor Changes
+
+- 407b8db: Custom agents layer for Qoder CLI: migrate custom subagent markdown
+  definitions in `~/.qoder/agents/` (user) and `.qoder/agents/` (project, with
+  `--project`) byte-faithfully, with an honest warning that
+  `tools`/`model`/`skills`/`mcpServers` frontmatter is client-specific.
+
 ## 0.68.0
 
 ### Minor Changes
