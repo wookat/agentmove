@@ -29,12 +29,13 @@ describe("project-scoped adapters", () => {
     expect(Object.keys(mcp.mcpServers).sort()).toEqual(["api", "search"]);
   });
 
-  it("plans a gemini project import (settings.json + GEMINI.md)", async () => {
+  it("plans a gemini project import (settings.json + GEMINI.md + .gemini/skills)", async () => {
     const { bundle } = await getProjectAdapter("claude-code").exportProject(project);
-    const { files } = await getProjectAdapter("gemini").planImport(bundle, project);
+    const { files, warnings } = await getProjectAdapter("gemini").planImport(bundle, project);
     expect(files.map((f) => f.path)).toEqual(
-      expect.arrayContaining([".gemini/settings.json", "GEMINI.md"]),
+      expect.arrayContaining([".gemini/settings.json", "GEMINI.md", ".gemini/skills/review/SKILL.md"]),
     );
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
   });
 
   it("codex project import migrates AGENTS.md + skills and warns on MCP", async () => {

@@ -12,7 +12,14 @@ import {
   parseFile,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { mergeMcpRecords, parseCommonMcpEntry, renderCommonMcpEntry, touchesMcpConfig } from "./shared.js";
+import {
+  mergeMcpRecords,
+  parseCommonMcpEntry,
+  planSkills,
+  readSkillsDir,
+  renderCommonMcpEntry,
+  touchesMcpConfig,
+} from "./shared.js";
 
 const MEMORY_HEADING = "## Gemini Added Memories";
 
@@ -38,15 +45,18 @@ export interface GeminiStyleLayout {
   defaultPath: string;
   /** Directory holding settings.json/GEMINI.md, relative to home. */
   configDir: string;
+  /** Agent Skills directory relative to home; omitted when the client has none. */
+  skillsDir?: string;
 }
 
 /**
  * Gemini CLI stores settings.json + GEMINI.md in a config directory
  * (~/.gemini for the standalone CLI, its own root under ~/Library for
- * Xcode's bundled Gemini agent).
+ * Xcode's bundled Gemini agent). The standalone CLI also discovers Agent
+ * Skills under ~/.gemini/skills/ (with ~/.agents/skills/ as an alias).
  */
 export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter {
-  const { id, configDir } = layout;
+  const { id, configDir, skillsDir } = layout;
   const SETTINGS_REL = `${configDir}/settings.json`;
   const CONTEXT_REL = `${configDir}/GEMINI.md`;
 
@@ -89,6 +99,9 @@ export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter
           source: "GEMINI.md#gemini-added-memories",
           kind: "long-term" as const,
         }));
+      }
+      if (skillsDir) {
+        bundle.skills = await readSkillsDir(path.join(home, skillsDir), warnings);
       }
       if (await isDir(path.join(home, `${configDir}/extensions`))) {
         warnings.push(`${id} extensions are not exported in v0 (install them on the target machine instead)`);
@@ -134,7 +147,9 @@ export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter
       }
       if (parts.length) files.push({ path: CONTEXT_REL, content: parts.join("\n\n") + "\n" });
 
-      if (bundle.skills.length) {
+      if (skillsDir) {
+        files.push(...planSkills(bundle.skills, skillsDir));
+      } else if (bundle.skills.length) {
         warnings.push(`skills: ${id} has no SKILL.md mechanism; skipped (consider a gemini extension)`);
       }
       return { files, warnings };
@@ -147,4 +162,5 @@ export const gemini: ClientAdapter = makeGeminiStyleAdapter({
   label: "Gemini CLI",
   defaultPath: "~/.gemini",
   configDir: ".gemini",
+  skillsDir: ".gemini/skills",
 });

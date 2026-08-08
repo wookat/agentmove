@@ -160,4 +160,17 @@ describe("gemini", () => {
     expect(md.content).toContain("## Gemini Added Memories");
     expect(md.content).toContain("- Deploys on Cloudflare.");
   });
+
+  it("exports Agent Skills from ~/.gemini/skills", async () => {
+    const { bundle, warnings } = await ADAPTERS.gemini.exportBundle(homeOf("gemini-home"));
+    expect(bundle.skills.map((s) => s.name)).toEqual(["api-auditor"]);
+    expect(warnings.some((w) => w.startsWith("skills:"))).toBe(false);
+  });
+
+  it("plans skills into ~/.gemini/skills on import", async () => {
+    const { bundle } = await ADAPTERS.gemini.exportBundle(homeOf("gemini-home"));
+    const { files, warnings } = await ADAPTERS.gemini.planImport(bundle, homeOf("empty-home"));
+    expect(files.some((f) => f.path === ".gemini/skills/api-auditor/SKILL.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("no SKILL.md mechanism"))).toBe(false);
+  });
 });

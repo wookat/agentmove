@@ -50,12 +50,16 @@ persona, and a later export won't recover it as a separate `persona.md`.
 
 - `SKILL.md` directories migrate natively between OpenClaw, Hermes, Claude
   Code, Codex, OpenCode, Qwen Code, goose, Amp, Kiro, Roo Code, Crush,
-  Antigravity, Droid, and Junie (plus project scope for OpenHands).
-- Gemini CLI has no `SKILL.md` mechanism — skills are **skipped** (a Gemini
-  extension would be the manual equivalent).
-- VS Code, Claude Desktop, Amazon Q Developer CLI,
-  LM Studio, and JetBrains AI Assistant have no user-level skills
-  directory — **skipped** with a warning.
+  Antigravity, Droid, Junie, and Gemini CLI (plus project scope for OpenHands).
+- Amazon Q Developer CLI, LM Studio, and JetBrains AI Assistant have no
+  user-level skills directory — **skipped** with a warning.
+- VS Code skills live in the shared `~/.agents/skills/` root (project
+  `.github/skills/` with `--project`) and migrate natively.
+- Claude Desktop personal skills live in `~/.claude/skills/` (shared with
+  Claude Code) and migrate natively.
+- Gemini CLI skills live in `~/.gemini/skills/` (project `.gemini/skills/`
+  with `--project`; `~/.agents/skills/` is a native alias) and migrate
+  natively.
 - Zed skills live in `~/.agents/skills/` (project `.agents/skills/` with
   `--project`) and migrate natively.
 - Continue skills live in `~/.continue/skills/` (project `.continue/skills/`
