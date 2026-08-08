@@ -9,6 +9,8 @@ import { codex } from "../src/adapters/codex.js";
 import { copilot } from "../src/adapters/copilot.js";
 import { opencode } from "../src/adapters/opencode.js";
 import { qwen } from "../src/adapters/qwen.js";
+import { windsurf } from "../src/adapters/windsurf.js";
+import { amazonq } from "../src/adapters/amazonq.js";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
 import { readBundle, writeBundle } from "../src/bundle.js";
@@ -50,6 +52,70 @@ describe("custom commands layer", () => {
       "utf8",
     );
     expect(bundle.commands[0]!.content).toBe(raw);
+  });
+
+  it("windsurf exports ~/.codeium/windsurf/global_workflows/*.md byte-faithfully", async () => {
+    const { bundle } = await windsurf.exportBundle(path.join(FIXTURES, "windsurf-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["deploy"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "windsurf-home/.codeium/windsurf/global_workflows/deploy.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+  });
+
+  it("amazonq exports ~/.aws/amazonq/prompts/*.md byte-faithfully", async () => {
+    const { bundle } = await amazonq.exportBundle(path.join(FIXTURES, "amazonq-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["create-diagram"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "amazonq-home/.aws/amazonq/prompts/create-diagram.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+  });
+
+  it("windsurf plans commands flat, flattening nested names and warning on oversize workflows", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "git/commit", content: "Commit.\n" },
+      { name: "huge", content: "x".repeat(12001) },
+    ];
+    const { files, warnings } = await windsurf.planImport(bundle, "/nonexistent-home", {});
+    expect(
+      files.some((f) => f.path === ".codeium/windsurf/global_workflows/git-commit.md"),
+    ).toBe(true);
+    expect(files.some((f) => f.path === ".codeium/windsurf/global_workflows/huge.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("12000-character workflow limit"))).toBe(true);
+  });
+
+  it("amazonq plans commands flat into ~/.aws/amazonq/prompts with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "deploy", content: "Deploy.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await amazonq.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".aws/amazonq/prompts/deploy.md")).toBe(true);
+    expect(files.some((f) => f.path === ".aws/amazonq/prompts/git-commit.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("@name"))).toBe(true);
+  });
+
+  it("project scope: windsurf workflows and amazonq prompts round-trip", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-cmd-proj3-"));
+    await fs.mkdir(path.join(dir, ".windsurf/workflows"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".windsurf/workflows/review.md"), "Review.\n");
+    await fs.mkdir(path.join(dir, ".amazonq/prompts"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".amazonq/prompts/analyze.md"), "Analyze.\n");
+    const ws = await getProjectAdapter("windsurf").exportProject(dir);
+    expect(ws.bundle.commands.map((c) => c.name)).toEqual(["review"]);
+    const aq = await getProjectAdapter("amazonq").exportProject(dir);
+    expect(aq.bundle.commands.map((c) => c.name)).toEqual(["analyze"]);
+    const wsFiles = (await getProjectAdapter("windsurf").planImport(ws.bundle, "/p", {})).files;
+    expect(wsFiles.some((f) => f.path === ".windsurf/workflows/review.md")).toBe(true);
+    const aqFiles = (await getProjectAdapter("amazonq").planImport(aq.bundle, "/p", {})).files;
+    expect(aqFiles.some((f) => f.path === ".amazonq/prompts/analyze.md")).toBe(true);
   });
 
   it("claude-code plans commands into ~/.claude/commands (nested names kept) with a warning", async () => {

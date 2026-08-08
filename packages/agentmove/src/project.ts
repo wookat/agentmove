@@ -333,6 +333,7 @@ const cursorProject: ProjectAdapter = {
 };
 
 const windsurfProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -351,6 +352,7 @@ const windsurfProject: ProjectAdapter = {
       }
     }
     bundle.skills = await readSkillsDir(path.join(dir, ".windsurf/skills"), warnings);
+    bundle.commands = await readAgentsDir(path.join(dir, ".windsurf/workflows"), ".md");
     warnings.push("windsurf has no project-scoped MCP config; MCP servers stay user-scoped");
     return { bundle, warnings };
   },
@@ -374,6 +376,12 @@ const windsurfProject: ProjectAdapter = {
     }
     if (bundle.memory.length) warnings.push("memory: windsurf memories are app-managed; skipped");
     files.push(...planSkills(bundle.skills, ".windsurf/skills"));
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, ".windsurf/workflows", "windsurf", warnings));
+      warnings.push(
+        "commands: workflow frontmatter (description/auto_execution_mode) is client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };
@@ -1148,6 +1156,7 @@ const droidProject: ProjectAdapter = {
 };
 
 const amazonqProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1155,6 +1164,7 @@ const amazonqProject: ProjectAdapter = {
     const config = await readJsonMap(path.join(dir, ".amazonq/mcp.json"));
     bundle.mcpServers = parseAmazonqServers(config, warnings);
     bundle.instructions = await readText(path.join(dir, "AmazonQ.md"));
+    bundle.commands = await readAgentsDir(path.join(dir, ".amazonq/prompts"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1180,6 +1190,12 @@ const amazonqProject: ProjectAdapter = {
     }
     if (bundle.skills.length) {
       warnings.push("skills: amazonq has no SKILL.md mechanism; skipped");
+    }
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, ".amazonq/prompts", "amazonq", warnings));
+      warnings.push(
+        "commands: saved prompts are invoked as @name in q chat; argument placeholders are client-specific and copied as-is",
+      );
     }
     return { files, warnings };
   },

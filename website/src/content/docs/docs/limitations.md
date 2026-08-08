@@ -133,17 +133,25 @@ persona, and a later export won't recover it as a separate `persona.md`.
   Cursor (`~/.cursor/commands/`, project `.cursor/commands/`),
   Codex CLI (`~/.codex/prompts/`, user scope only, invoked as
   `/prompts:<name>`), OpenCode (`~/.config/opencode/commands/`, project
-  `.opencode/commands/`; subdirectories preserved), and Qwen Code
+  `.opencode/commands/`; subdirectories preserved), Qwen Code
   (`~/.qwen/commands/`, project `.qwen/commands/`; subdirectories
-  preserved and shown as `/git:commit`-style namespaced names).
+  preserved and shown as `/git:commit`-style namespaced names),
+  Windsurf (workflows: `~/.codeium/windsurf/global_workflows/`, project
+  `.windsurf/workflows/`; invoked as `/name`), and Amazon Q Developer
+  CLI (saved prompts: `~/.aws/amazonq/prompts/`, project
+  `.amazonq/prompts/`; invoked as `@name` in `q chat`).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
   client-specific and may need review after import — a warning is
   emitted.
-- Cursor and Codex only discover top-level command files: nested names
-  like `git/commit` are flattened to `git-commit` on import there, with
-  a warning (name collisions after flattening skip the command).
+- Cursor, Codex, Windsurf, and Amazon Q only discover top-level command
+  files: nested names like `git/commit` are flattened to `git-commit` on
+  import there, with a warning (name collisions after flattening skip
+  the command).
+- Windsurf workflow files are limited to 12000 characters — oversize
+  commands are written as-is with a warning that Cascade may reject
+  them.
 - Codex custom prompts are deprecated in favor of skills but still
   supported — noted as a warning on import.
 - Qwen Code's legacy TOML command files (`*.toml`) are deprecated and
