@@ -16,6 +16,7 @@ import {
   mergeMcpRecords,
   parseCommonMcpEntry,
   planAgents,
+  planCommandsFlat,
   planSkills,
   readAgentsDir,
   readSkillsDir,
@@ -29,12 +30,16 @@ import {
  * native `disabled` flag). Instructions are markdown steering files under
  * ~/.kiro/steering/ (AGENTS.md is supported there per the AGENTS.md standard);
  * skills follow the open Agent Skills standard under ~/.kiro/skills/.
+ * Saved prompts are flat markdown files under ~/.kiro/prompts/ (global) or
+ * .kiro/prompts/ (project), invoked as @name; local prompts override global
+ * ones with the same name.
  */
 const MCP_REL = ".kiro/settings/mcp.json";
 const STEERING_REL = ".kiro/steering";
 const AGENTS_REL = ".kiro/steering/AGENTS.md";
 const SKILLS_REL = ".kiro/skills";
 const AGENTS_DIR_REL = ".kiro/agents";
+const PROMPTS_DIR_REL = ".kiro/prompts";
 
 const CLIENT_KEYS = ["autoApprove", "disabledTools", "oauth", "oauthScopes"] as const;
 
@@ -112,8 +117,9 @@ async function readSteering(
 export const kiro: ClientAdapter = {
   id: "kiro",
   label: "Kiro",
-  defaultPath: "~/.kiro (settings/mcp.json + steering/ + skills/ + agents/)",
+  defaultPath: "~/.kiro (settings/mcp.json + steering/ + skills/ + agents/ + prompts/)",
   supportsAgents: true,
+  supportsCommands: true,
 
   async detect(home) {
     return (await exists(path.join(home, MCP_REL))) || (await isDir(path.join(home, ".kiro")));
@@ -131,6 +137,7 @@ export const kiro: ClientAdapter = {
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
     await warnKiroJsonAgents(path.join(home, AGENTS_DIR_REL), warnings);
+    bundle.commands = await readAgentsDir(path.join(home, PROMPTS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -166,6 +173,12 @@ export const kiro: ClientAdapter = {
       files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
       warnings.push(
         "agents: frontmatter fields (tools/model/permissions) are client-specific and copied as-is; review after import",
+      );
+    }
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, PROMPTS_DIR_REL, "kiro", warnings));
+      warnings.push(
+        "commands: saved prompts are invoked as @name in kiro-cli (no arguments); workspace .kiro/prompts/ prompts override global ones with the same name",
       );
     }
     return { files, warnings };

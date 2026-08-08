@@ -21,6 +21,7 @@ describe("kiro adapter", () => {
     expect(bundle.instructions).toContain("steering: style.md");
     expect(warnings.some((w) => w.includes("steering files merged"))).toBe(true);
     expect(bundle.skills.map((s) => s.name)).toEqual(["review"]);
+    expect(bundle.commands.map((c) => c.name)).toEqual(["code-review"]);
   });
 
   it("imports with merge, native disabled flag, and steering AGENTS.md", async () => {
@@ -33,6 +34,7 @@ describe("kiro adapter", () => {
     bundle.persona = "You are helpful.";
     bundle.memory = [{ content: "likes tabs", source: "s", kind: "long-term" }];
     bundle.skills = [{ name: "sk", files: { "SKILL.md": "x" } }];
+    bundle.commands = [{ name: "git/commit", content: "Commit.\n" }];
     const { files, warnings } = await kiro.planImport(bundle, HOME, {});
     const mcp = JSON.parse(
       files.find((f) => f.path === ".kiro/settings/mcp.json")!.content,
@@ -46,6 +48,10 @@ describe("kiro adapter", () => {
     expect(agents.content).toContain("persona (SOUL.md)");
     expect(warnings.some((w) => w.startsWith("memory:"))).toBe(true);
     expect(files.some((f) => f.path === ".kiro/skills/sk/SKILL.md")).toBe(true);
+    const prompt = files.find((f) => f.path === ".kiro/prompts/git-commit.md")!;
+    expect(prompt.content).toBe("Commit.\n");
+    expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("invoked as @name in kiro-cli"))).toBe(true);
   });
 
   it("handles a missing ~/.kiro gracefully and --replace-mcp semantics", async () => {
@@ -74,11 +80,13 @@ describe("kiro adapter", () => {
     ]);
     expect(exported.bundle.instructions).toContain("Always use pnpm.");
     expect(exported.bundle.skills.map((s) => s.name)).toEqual(["review"]);
+    expect(exported.bundle.commands.map((c) => c.name)).toEqual(["code-review"]);
 
     const bundle = emptyBundle();
     bundle.mcpServers = [{ name: "db", transport: "stdio", command: "npx" }];
     bundle.instructions = "Repo rules.";
     bundle.skills = [{ name: "sk", files: { "SKILL.md": "x" } }];
+    bundle.commands = [{ name: "analyze", content: "Analyze.\n" }];
     const { files } = await adapter.planImport(bundle, "/nonexistent-project", {});
     const config = JSON.parse(
       files.find((f) => f.path === ".kiro/settings/mcp.json")!.content,
@@ -86,5 +94,6 @@ describe("kiro adapter", () => {
     expect(config.mcpServers.db).toBeDefined();
     expect(files.some((f) => f.path === ".kiro/steering/AGENTS.md")).toBe(true);
     expect(files.some((f) => f.path === ".kiro/skills/sk/SKILL.md")).toBe(true);
+    expect(files.some((f) => f.path === ".kiro/prompts/analyze.md")).toBe(true);
   });
 });

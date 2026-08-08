@@ -139,7 +139,10 @@ persona, and a later export won't recover it as a separate `persona.md`.
   Windsurf (workflows: `~/.codeium/windsurf/global_workflows/`, project
   `.windsurf/workflows/`; invoked as `/name`), Amazon Q Developer
   CLI (saved prompts: `~/.aws/amazonq/prompts/`, project
-  `.amazonq/prompts/`; invoked as `@name` in `q chat`), CodeBuddy
+  `.amazonq/prompts/`; invoked as `@name` in `q chat`), Kiro (saved
+  prompts: `~/.kiro/prompts/`, project `.kiro/prompts/`; flat, invoked
+  as `@name` in `kiro-cli`, no arguments — workspace prompts override
+  global ones with the same name), CodeBuddy
   (`~/.codebuddy/commands/`, project `.codebuddy/commands/`;
   subdirectories preserved and shown as `/group:command`-style
   namespaced names), Droid (`~/.factory/commands/`, project
@@ -179,7 +182,7 @@ persona, and a later export won't recover it as a separate `persona.md`.
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
   client-specific and may need review after import — a warning is
   emitted.
-- Cursor, Codex, Windsurf, Amazon Q, Roo Code, Kilo Code, Cline, VS Code, and goose only discover top-level
+- Cursor, Codex, Windsurf, Amazon Q, Kiro, Roo Code, Kilo Code, Cline, VS Code, and goose only discover top-level
   command files: nested names like `git/commit` are flattened to `git-commit` on
   import there, with a warning (name collisions after flattening skip
   the command).
