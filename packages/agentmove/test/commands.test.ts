@@ -23,6 +23,7 @@ import { continueAdapter } from "../src/adapters/continue.js";
 import { vscode } from "../src/adapters/vscode.js";
 import { gemini, geminiCommandToToml } from "../src/adapters/gemini.js";
 import { crush } from "../src/adapters/crush.js";
+import { cortex } from "../src/adapters/cortex.js";
 import { trae } from "../src/adapters/trae.js";
 import { parse as parseToml } from "smol-toml";
 import { getProjectAdapter } from "../src/project.js";
@@ -777,6 +778,27 @@ describe("custom commands layer", () => {
     const written = files.find((f) => f.path === ".trae/commands/module-a/command-a.md")!;
     expect(written.content).toBe("Run $1.\n");
     expect(warnings.some((w) => w.includes("frontmatter (name/description)"))).toBe(true);
+  });
+
+  it("cortex exports ~/.snowflake/cortex/commands recursively, byte-faithfully", async () => {
+    const { bundle } = await cortex.exportBundle(path.join(FIXTURES, "cortex-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["summarize-pr", "warehouse/optimize"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "cortex-home/.snowflake/cortex/commands/warehouse/optimize.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "warehouse/optimize")!.content).toBe(raw);
+  });
+
+  it("cortex plans nested commands into ~/.snowflake/cortex/commands with warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [{ name: "warehouse/optimize", content: "Optimize $1.\n" }];
+    const { files, warnings } = await cortex.planImport(bundle, "/nonexistent-home", {});
+    const written = files.find(
+      (f) => f.path === ".snowflake/cortex/commands/warehouse/optimize.md",
+    )!;
+    expect(written.content).toBe("Optimize $1.\n");
+    expect(warnings.some((w) => w.includes("client-specific and copied as-is"))).toBe(true);
   });
 
   it("bundle round-trips the commands layer byte-faithfully (nested names)", async () => {

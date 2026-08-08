@@ -165,9 +165,13 @@ persona, and a later export won't recover it as a separate `persona.md`.
   subdirectories preserved as `:`-separated namespaces — a format
   conversion, see below), Crush (`~/.config/crush/commands/` plus
   the secondary `~/.crush/commands/` root, project `.crush/commands/`;
-  subdirectories preserved as `:`-separated namespaces), and Trae
+  subdirectories preserved as `:`-separated namespaces), Trae
   (`~/.trae/commands/` plus the CN-edition `~/.trae-cn/commands/` root,
-  project `.trae/commands/`; subdirectories preserved).
+  project `.trae/commands/`; subdirectories preserved), and Cortex Code
+  (`~/.snowflake/cortex/commands/`, user scope only; subdirectories
+  preserved — no project-scoped commands directory is documented, project
+  commands ship only inside plugins, so project-scope imports skip
+  commands with a warning).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`, crush `$NAME`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
