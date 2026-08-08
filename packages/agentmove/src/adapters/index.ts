@@ -43,6 +43,7 @@ import { jetbrains } from "./jetbrains.js";
 import { comate } from "./comate.js";
 import { muse } from "./muse.js";
 import { warpCli } from "./warp-cli.js";
+import { cortex } from "./cortex.js";
 
 export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   openclaw,
@@ -91,6 +92,7 @@ export const ADAPTERS: Record<ClientId, ClientAdapter> = {
   comate,
   muse,
   "warp-cli": warpCli,
+  cortex,
 };
 
 function editDistance(a: string, b: string): number {

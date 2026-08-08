@@ -2,7 +2,7 @@
 
 **Move your AI agent between clients.** The pandoc of agent ecosystems: migrate
 **config + MCP servers + skills + memory + persona/instructions** between
-forty-six clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
+forty-seven clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
 Gemini CLI, VS Code, Cline, Continue, and more (see the full table below) — in
 any direction, with dry-run previews, diffs, and honest loss reporting.
 
@@ -53,7 +53,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 
 | Layer | Notes |
 | --- | --- |
-| MCP servers | Near-lossless between all forty-six clients (JSON/JSON5/TOML/YAML shapes normalized) |
+| MCP servers | Near-lossless between all forty-seven clients (JSON/JSON5/TOML/YAML shapes normalized) |
 | Instructions | `AGENTS.md` ↔ `CLAUDE.md` ↔ `GEMINI.md` ↔ Cursor rules |
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
@@ -78,7 +78,7 @@ config snapshot kept in the bundle — unless you pass `--include-secrets`.
   equivalent — dropped with a warning.
 - **OpenClaw / Hermes** have no project-scoped files — `--project` covers
   claude-code, codex, cursor, gemini, windsurf, cline (`.clinerules/` + `.cline/skills/`), zed (`.zed/settings.json` + `.rules` + `.agents/skills/`), openhands,
-  copilot (`.mcp.json` + `.github/instructions/` + `.github/skills/`), opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md` + `.github/skills/`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), roo (`.roo/mcp.json` + `.roo/rules/` + `.roo/skills/`), continue (`.continue/mcpServers/` blocks + `.continue/rules/` + `.continue/skills/`), crush (`crush.json`/`.crush.json` + `CRUSH.md` + `.crush/skills/`), antigravity (`.agents/mcp_config.json` + `.agents/rules/` + `.agents/skills/`), droid (`.factory/mcp.json` + `AGENTS.md` + `.factory/skills/`), amazonq (`.amazonq/mcp.json` + `AmazonQ.md`), warp (`.warp/.mcp.json` + `AGENTS.md` + `.warp/skills/`), junie (`.junie/mcp/mcp.json` + `.junie/AGENTS.md` + `.junie/skills/`), trae (`.trae/mcp.json` + `.trae/rules/` + `.trae/skills/`), jetbrains (`.ai/mcp/mcp.json` + `.aiassistant/rules/`), comate (`.comate/mcp.json` + `.comate/rules/` + `.comate/skills/`), codebuddy (`.mcp.json` + `CODEBUDDY.md` + `.codebuddy/skills/`), qoder (`.mcp.json` + `AGENTS.md` + `.qoder/skills/`), auggie (`.augment/settings.json` + `.augment/rules/` + `.augment/skills/`), kilo (`kilo.json`/`.kilo/kilo.json` + `AGENTS.md` + `.kilo/skills/`), kimi (`.kimi-code/mcp.json` + `AGENTS.md` + `.kimi-code/skills/`), librechat (`librechat.yaml` in the deployment directory), muse (root `AGENTS.md` + `.agents/skills/` + `.agents/memory/`), warp-cli (root `AGENTS.md`/`WARP.md` + `.agents/skills/`), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
+  copilot (`.mcp.json` + `.github/instructions/` + `.github/skills/`), opencode, qwen, amp (`.amp/settings.json` workspace servers), vscode (`.vscode/mcp.json` + `.github/copilot-instructions.md` + `.github/skills/`), kiro (`.kiro/settings/mcp.json` + `.kiro/steering/` + `.kiro/skills/`), roo (`.roo/mcp.json` + `.roo/rules/` + `.roo/skills/`), continue (`.continue/mcpServers/` blocks + `.continue/rules/` + `.continue/skills/`), crush (`crush.json`/`.crush.json` + `CRUSH.md` + `.crush/skills/`), antigravity (`.agents/mcp_config.json` + `.agents/rules/` + `.agents/skills/`), droid (`.factory/mcp.json` + `AGENTS.md` + `.factory/skills/`), amazonq (`.amazonq/mcp.json` + `AmazonQ.md`), warp (`.warp/.mcp.json` + `AGENTS.md` + `.warp/skills/`), junie (`.junie/mcp/mcp.json` + `.junie/AGENTS.md` + `.junie/skills/`), trae (`.trae/mcp.json` + `.trae/rules/` + `.trae/skills/`), jetbrains (`.ai/mcp/mcp.json` + `.aiassistant/rules/`), comate (`.comate/mcp.json` + `.comate/rules/` + `.comate/skills/`), codebuddy (`.mcp.json` + `CODEBUDDY.md` + `.codebuddy/skills/`), qoder (`.mcp.json` + `AGENTS.md` + `.qoder/skills/`), auggie (`.augment/settings.json` + `.augment/rules/` + `.augment/skills/`), kilo (`kilo.json`/`.kilo/kilo.json` + `AGENTS.md` + `.kilo/skills/`), kimi (`.kimi-code/mcp.json` + `AGENTS.md` + `.kimi-code/skills/`), cortex (`.cortex/mcp.json` + `AGENTS.md` + `.cortex/skills/`), librechat (`librechat.yaml` in the deployment directory), muse (root `AGENTS.md` + `.agents/skills/` + `.agents/memory/`), warp-cli (root `AGENTS.md`/`WARP.md` + `.agents/skills/`), and goose (`.goosehints`/`.goose/memory`/`.agents/skills`;
   goose extensions are user-scoped only).
 - **Cline VS Code extension** keeps its own MCP settings copy in VS Code
   globalStorage — only the CLI settings file (`~/.cline`) and global rules are
@@ -148,6 +148,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Baidu Comate | `comate` | `~/.comate/skills/` (global Agent Skills standard); MCP servers and rules are project-scoped: `.comate/mcp.json` (`mcpServers`) + `.comate/rules/*.mdr` + `.comate/skills/`; chat memory is app-managed |
 | Warp Agent CLI | `warp-cli` | `~/.warp_cli/.mcp.json` (`mcpServers`, own server set separate from the Warp app) + shared `~/.agents/AGENTS.md` global rules and `~/.agents/skills/` (Agent Skills standard); project scope covers root `AGENTS.md` (or `WARP.md`) and `.agents/skills/` — project `.warp/.mcp.json` belongs to the `warp` client |
 | Muse Code | `muse` | `~/.config/muse/settings.json` (`mcp_servers`, explicit `transport: stdio/streamable_http`) + `~/.config/muse/skills/` (Agent Skills standard); project scope covers root `AGENTS.md`, `.agents/skills/`, and `.agents/memory/` durable memory; machine-wide user rules and personal memory are app-managed |
+| Cortex Code | `cortex` | `~/.snowflake/cortex/mcp.json` (`mcpServers` key with explicit `type: stdio/http/sse`; stdio uses `command`/`args`/`env`/`cwd`, remote uses `url`/`headers`), `~/.snowflake/cortex/AGENTS.md` (user instructions), `~/.snowflake/cortex/skills/` (Agent Skills standard); project scope covers `.cortex/mcp.json`, root `AGENTS.md`, and `.cortex/skills/` |
 
 ## Commands
 
