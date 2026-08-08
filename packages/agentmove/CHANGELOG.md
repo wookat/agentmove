@@ -1,5 +1,14 @@
 # agentmove-cli
 
+## 0.65.0
+
+### Minor Changes
+
+- 4855d23: Custom agents layer for Cursor: migrate subagent markdown definitions in
+  `~/.cursor/agents/` (user) and `.cursor/agents/` (project, with `--project`)
+  byte-faithfully, with an honest warning that `model`/`read_only`/`is_background`
+  frontmatter is client-specific.
+
 ## 0.64.0
 
 ### Minor Changes
