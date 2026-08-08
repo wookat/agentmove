@@ -53,8 +53,12 @@ import {
 import { parseKiroServers, renderKiroServers, warnKiroJsonAgents } from "./adapters/kiro.js";
 import {
   parseRooServers,
+  planRooModes,
+  readRooModes,
   readRulesDir,
   renderRooServers,
+  ROO_AGENTS_EXPORT_WARNING,
+  ROO_AGENTS_IMPORT_WARNING,
   ROO_COMMANDS_WARNING,
 } from "./adapters/roo.js";
 import {
@@ -1018,6 +1022,7 @@ const kiroProject: ProjectAdapter = {
 };
 
 const rooProject: ProjectAdapter = {
+  supportsAgents: true,
   supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
@@ -1028,6 +1033,8 @@ const rooProject: ProjectAdapter = {
     bundle.instructions = await readRulesDir(path.join(dir, ".roo/rules"), warnings, "project");
     bundle.skills = await readSkillsDir(path.join(dir, ".roo/skills"), warnings);
     bundle.commands = await readAgentsDir(path.join(dir, ".roo/commands"), ".md");
+    bundle.agents = await readRooModes(path.join(dir, ".roomodes"), warnings);
+    if (bundle.agents.length) warnings.push(ROO_AGENTS_EXPORT_WARNING);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1055,6 +1062,25 @@ const rooProject: ProjectAdapter = {
     if (bundle.commands.length) {
       files.push(...planCommandsFlat(bundle.commands, ".roo/commands", "roo", warnings));
       warnings.push(ROO_COMMANDS_WARNING);
+    }
+    if (bundle.agents.length) {
+      const raw = await readText(path.join(dir, ".roomodes"));
+      let existingModes: unknown;
+      if (raw !== undefined) {
+        try {
+          existingModes = parseYaml(raw) as unknown;
+        } catch {
+          try {
+            existingModes = JSON.parse(raw);
+          } catch {
+            warnings.push(
+              "agents: existing .roomodes is invalid YAML/JSON; existing modes were not preserved",
+            );
+          }
+        }
+      }
+      files.push(planRooModes(bundle.agents, existingModes, ".roomodes", warnings));
+      warnings.push(ROO_AGENTS_IMPORT_WARNING);
     }
     return { files, warnings };
   },

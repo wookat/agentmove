@@ -1,0 +1,7 @@
+customModes:
+  - slug: project-helper
+    name: project-helper
+    description: Helps with this repo
+    roleDefinition: You know this repository well.
+    groups:
+      - read
