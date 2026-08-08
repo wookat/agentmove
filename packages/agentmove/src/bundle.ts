@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
+  AgentDef,
   Bundle,
   CliError,
   emptyBundle,
@@ -15,7 +16,7 @@ import { listDir, isDir, readText, readTextTree } from "./fsutil.js";
 /**
  * On-disk bundle layout:
  *   manifest.json, config.json, mcp-servers.json, instructions.md, persona.md,
- *   memory/memory.json, memory/raw/<source files>, skills/<name>/...
+ *   memory/memory.json, memory/raw/<source files>, skills/<name>/..., agents/<name>.md
  */
 /** Bundle-owned entries removed before a re-export so no stale layers linger. */
 const BUNDLE_ENTRIES = [
@@ -26,6 +27,7 @@ const BUNDLE_ENTRIES = [
   "persona.md",
   "memory",
   "skills",
+  "agents",
 ];
 
 export async function writeBundle(bundle: Bundle, dir: string): Promise<void> {
@@ -60,6 +62,12 @@ export async function writeBundle(bundle: Bundle, dir: string): Promise<void> {
       const file = path.join(dir, "skills", skill.name, rel);
       await fs.mkdir(path.dirname(file), { recursive: true });
       await fs.writeFile(file, content);
+    }
+  }
+  if (bundle.agents.length) {
+    await fs.mkdir(path.join(dir, "agents"), { recursive: true });
+    for (const agent of bundle.agents) {
+      await fs.writeFile(path.join(dir, "agents", `${agent.name}.md`), agent.content);
     }
   }
 }
@@ -109,6 +117,17 @@ export async function readBundle(dir: string): Promise<Bundle> {
       if (Object.keys(files).length) skills.push({ name, files });
     }
     bundle.skills = skills;
+  }
+
+  const agentsDir = path.join(dir, "agents");
+  if (await isDir(agentsDir)) {
+    const agents: AgentDef[] = [];
+    for (const name of (await listDir(agentsDir)).sort()) {
+      if (!name.endsWith(".md")) continue;
+      const content = await readText(path.join(agentsDir, name));
+      if (content !== undefined) agents.push({ name: name.slice(0, -3), content });
+    }
+    bundle.agents = agents;
   }
   return bundle;
 }

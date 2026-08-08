@@ -19,7 +19,9 @@ import {
   appendSections,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -76,6 +78,8 @@ import {
  * for inside a repository (as opposed to the user-scoped files under $HOME).
  */
 export interface ProjectAdapter {
+  /** Whether the client has a project-scoped custom agents directory. */
+  supportsAgents?: boolean;
   exportProject(dir: string): Promise<ExportResult>;
   planImport(bundle: Bundle, dir: string, opts?: ImportOptions): Promise<ImportResult>;
 }
@@ -113,6 +117,7 @@ function renderMcpMap(
 }
 
 const claudeCodeProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -120,6 +125,7 @@ const claudeCodeProject: ProjectAdapter = {
     bundle.mcpServers = parseMcpMap(await readJsonMap(path.join(dir, ".mcp.json")), warnings);
     bundle.instructions = await readText(path.join(dir, "CLAUDE.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".claude/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".claude/agents"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -140,6 +146,12 @@ const claudeCodeProject: ProjectAdapter = {
     if (bundle.persona) warnings.push("persona: no project-scoped slot in claude-code; skipped");
     if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in claude-code; skipped");
     files.push(...planSkills(bundle.skills, ".claude/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".claude/agents", ".md"));
+      warnings.push(
+        "agents: frontmatter fields (tools/model) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };
@@ -172,6 +184,7 @@ const codexProject: ProjectAdapter = {
 };
 
 const geminiProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -182,6 +195,7 @@ const geminiProject: ProjectAdapter = {
     );
     bundle.instructions = await readText(path.join(dir, "GEMINI.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".gemini/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".gemini/agents"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -202,6 +216,13 @@ const geminiProject: ProjectAdapter = {
     if (bundle.persona) warnings.push("persona: no project-scoped slot in gemini; skipped");
     if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in gemini; skipped");
     files.push(...planSkills(bundle.skills, ".gemini/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".gemini/agents", ".md"));
+      warnings.push(
+        'agents: gemini subagents are experimental (enabled by default; "experimental": {"enableAgents": false} disables them); ' +
+          "frontmatter fields are client-specific and copied as-is",
+      );
+    }
     return { files, warnings };
   },
 };
@@ -477,6 +498,7 @@ const openhandsProject: ProjectAdapter = {
 };
 
 const copilotProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -501,6 +523,7 @@ const copilotProject: ProjectAdapter = {
     }
     if (parts.length) bundle.instructions = parts.join("\n\n") + "\n";
     bundle.skills = await readSkillsDir(path.join(dir, ".github/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".github/agents"), ".agent.md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -534,6 +557,12 @@ const copilotProject: ProjectAdapter = {
     }
     if (bundle.memory.length) warnings.push("memory: copilot has no project-scoped memory store; skipped");
     files.push(...planSkills(bundle.skills, ".github/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".github/agents", ".agent.md"));
+      warnings.push(
+        "agents: frontmatter fields (tools/model) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };

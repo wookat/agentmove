@@ -91,6 +91,7 @@ function bundleSummary(bundle: Bundle) {
   return {
     mcpServers: bundle.mcpServers.length,
     skills: bundle.skills.length,
+    agents: bundle.agents.length,
     memoryEntries: bundle.memory.length,
     instructions: bundle.instructions !== undefined,
     persona: bundle.persona !== undefined,
@@ -103,7 +104,7 @@ function summaryLine(bundle: Bundle): string {
     .filter(Boolean)
     .join(", ");
   return (
-    `${s.mcpServers} MCP server(s), ${s.skills} skill(s), ${s.memoryEntries} memory entr(ies)` +
+    `${s.mcpServers} MCP server(s), ${s.skills} skill(s), ${s.agents} agent(s), ${s.memoryEntries} memory entr(ies)` +
     (extras ? `, ${extras}` : "")
   );
 }
@@ -122,6 +123,14 @@ async function importTo(
   const { files, warnings } = project
     ? await getProjectAdapter(adapter.id).planImport(bundle, project, importOpts)
     : await adapter.planImport(bundle, home(), importOpts);
+  const supportsAgents = project
+    ? (getProjectAdapter(adapter.id).supportsAgents ?? false)
+    : (adapter.supportsAgents ?? false);
+  if (bundle.agents.length && !supportsAgents) {
+    warnings.push(
+      `agents: ${adapter.id} has no custom agents directory${project ? " at project scope" : ""}; skipped`,
+    );
+  }
   const allWarnings = [...priorWarnings, ...warnings];
   if (!json) printWarnings(allWarnings);
 
@@ -167,7 +176,7 @@ program
   .argument("<client>", `source client (${CLIENT_IDS.join("|")})`)
   .option("-o, --out <dir>", "bundle output directory", "./agentmove-bundle")
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
-  .option("--only <layers>", "comma-separated layers to export (mcp,skills,memory,instructions,persona)")
+  .option("--only <layers>", "comma-separated layers to export (mcp,skills,agents,memory,instructions,persona)")
   .option("--project <dir>", "export the client's project-scoped files from a project directory")
   .option("--mif <file>", "also write the memory layer as a MIF v2 document (.mif.json)")
   .option("--mcp-json <file>", "also write the MCP layer as a standalone standard mcp.json")
@@ -274,7 +283,7 @@ program
   .option("-i, --in <dir>", "bundle directory, .agentpack file, Agent Plugin directory, mcp.json file, skills repository, .zip/.tgz/.tar.gz archive, or an http(s) URL (a .json URL is fetched, an archive URL is downloaded and extracted, anything else is git-cloned)", "./agentmove-bundle")
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
-  .option("--only <layers>", "comma-separated layers to import (mcp,skills,memory,instructions,persona)")
+  .option("--only <layers>", "comma-separated layers to import (mcp,skills,agents,memory,instructions,persona)")
   .option("--project <dir>", "import into the client's project-scoped files in a project directory")
   .option("--mif <file>", "import the memory layer from a MIF v2 document instead of a bundle")
   .option("--json", "machine-readable JSON output", false)
@@ -340,7 +349,7 @@ program
   .option("--apply", "actually write files (default is dry-run preview)", false)
   .option("--include-secrets", "keep likely-secret env/header values instead of redacting", false)
   .option("--replace-mcp", "replace the target's MCP servers instead of merging into them", false)
-  .option("--only <layers>", "comma-separated layers to migrate (mcp,skills,memory,instructions,persona)")
+  .option("--only <layers>", "comma-separated layers to migrate (mcp,skills,agents,memory,instructions,persona)")
   .option("--project <dir>", "migrate the clients' project-scoped files in a project directory")
   .option("--json", "machine-readable JSON output", false)
   .action(

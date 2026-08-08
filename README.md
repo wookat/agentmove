@@ -58,6 +58,7 @@ npx agentmove-cli convert claude-code cursor --project . --apply
 | Persona | `SOUL.md` (OpenClaw/Hermes native; approximated into instructions elsewhere, with a warning) |
 | Memory | OpenClaw `MEMORY.md`/daily files, Hermes `§` entries, Gemini "Added Memories" — normalized entries + raw originals kept in the bundle |
 | Skills | `SKILL.md` directories (the de-facto cross-client standard) |
+| Custom agents | Subagent markdown definitions — Claude Code `~/.claude/agents/`, Copilot CLI `~/.copilot/agents/*.agent.md`, Gemini CLI `~/.gemini/agents/` (experimental); frontmatter is copied as-is with a warning, other clients skip with a warning |
 | Config | Default model plus the raw source config preserved in the bundle for reference |
 
 Every lossy or approximated step is reported as a warning — nothing is silently
@@ -104,15 +105,15 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | OpenClaw | `openclaw` | `~/.openclaw/openclaw.json`, workspace (`SOUL.md`, `AGENTS.md`, `MEMORY.md`, `memory/`, `skills/`) |
 | Hermes Agent | `hermes` | `~/.hermes/config.yaml`, `SOUL.md`, `memories/`, `skills/` |
 | Claude Desktop | `claude-desktop` | `claude_desktop_config.json` (`mcpServers`; macOS `~/Library/Application Support/Claude`, Windows `%APPDATA%\Claude`, Linux `~/.config/Claude`) + `~/.claude/skills/` |
-| Claude Code | `claude-code` | `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/skills/` |
+| Claude Code | `claude-code` | `~/.claude.json`, `~/.claude/CLAUDE.md`, `~/.claude/skills/`, `~/.claude/agents/` |
 | Codex CLI | `codex` | `~/.codex/config.toml` (incl. `bearer_token_env_var`/`env_http_headers` as `${VAR}` placeholder headers), `~/.codex/AGENTS.md`, `~/.agents/skills/` |
 | Cursor | `cursor` | `~/.cursor/mcp.json` + `~/.cursor/skills/` (Agent Skills standard; rules/memories are project/app-scoped) |
-| Gemini CLI | `gemini` | `~/.gemini/settings.json`, `~/.gemini/GEMINI.md`, `~/.gemini/skills/` |
+| Gemini CLI | `gemini` | `~/.gemini/settings.json`, `~/.gemini/GEMINI.md`, `~/.gemini/skills/`, `~/.gemini/agents/` (experimental subagents) |
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json`, `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/` |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json`, `~/Documents/Cline/Rules/`, `~/.cline/skills/` |
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`), `~/.config/zed/AGENTS.md`, `~/.agents/skills/` |
 | OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]`), `~/.openhands/microagents/` |
-| GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json`, `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/`, `~/.copilot/skills/` |
+| GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json`, `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/`, `~/.copilot/skills/`, `~/.copilot/agents/*.agent.md` |
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/` |
 | Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`), `~/.qwen/QWEN.md` (incl. "Qwen Added Memories"), `~/.qwen/skills/` |
 | Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
