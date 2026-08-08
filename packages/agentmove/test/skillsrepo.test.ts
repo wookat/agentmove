@@ -65,6 +65,34 @@ describe("readSkillsRepo", () => {
     expect(warnings.some((w) => w.includes("skills repository (1 skill(s)"))).toBe(true);
   });
 
+  it("reads namespaced skills/<scope>/<name> layouts, mixed with direct ones", async () => {
+    const dir = await tmp();
+    await fs.mkdir(path.join(dir, "skills/monalisa/code-review"), { recursive: true });
+    await fs.writeFile(path.join(dir, "skills/monalisa/code-review/SKILL.md"), "# cr");
+    await fs.writeFile(path.join(dir, "skills/monalisa/code-review/extra.md"), "e");
+    await fs.mkdir(path.join(dir, "skills/direct"), { recursive: true });
+    await fs.writeFile(path.join(dir, "skills/direct/SKILL.md"), "# d");
+    expect(await isSkillsRepo(dir)).toBe(true);
+    const { bundle } = await readSkillsRepo(dir);
+    expect(bundle.skills).toEqual([
+      { name: "direct", files: { "SKILL.md": "# d" } },
+      { name: "code-review", files: { "SKILL.md": "# cr", "extra.md": "e" } },
+    ]);
+  });
+
+  it("disambiguates duplicate names across namespaces with a warning", async () => {
+    const dir = await tmp();
+    await fs.mkdir(path.join(dir, "skills/alice/review"), { recursive: true });
+    await fs.writeFile(path.join(dir, "skills/alice/review/SKILL.md"), "# a");
+    await fs.mkdir(path.join(dir, "skills/bob/review"), { recursive: true });
+    await fs.writeFile(path.join(dir, "skills/bob/review/SKILL.md"), "# b");
+    const { bundle, warnings } = await readSkillsRepo(dir);
+    expect(bundle.skills.map((s) => s.name)).toEqual(["review", "bob-review"]);
+    expect(warnings.some((w) => w.includes("importing skills/bob/review as bob-review"))).toBe(
+      true,
+    );
+  });
+
   it("reads top-level skill directories, skipping hidden dirs", async () => {
     const dir = await tmp();
     await fs.mkdir(path.join(dir, "review"), { recursive: true });

@@ -4,36 +4,59 @@ import { Bundle, CliError, emptyBundle, EXIT_DATA, Skill } from "./model.js";
 import { exists, isDir, listDir, readText, readTextTree } from "./fsutil.js";
 
 /**
- * Skills repository (the skills.sh / `npx skills add owner/repo` ecosystem): a
- * repository that is neither an Agent Plugin nor an agentmove bundle but
- * carries Agent Skills as SKILL.md directories — under skills/<name>/, as
- * top-level <name>/ directories, or a single skill at the repository root.
+ * Skills repository (the skills.sh / `npx skills add owner/repo` /
+ * `gh skill install` ecosystem): a repository that is neither an Agent Plugin
+ * nor an agentmove bundle but carries Agent Skills as SKILL.md directories —
+ * under skills/<name>/, namespaced under skills/<scope>/<name>/ (the
+ * gh skill / github/awesome-copilot convention), as top-level <name>/
+ * directories, or a single skill at the repository root.
  */
 export async function isSkillsRepo(dir: string): Promise<boolean> {
   if (!(await isDir(dir))) return false;
   if (await exists(path.join(dir, "plugin.json"))) return false;
   if (await exists(path.join(dir, "manifest.json"))) return false;
   if (await exists(path.join(dir, "SKILL.md"))) return true;
-  return (await skillDirNames(dir)).roots.length > 0;
+  return (await skillDirs(dir)).length > 0;
 }
 
-async function skillDirNames(
-  dir: string,
-): Promise<{ roots: string[]; nested: boolean }> {
+interface SkillDirEntry {
+  /** directory holding the SKILL.md, absolute */
+  dir: string;
+  /** skill directory basename */
+  name: string;
+  /** namespace scope for skills/<scope>/<name>/ layouts, "" otherwise */
+  scope: string;
+}
+
+async function skillDirs(dir: string): Promise<SkillDirEntry[]> {
   const skillsRoot = path.join(dir, "skills");
   if (await isDir(skillsRoot)) {
-    const names: string[] = [];
-    for (const name of await listDir(skillsRoot)) {
-      if (await exists(path.join(skillsRoot, name, "SKILL.md"))) names.push(name);
+    const entries: SkillDirEntry[] = [];
+    for (const name of (await listDir(skillsRoot)).sort()) {
+      if (name.startsWith(".")) continue;
+      const child = path.join(skillsRoot, name);
+      if (await exists(path.join(child, "SKILL.md"))) {
+        entries.push({ dir: child, name, scope: "" });
+      } else if (await isDir(child)) {
+        // namespaced layout: skills/<scope>/<name>/SKILL.md
+        for (const inner of (await listDir(child)).sort()) {
+          if (inner.startsWith(".")) continue;
+          if (await exists(path.join(child, inner, "SKILL.md"))) {
+            entries.push({ dir: path.join(child, inner), name: inner, scope: name });
+          }
+        }
+      }
     }
-    if (names.length) return { roots: names.sort(), nested: true };
+    if (entries.length) return entries;
   }
-  const names: string[] = [];
-  for (const name of await listDir(dir)) {
+  const entries: SkillDirEntry[] = [];
+  for (const name of (await listDir(dir)).sort()) {
     if (name.startsWith(".")) continue;
-    if (await exists(path.join(dir, name, "SKILL.md"))) names.push(name);
+    if (await exists(path.join(dir, name, "SKILL.md"))) {
+      entries.push({ dir: path.join(dir, name), name, scope: "" });
+    }
   }
-  return { roots: names.sort(), nested: false };
+  return entries;
 }
 
 function skillNameFrom(content: string, fallback: string): string {
@@ -57,11 +80,24 @@ export async function readSkillsRepo(
     const files = await readTextTree(dir, warnings);
     skills.push({ name: skillNameFrom(rootSkill, path.basename(dir)), files });
   } else {
-    const { roots, nested } = await skillDirNames(dir);
-    const base = nested ? path.join(dir, "skills") : dir;
-    for (const name of roots) {
-      const files = await readTextTree(path.join(base, name), warnings);
-      if (Object.keys(files).length) skills.push({ name, files });
+    const entries = await skillDirs(dir);
+    const taken = new Set<string>();
+    for (const entry of entries) {
+      const files = await readTextTree(entry.dir, warnings);
+      if (!Object.keys(files).length) continue;
+      let name = entry.name;
+      if (taken.has(name)) {
+        name = entry.scope ? `${entry.scope}-${entry.name}` : name;
+        if (taken.has(name)) {
+          warnings.push(`skill:${entry.name}: duplicate skill name; skipping ${entry.dir}`);
+          continue;
+        }
+        warnings.push(
+          `skill:${entry.name}: duplicate skill name across namespaces; importing skills/${entry.scope}/${entry.name} as ${name}`,
+        );
+      }
+      taken.add(name);
+      skills.push({ name, files });
     }
   }
 

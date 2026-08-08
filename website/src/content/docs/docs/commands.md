@@ -198,6 +198,9 @@ as a skills repository when it carries `SKILL.md` skills in any of the common
 shapes:
 
 - `skills/<name>/SKILL.md` — the conventional `skills/` folder
+- `skills/<scope>/<name>/SKILL.md` — namespaced skills (the `gh skill` /
+  `github/awesome-copilot` convention); on a name clash across namespaces the
+  later skill is imported as `<scope>-<name>` with a warning
 - `<name>/SKILL.md` — skill directories at the repository top level
 - a single `SKILL.md` at the repository root (named from its frontmatter
   `name:`, falling back to the directory name)
