@@ -34,7 +34,12 @@ import { parseGooseMemoryFile } from "./adapters/goose.js";
 import { renderAmpEntry } from "./adapters/amp.js";
 import { parseVscodeServers, renderVscodeServers } from "./adapters/vscode.js";
 import { parseKiroServers, renderKiroServers, warnKiroJsonAgents } from "./adapters/kiro.js";
-import { parseRooServers, readRulesDir, renderRooServers } from "./adapters/roo.js";
+import {
+  parseRooServers,
+  readRulesDir,
+  renderRooServers,
+  ROO_COMMANDS_WARNING,
+} from "./adapters/roo.js";
 import {
   mergeContinueServers,
   parseContinueServers,
@@ -65,6 +70,7 @@ import {
   parseQoderServers,
   planQoderMcp,
   QODER_AGENTS_WARNING,
+  QODER_COMMANDS_WARNING,
   readQoderSettings,
 } from "./adapters/qoder.js";
 import {
@@ -929,6 +935,7 @@ const kiroProject: ProjectAdapter = {
 };
 
 const rooProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -937,6 +944,7 @@ const rooProject: ProjectAdapter = {
     bundle.mcpServers = parseRooServers(config, warnings);
     bundle.instructions = await readRulesDir(path.join(dir, ".roo/rules"), warnings, "project");
     bundle.skills = await readSkillsDir(path.join(dir, ".roo/skills"), warnings);
+    bundle.commands = await readAgentsDir(path.join(dir, ".roo/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -961,6 +969,10 @@ const rooProject: ProjectAdapter = {
       warnings.push("memory: roo has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".roo/skills"));
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, ".roo/commands", "roo", warnings));
+      warnings.push(ROO_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
@@ -1414,6 +1426,7 @@ const codebuddyProject: ProjectAdapter = {
 
 const qoderProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1430,6 +1443,7 @@ const qoderProject: ProjectAdapter = {
     }
     bundle.skills = await readSkillsDir(path.join(dir, ".qoder/skills"), warnings);
     bundle.agents = await readAgentsDir(path.join(dir, ".qoder/agents"), ".md");
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".qoder/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1459,6 +1473,10 @@ const qoderProject: ProjectAdapter = {
     if (bundle.agents.length) {
       files.push(...planAgents(bundle.agents, ".qoder/agents", ".md"));
       warnings.push(QODER_AGENTS_WARNING);
+    }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".qoder/commands", ".md"));
+      warnings.push(QODER_COMMANDS_WARNING);
     }
     return { files, warnings };
   },

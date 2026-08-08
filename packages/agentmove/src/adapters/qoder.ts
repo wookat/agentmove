@@ -18,6 +18,7 @@ import {
   planAgents,
   planSkills,
   readAgentsDir,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -34,14 +35,22 @@ import {
  * the open Agent Skills standard under ~/.qoder/skills/. Custom subagents
  * are markdown files with YAML frontmatter under ~/.qoder/agents/ (user)
  * and .qoder/agents/ (project; project overrides user on name conflicts).
+ * Custom slash commands are markdown files under ~/.qoder/commands/ (user)
+ * and .qoder/commands/ (project); subdirectories become `:`-separated
+ * namespaces (commands/git/commit.md -> /git:commit), so nested layouts are
+ * preserved.
  */
 const SETTINGS_REL = ".qoder/settings.json";
 const MEMORY_REL = ".qoder/AGENTS.md";
 const SKILLS_REL = ".qoder/skills";
 const AGENTS_DIR_REL = ".qoder/agents";
+const COMMANDS_DIR_REL = ".qoder/commands";
 
 export const QODER_AGENTS_WARNING =
   "agents: frontmatter fields (tools/model/skills/mcpServers) are client-specific and copied as-is; review after import";
+
+export const QODER_COMMANDS_WARNING =
+  "commands: frontmatter fields (name/description) are client-specific and copied as-is; review after import";
 
 export async function readQoderSettings(file: string): Promise<Record<string, unknown>> {
   const raw = await readText(file);
@@ -107,8 +116,9 @@ export async function planQoderMcp(
 export const qoder: ClientAdapter = {
   id: "qoder",
   label: "Qoder CLI",
-  defaultPath: "~/.qoder (settings.json + AGENTS.md + skills/ + agents/)",
+  defaultPath: "~/.qoder (settings.json + AGENTS.md + skills/ + agents/ + commands/)",
   supportsAgents: true,
+  supportsCommands: true,
 
   async detect(home) {
     return isDir(path.join(home, ".qoder"));
@@ -130,6 +140,7 @@ export const qoder: ClientAdapter = {
     }
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
+    bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -164,6 +175,10 @@ export const qoder: ClientAdapter = {
     if (bundle.agents.length) {
       files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
       warnings.push(QODER_AGENTS_WARNING);
+    }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_DIR_REL, ".md"));
+      warnings.push(QODER_COMMANDS_WARNING);
     }
     return { files, warnings };
   },
