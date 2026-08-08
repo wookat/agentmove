@@ -1,5 +1,11 @@
 # agentmove-cli
 
+## 0.86.0
+
+### Minor Changes
+
+- b26ae72: Custom agents layer for Kilo Code: recursive markdown agents (custom modes) from `~/.config/kilo/{agent,agents}/` plus the legacy `~/.kilocode/` and `~/.kilo/` roots (XDG root wins on name conflicts; nested namespaced names preserved); imports write only `~/.config/kilo/agents/`. Project scope reads `.kilo/{agent,agents}/` + legacy `.kilocode/` and writes `.kilo/agents/`.
+
 ## 0.85.0
 
 ### Minor Changes
