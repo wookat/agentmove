@@ -1,0 +1,23 @@
+customModes:
+  - slug: code-reviewer
+    name: "🔍 Code Reviewer"
+    description: Reviews code for style and correctness
+    roleDefinition: |-
+      You are a careful code reviewer.
+      Focus on correctness first.
+    whenToUse: Use when reviewing pull requests
+    customInstructions: Always check for security issues.
+    groups:
+      - read
+      - - edit
+        - fileRegex: \.md$
+  - slug: docs-helper
+    name: docs-helper
+    roleDefinition: You write documentation.
+    groups: []
+  - slug: broken-mode
+    name: Broken
+    groups: []
+  - name: no-slug-mode
+    roleDefinition: Missing slug.
+    groups: []

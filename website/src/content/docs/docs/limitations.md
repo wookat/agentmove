@@ -144,6 +144,21 @@ persona, and a later export won't recover it as a separate `persona.md`.
   (warned), nested names are flattened (`backend/sql` → `backend-sql`,
   warned), and invalid or prompt-less agent files are skipped with a
   warning rather than silently.
+- Roo Code custom modes are a **YAML list** (globalStorage
+  `settings/custom_modes.yaml`, next to `mcp_settings.json`; project
+  scope: a `.roomodes` file at the repo root, YAML with a JSON fallback),
+  so a documented conversion runs instead of a byte-faithful copy: the
+  mode `slug` becomes the agent name, `description` maps to a frontmatter
+  line, and `roleDefinition` to the markdown body. Roo-specific fields
+  (`name` display names that differ from the slug, `whenToUse`,
+  `customInstructions`, `groups`, and anything else) have no portable
+  equivalent and are dropped **with a per-field warning**. On import,
+  agents are merged into the modes file by slug (existing modes with the
+  same slug are overwritten, warned); imported modes get the full default
+  tool `groups` (review after import), nested agent names are flattened
+  (`backend/sql` → `backend-sql`, warned), and frontmatter with fields
+  beyond `description` is kept verbatim inside `roleDefinition` (warned).
+  Mode-specific `.roo/rules-{slug}/` rule folders are **not** migrated.
 - Every other client has no custom agents directory — imported agents are
   **skipped** with a warning.
 
