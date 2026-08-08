@@ -118,7 +118,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`), `~/.qwen/QWEN.md` (incl. "Qwen Added Memories"), `~/.qwen/skills/`, `~/.qwen/agents/` (custom subagents) |
 | Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
 | VS Code | `vscode` | user-profile `mcp.json` (`servers`; Linux `~/.config/Code/User`, macOS `~/Library/Application Support/Code/User`, Windows `%APPDATA%\Code\User`) + `~/.agents/skills/` |
-| Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`), `~/.kiro/steering/`, `~/.kiro/skills/` |
+| Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`), `~/.kiro/steering/`, `~/.kiro/skills/`, `~/.kiro/agents/` (markdown custom agents; JSON configs warned) |
 | Roo Code | `roo` | VS Code globalStorage `mcp_settings.json` (`mcpServers`), `~/.roo/rules/`, `~/.roo/skills/` |
 | Continue | `continue` | `~/.continue/config.yaml` (`mcpServers` list), `~/.continue/rules/`, `~/.continue/skills/` |
 | Crush | `crush` | `~/.config/crush/crush.json` (`mcp`), `~/.config/crush/skills/` |
