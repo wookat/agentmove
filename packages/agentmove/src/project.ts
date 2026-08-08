@@ -134,8 +134,10 @@ import { parseCortexServers, planCortexMcp, readCortexMcp } from "./adapters/cor
 import { parseGrokServers, planGrokMcp, readGrokConfig } from "./adapters/grok.js";
 import { parseVibeServers, planVibeMcp, readVibeConfig } from "./adapters/vibe.js";
 import {
+  NANOCODER_AGENTS_WARNING,
   NANOCODER_COMMANDS_WARNING,
   parseNanocoderServers,
+  planNanocoderAgents,
   planNanocoderMcp,
   readNanocoderCommandsDir,
   readNanocoderMcp,
@@ -1954,6 +1956,7 @@ const vibeProject: ProjectAdapter = {
 };
 
 const nanocoderProject: ProjectAdapter = {
+  supportsAgents: true,
   supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
@@ -1966,6 +1969,7 @@ const nanocoderProject: ProjectAdapter = {
       path.join(dir, ".nanocoder/commands"),
       warnings,
     );
+    bundle.agents = await readAgentsDir(path.join(dir, ".nanocoder/agents"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1999,6 +2003,10 @@ const nanocoderProject: ProjectAdapter = {
     if (bundle.commands.length) {
       files.push(...planAgents(bundle.commands, ".nanocoder/commands", ".md"));
       warnings.push(NANOCODER_COMMANDS_WARNING);
+    }
+    if (bundle.agents.length) {
+      files.push(...planNanocoderAgents(bundle.agents, ".nanocoder/agents", warnings));
+      warnings.push(NANOCODER_AGENTS_WARNING);
     }
     return { files, warnings };
   },
