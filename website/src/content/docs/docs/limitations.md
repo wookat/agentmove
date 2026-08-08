@@ -170,6 +170,17 @@ persona, and a later export won't recover it as a separate `persona.md`.
   nanocoder-specific frontmatter (`provider`, `model`, `contextWindow`,
   `tools`, `disallowedTools`, `subscribe`) is copied as-is — review
   after import.
+- Auggie CLI subagents live in `~/.augment/agents/` (project
+  `.augment/agents/`), scanned recursively with nested names preserved.
+  The loader also accepts `.txt` agent files — those are exported with a
+  warning and imports always write `.md` (Auggie loads both). When both
+  `name.md` and `name.txt` exist, the `.md` file is exported (matching
+  Auggie's first-found-wins loading, warned). Every frontmatter field is
+  optional in Auggie; `name`/`description`/`color`/`model`/`tools`/
+  `disabled_tools` are client-specific and copied as-is — review after
+  import. The compatibility roots `~/.claude/agents/` and
+  `~/.agents/agents/` that Auggie also reads belong to other adapters and
+  are not read or written by the auggie adapter.
 - Every other client has no custom agents directory — imported agents are
   **skipped** with a warning.
 
