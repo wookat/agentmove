@@ -1,5 +1,15 @@
 # agentmove-cli
 
+## 0.68.0
+
+### Minor Changes
+
+- 99afe52: Custom agents layer for CodeBuddy: migrate custom sub-agent markdown
+  definitions in `~/.codebuddy/agents/` (user) and `.codebuddy/agents/`
+  (project, with `--project`) byte-faithfully, with an honest warning that
+  `tools`/`model`/`effort`/`maxTurns`/`memory`/`mcpServers` frontmatter is
+  client-specific.
+
 ## 0.67.0
 
 ### Minor Changes
