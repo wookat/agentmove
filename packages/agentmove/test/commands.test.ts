@@ -17,6 +17,8 @@ import { qoder } from "../src/adapters/qoder.js";
 import { roo } from "../src/adapters/roo.js";
 import { kilo } from "../src/adapters/kilo.js";
 import { cline } from "../src/adapters/cline.js";
+import { auggie } from "../src/adapters/auggie.js";
+import { nanocoder } from "../src/adapters/nanocoder.js";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
 import { readBundle, writeBundle } from "../src/bundle.js";
@@ -454,6 +456,80 @@ describe("custom commands layer", () => {
     expect(kiFiles.some((f) => f.path === ".kilo/commands/release.md")).toBe(true);
     const clFiles = (await getProjectAdapter("cline").planImport(cl.bundle, "/p", {})).files;
     expect(clFiles.some((f) => f.path === ".clinerules/workflows/deploy.md")).toBe(true);
+  });
+
+  it("auggie exports ~/.augment/commands recursively, byte-faithfully", async () => {
+    const { bundle } = await auggie.exportBundle(path.join(FIXTURES, "auggie-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["frontend/component", "optimize"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "auggie-home/.augment/commands/optimize.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "optimize")!.content).toBe(raw);
+  });
+
+  it("auggie plans commands into ~/.augment/commands (nested names kept) with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "optimize", content: "Optimize.\n" },
+      { name: "frontend/component", content: "Component.\n" },
+    ];
+    const { files, warnings } = await auggie.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".augment/commands/optimize.md")).toBe(true);
+    expect(files.some((f) => f.path === ".augment/commands/frontend/component.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("description/argument-hint"))).toBe(true);
+  });
+
+  it("nanocoder exports commands with namespaces and directory-as-command bundles", async () => {
+    const { bundle, warnings } = await nanocoder.exportBundle(
+      path.join(FIXTURES, "nanocoder-home"),
+    );
+    expect(bundle.commands.map((c) => c.name)).toEqual(["deploy", "git/commit", "test"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "nanocoder-home/.config/nanocoder/commands/test.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "test")!.content).toBe(raw);
+    const dirCmd = await fs.readFile(
+      path.join(FIXTURES, "nanocoder-home/.config/nanocoder/commands/deploy/deploy.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "deploy")!.content).toBe(dirCmd);
+    expect(
+      warnings.some(
+        (w) => w.includes("commands:deploy") && w.includes("resources/ files are client-specific"),
+      ),
+    ).toBe(true);
+  });
+
+  it("nanocoder plans commands into ~/.config/nanocoder/commands (nested names kept) with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "test", content: "Test.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await nanocoder.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".config/nanocoder/commands/test.md")).toBe(true);
+    expect(files.some((f) => f.path === ".config/nanocoder/commands/git/commit.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("description/aliases/triggers/tags"))).toBe(true);
+  });
+
+  it("project scope: auggie and nanocoder commands round-trip", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-cmd-proj7-"));
+    await fs.mkdir(path.join(dir, ".augment/commands/frontend"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".augment/commands/optimize.md"), "Optimize.\n");
+    await fs.writeFile(path.join(dir, ".augment/commands/frontend/component.md"), "Comp.\n");
+    await fs.mkdir(path.join(dir, ".nanocoder/commands/git"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".nanocoder/commands/test.md"), "Test.\n");
+    await fs.writeFile(path.join(dir, ".nanocoder/commands/git/commit.md"), "Commit.\n");
+    const au = await getProjectAdapter("auggie").exportProject(dir);
+    expect(au.bundle.commands.map((c) => c.name)).toEqual(["frontend/component", "optimize"]);
+    const na = await getProjectAdapter("nanocoder").exportProject(dir);
+    expect(na.bundle.commands.map((c) => c.name)).toEqual(["git/commit", "test"]);
+    const auFiles = (await getProjectAdapter("auggie").planImport(au.bundle, "/p", {})).files;
+    expect(auFiles.some((f) => f.path === ".augment/commands/frontend/component.md")).toBe(true);
+    const naFiles = (await getProjectAdapter("nanocoder").planImport(na.bundle, "/p", {})).files;
+    expect(naFiles.some((f) => f.path === ".nanocoder/commands/git/commit.md")).toBe(true);
   });
 
   it("bundle round-trips the commands layer byte-faithfully (nested names)", async () => {

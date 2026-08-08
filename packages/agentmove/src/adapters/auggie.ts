@@ -15,7 +15,9 @@ import {
   appendSections,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -29,10 +31,21 @@ import {
  * remote uses url/headers. There is no per-server disabled flag. User rules
  * are markdown files under ~/.augment/rules/ (always applied), and skills
  * follow the agentskills.io Agent Skills standard under ~/.augment/skills/.
+ *
+ * Custom slash commands are markdown files under ~/.augment/commands/ (user)
+ * and .augment/commands/ (workspace); subdirectories become `:`-separated
+ * namespaces (commands/frontend/component.md -> /frontend:component), so
+ * nested layouts are preserved. Auggie also reads ~/.claude/commands/ and
+ * ~/.agents/commands/ for compatibility — those roots belong to other
+ * adapters and are not read or written here.
  */
 const SETTINGS_REL = ".augment/settings.json";
 const RULES_REL = ".augment/rules";
 const SKILLS_REL = ".augment/skills";
+const COMMANDS_DIR_REL = ".augment/commands";
+
+export const AUGGIE_COMMANDS_WARNING =
+  "commands: frontmatter fields (description/argument-hint) and $ARGUMENTS placeholders are client-specific and copied as-is; review after import";
 
 export async function readAuggieSettings(file: string): Promise<Record<string, unknown>> {
   const raw = await readText(file);
@@ -109,7 +122,8 @@ export async function readAuggieRulesDir(
 export const auggie: ClientAdapter = {
   id: "auggie",
   label: "Auggie CLI",
-  defaultPath: "~/.augment (settings.json + rules/ + skills/)",
+  defaultPath: "~/.augment (settings.json + rules/ + skills/ + commands/)",
+  supportsCommands: true,
 
   async detect(home) {
     return isDir(path.join(home, ".augment"));
@@ -125,6 +139,7 @@ export const auggie: ClientAdapter = {
     bundle.mcpServers = parseAuggieServers(config, warnings);
     bundle.instructions = await readAuggieRulesDir(path.join(home, RULES_REL), warnings, "user");
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -159,6 +174,10 @@ export const auggie: ClientAdapter = {
       warnings.push("memory: auggie memories are app-managed; skipped (consider --mif)");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_DIR_REL, ".md"));
+      warnings.push(AUGGIE_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };

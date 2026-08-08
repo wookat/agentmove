@@ -1,0 +1,2 @@
+1. Tag the release
+2. Push to production
