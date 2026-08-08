@@ -1,0 +1,6 @@
+name = "reviewer"
+description = "Reviews staged changes for bugs and style problems"
+developer_instructions = """
+You are a code review specialist. Review carefully.
+"""
+model = "gpt-5.2-codex"

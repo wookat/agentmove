@@ -1,6 +1,7 @@
 import path from "node:path";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import {
+  AgentDef,
   asStringRecord,
   Bundle,
   ClientAdapter,
@@ -14,7 +15,7 @@ import {
   parseFile,
   stringArgs,
 } from "../model.js";
-import { exists, isDir, readText } from "../fsutil.js";
+import { exists, isDir, listDir, readText } from "../fsutil.js";
 import {
   appendSections,
   mergeMcpRecords,
@@ -35,6 +36,165 @@ export interface CodexStyleLayout {
   skillsRel?: string;
   /** Custom prompts root relative to home, or undefined when unsupported. */
   promptsRel?: string;
+  /** Custom agents (agent role TOML files) root relative to home, or undefined when unsupported. */
+  agentsRel?: string;
+}
+
+const AGENT_PORTABLE_FIELDS = ["name", "description", "developer_instructions"];
+
+export const CODEX_AGENTS_EXPORT_WARNING =
+  "agents: converted from codex agent role TOML (name + description + developer_instructions); codex-specific settings are dropped with per-field warnings";
+
+export const CODEX_AGENTS_IMPORT_WARNING =
+  "agents: written as codex agent role TOML (name + description + developer_instructions only); review model/sandbox/MCP overrides in the target agent after import";
+
+/** Convert one codex agent role TOML file into a portable markdown agent. */
+export function codexAgentFromToml(
+  raw: string,
+  file: string,
+  warnings: string[],
+): AgentDef | undefined {
+  let data: unknown;
+  try {
+    data = parseToml(raw);
+  } catch {
+    warnings.push(`agents:${file}: invalid TOML; not migrated`);
+    return undefined;
+  }
+  if (!isRecord(data)) {
+    warnings.push(`agents:${file}: not a TOML table; not migrated`);
+    return undefined;
+  }
+  const name = typeof data.name === "string" ? data.name.trim() : "";
+  if (!name) {
+    warnings.push(`agents:${file}: agent role file must define a non-empty "name"; not migrated`);
+    return undefined;
+  }
+  const description = typeof data.description === "string" ? data.description.trim() : "";
+  if (!description) {
+    warnings.push(`agents:${file}: agent role "${name}" has no description (codex rejects it); not migrated`);
+    return undefined;
+  }
+  const instructions =
+    typeof data.developer_instructions === "string" ? data.developer_instructions : "";
+  if (!instructions.trim()) {
+    warnings.push(
+      `agents:${file}: agent role "${name}" has no developer_instructions (codex rejects it); not migrated`,
+    );
+    return undefined;
+  }
+  for (const key of Object.keys(data)) {
+    if (!AGENT_PORTABLE_FIELDS.includes(key)) {
+      warnings.push(`agents:${name}: codex agent setting "${key}" has no portable equivalent; dropped`);
+    }
+  }
+  let body = instructions;
+  if (!body.endsWith("\n")) body += "\n";
+  const content = `---\ndescription: ${JSON.stringify(description)}\n---\n${body}`;
+  return { name, content };
+}
+
+/** Read every agent role TOML file under an agents root (recursive, like codex's loader). */
+export async function readCodexAgents(root: string, warnings: string[]): Promise<AgentDef[]> {
+  const files: string[] = [];
+  const walk = async (dir: string, prefix: string): Promise<void> => {
+    if (!(await isDir(dir))) return;
+    for (const name of (await listDir(dir)).sort()) {
+      const full = path.join(dir, name);
+      if (await isDir(full)) {
+        await walk(full, `${prefix}${name}/`);
+      } else if (name.endsWith(".toml")) {
+        files.push(`${prefix}${name}`);
+      }
+    }
+  };
+  await walk(root, "");
+  files.sort();
+  const agents: AgentDef[] = [];
+  const seen = new Set<string>();
+  for (const file of files) {
+    const raw = await readText(path.join(root, file));
+    if (raw === undefined) continue;
+    const agent = codexAgentFromToml(raw, file, warnings);
+    if (!agent) continue;
+    if (seen.has(agent.name)) {
+      warnings.push(
+        `agents:${file}: duplicate agent role name "${agent.name}"; codex keeps the first file found, so this one was not exported`,
+      );
+      continue;
+    }
+    seen.add(agent.name);
+    agents.push(agent);
+  }
+  return agents;
+}
+
+function parseFrontmatterDescription(line: string): string | undefined {
+  const m = /^description:\s*(.+)$/.exec(line);
+  if (!m?.[1]) return undefined;
+  let value = m[1].trim();
+  if (value.startsWith('"')) {
+    try {
+      value = JSON.parse(value) as string;
+    } catch {
+      value = value.replace(/^"|"$/g, "");
+    }
+  } else if (value.startsWith("'") && value.endsWith("'")) {
+    value = value.slice(1, -1);
+  }
+  return value;
+}
+
+/** Convert a portable markdown agent into codex agent role TOML content. */
+export function codexAgentToToml(a: AgentDef, name: string, warnings: string[]): string {
+  let description: string | undefined;
+  let instructions = a.content;
+  const m = /^---\n([\s\S]*?)\n---\n?/.exec(a.content);
+  if (m) {
+    const lines = (m[1] ?? "").split("\n").filter((l) => l.trim() !== "");
+    const parsed = lines.map((l) => parseFrontmatterDescription(l));
+    if (parsed.every((p) => p !== undefined)) {
+      description = parsed.find((p) => p !== undefined);
+      instructions = a.content.slice(m[0].length);
+    } else {
+      warnings.push(
+        `agents:${a.name}: frontmatter has fields beyond description, which codex agent role TOML cannot express; kept verbatim inside developer_instructions`,
+      );
+    }
+  }
+  return (
+    stringifyToml({
+      name,
+      description: description ?? `Imported by agentmove from agent ${a.name}`,
+      developer_instructions: instructions,
+    }) + "\n"
+  );
+}
+
+/** Plan codex agent role TOML writes into an agents root (nested names flattened). */
+export function planCodexAgents(
+  agents: AgentDef[],
+  rootRel: string,
+  warnings: string[],
+): FilePlan[] {
+  const plans: FilePlan[] = [];
+  const used = new Set<string>();
+  for (const a of agents) {
+    let name = a.name;
+    if (name.includes("/")) {
+      name = name.replace(/\//g, "-");
+      warnings.push(
+        `agents:${a.name}: codex derives the role name from the file's "name" field, not its path; imported as ${name}`,
+      );
+    }
+    if (used.has(name)) {
+      warnings.push(`agents:${a.name}: name collides with another agent after flattening; skipped`);
+      continue;
+    }
+    used.add(name);
+    plans.push({ path: `${rootRel}/${name}.toml`, content: codexAgentToToml(a, name, warnings) });
+  }
+  return plans;
 }
 
 /**
@@ -43,7 +203,7 @@ export interface CodexStyleLayout {
  * Xcode's bundled Codex agent).
  */
 export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
-  const { id, configDir, skillsRel, promptsRel } = layout;
+  const { id, configDir, skillsRel, promptsRel, agentsRel } = layout;
   const CONFIG_REL = `${configDir}/config.toml`;
   const AGENTS_REL = `${configDir}/AGENTS.md`;
   const agentsTilde = `~/${AGENTS_REL}`;
@@ -72,6 +232,7 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
     id,
     label: layout.label,
     defaultPath: layout.defaultPath,
+    supportsAgents: agentsRel !== undefined,
     supportsCommands: promptsRel !== undefined,
 
     async detect(home) {
@@ -148,6 +309,10 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
       }
       if (promptsRel) {
         bundle.commands = await readAgentsDir(path.join(home, promptsRel), ".md");
+      }
+      if (agentsRel) {
+        bundle.agents = await readCodexAgents(path.join(home, agentsRel), warnings);
+        if (bundle.agents.length) warnings.push(CODEX_AGENTS_EXPORT_WARNING);
       }
       warnings.push(`${id} memories are managed by the client and not exported in v0`);
       return { bundle, warnings };
@@ -228,6 +393,12 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
       } else if (bundle.skills.length) {
         warnings.push(`skills: ${id} has no documented skills directory; skipped`);
       }
+      if (agentsRel && bundle.agents.length) {
+        files.push(...planCodexAgents(bundle.agents, agentsRel, warnings));
+        warnings.push(CODEX_AGENTS_IMPORT_WARNING);
+      } else if (bundle.agents.length) {
+        warnings.push(`agents: ${id} has no documented custom agents directory; skipped`);
+      }
       if (promptsRel && bundle.commands.length) {
         files.push(...planCommandsFlat(bundle.commands, promptsRel, id, warnings));
         warnings.push(
@@ -243,8 +414,9 @@ export function makeCodexStyleAdapter(layout: CodexStyleLayout): ClientAdapter {
 export const codex: ClientAdapter = makeCodexStyleAdapter({
   id: "codex",
   label: "OpenAI Codex CLI",
-  defaultPath: "~/.codex (skills: ~/.agents/skills, prompts: ~/.codex/prompts)",
+  defaultPath: "~/.codex (skills: ~/.agents/skills, prompts: ~/.codex/prompts, agents: ~/.codex/agents)",
   configDir: ".codex",
   skillsRel: ".agents/skills",
   promptsRel: ".codex/prompts",
+  agentsRel: ".codex/agents",
 });

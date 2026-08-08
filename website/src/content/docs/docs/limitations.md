@@ -181,6 +181,21 @@ persona, and a later export won't recover it as a separate `persona.md`.
   import. The compatibility roots `~/.claude/agents/` and
   `~/.agents/agents/` that Auggie also reads belong to other adapters and
   are not read or written by the auggie adapter.
+- Codex CLI custom agents are standalone **TOML** agent role files
+  (`~/.codex/agents/*.toml`, project `.codex/agents/`, scanned
+  recursively) — a documented conversion, not a byte-for-byte copy.
+  `name` maps to the portable agent name, `description` to frontmatter
+  and `developer_instructions` to the body; Codex rejects files missing
+  any of the three, so such files are warned and **not** migrated, and
+  duplicate role names keep the first file found (warned). Other role
+  settings (`model`, `model_reasoning_effort`, `sandbox_mode`,
+  `mcp_servers`, `nickname_candidates`, …) have no portable equivalent
+  and are dropped with per-field warnings. Imports write
+  `name`/`description`/`developer_instructions` TOML (a missing
+  description is synthesized, and frontmatter beyond `description` is
+  kept verbatim inside `developer_instructions`, warned); nested agent
+  names are flattened. Roles declared inline under `[agents.<name>]` in
+  `config.toml` and the Xcode-bundled Codex root are **not** migrated.
 - Every other client has no custom agents directory — imported agents are
   **skipped** with a warning.
 

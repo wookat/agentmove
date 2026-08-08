@@ -1,0 +1,3 @@
+name = "deep-scan"
+description = "Read-heavy exploration agent"
+developer_instructions = "Explore the codebase and return distilled findings."
