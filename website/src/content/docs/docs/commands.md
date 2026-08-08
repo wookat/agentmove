@@ -51,7 +51,7 @@ user-scoped config under `$HOME`:
 | gemini | `.gemini/settings.json`, `GEMINI.md` |
 | cursor | `.cursor/mcp.json`, `.cursor/rules/*.mdc` |
 | windsurf | `.windsurf/rules/*.md`, `.windsurf/skills/` (no project-scoped MCP config — warned) |
-| copilot | `.mcp.json`, `.github/copilot-instructions.md` + `.github/instructions/`, `.github/skills/` |
+| copilot | `.mcp.json`, `.github/copilot-instructions.md` + `.github/instructions/`, `.github/skills/`, `.github/agents/`, `.claude/commands/` |
 | cline | `.clinerules/*.md`, `.cline/skills/` (no project-scoped MCP config — warned) |
 | warp | `.warp/.mcp.json`, `AGENTS.md` (legacy `WARP.md` read), `.warp/skills/` |
 

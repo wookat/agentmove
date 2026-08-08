@@ -644,6 +644,7 @@ const openhandsProject: ProjectAdapter = {
 
 const copilotProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -669,6 +670,7 @@ const copilotProject: ProjectAdapter = {
     if (parts.length) bundle.instructions = parts.join("\n\n") + "\n";
     bundle.skills = await readSkillsDir(path.join(dir, ".github/skills"), warnings);
     bundle.agents = await readAgentsDir(path.join(dir, ".github/agents"), ".agent.md");
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".claude/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -706,6 +708,19 @@ const copilotProject: ProjectAdapter = {
       files.push(...planAgents(bundle.agents, ".github/agents", ".agent.md"));
       warnings.push(
         "agents: frontmatter fields (tools/model) are client-specific and copied as-is; review after import",
+      );
+    }
+    if (bundle.commands.length) {
+      for (const c of bundle.commands) {
+        if (c.name.includes("/")) {
+          warnings.push(
+            `commands:${c.name}: copilot documents only single-file commands in .claude/commands/; nested path kept for Claude Code compatibility but may not be discovered by copilot`,
+          );
+        }
+      }
+      files.push(...planAgents(bundle.commands, ".claude/commands", ".md"));
+      warnings.push(
+        "commands: written to the Claude-compatible .claude/commands/ directory copilot reads; argument placeholders and frontmatter fields (allowed-tools/model) are client-specific and copied as-is; review after import",
       );
     }
     return { files, warnings };
