@@ -12,9 +12,12 @@ import {
 } from "../model.js";
 import { isDir, readText } from "../fsutil.js";
 import {
+  mergeAgentLists,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -27,9 +30,21 @@ import {
  * follow the open Agent Skills standard under ~/.config/crush/skills/.
  * Instructions/context files (CRUSH.md, AGENTS.md, ...) are project-scoped
  * only; Crush has no global instructions file or durable memory store.
+ *
+ * Custom commands are markdown files discovered recursively under two user
+ * roots — ~/.config/crush/commands/ (XDG) and ~/.crush/commands/ — with
+ * subdirectory paths becoming `:` namespaces (`git/commit.md` →
+ * `user:git:commit`). Content is used verbatim (no frontmatter parsing);
+ * `$NAME` placeholders are prompted for at invocation time. Imports write
+ * only the XDG root.
  */
 const CONFIG_REL = ".config/crush/crush.json";
 const SKILLS_REL = ".config/crush/skills";
+const COMMANDS_REL = ".config/crush/commands";
+const HOME_COMMANDS_REL = ".crush/commands";
+
+export const CRUSH_COMMANDS_WARNING =
+  "commands: crush $NAME argument placeholders and frontmatter fields from other clients are client-specific and copied as-is; review after import";
 
 const CLIENT_KEYS = ["disabled_tools", "timeout"] as const;
 
@@ -75,7 +90,8 @@ export function renderCrushServers(bundle: Bundle): Record<string, unknown> {
 export const crush: ClientAdapter = {
   id: "crush",
   label: "Crush",
-  defaultPath: "~/.config/crush (crush.json + skills/)",
+  defaultPath: "~/.config/crush (crush.json + skills/ + commands/)",
+  supportsCommands: true,
 
   async detect(home) {
     return await isDir(path.join(home, ".config/crush"));
@@ -90,6 +106,16 @@ export const crush: ClientAdapter = {
     bundle.config.raw = config;
     bundle.mcpServers = parseCrushServers(config, warnings);
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    const homeRoot = await readAgentsDirRecursive(path.join(home, HOME_COMMANDS_REL), ".md");
+    bundle.commands = mergeAgentLists(
+      homeRoot,
+      await readAgentsDirRecursive(path.join(home, COMMANDS_REL), ".md"),
+    );
+    if (homeRoot.length) {
+      warnings.push(
+        "commands: ~/.crush/commands/ files exported; ~/.config/crush/commands/ wins on name conflicts",
+      );
+    }
     warnings.push(
       "instructions: crush context files (CRUSH.md/AGENTS.md) are project-scoped; nothing exported at user scope",
     );
@@ -125,6 +151,10 @@ export const crush: ClientAdapter = {
       warnings.push("memory: crush has no durable memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_REL, ".md"));
+      warnings.push(CRUSH_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
