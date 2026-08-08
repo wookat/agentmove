@@ -267,7 +267,10 @@ describe("custom agents layer", () => {
   it("bundle round-trips the agents layer byte-faithfully", async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-agents-"));
     const bundle = emptyBundle();
-    bundle.agents = [{ name: "reviewer", content: "---\ntools: [read]\n---\n\nReview.\n" }];
+    bundle.agents = [
+      { name: "reviewer", content: "---\ntools: [read]\n---\n\nReview.\n" },
+      { name: "team/planner", content: "Plan.\n" },
+    ];
     await writeBundle(bundle, dir);
     const back = await readBundle(dir);
     expect(back.agents).toEqual(bundle.agents);
