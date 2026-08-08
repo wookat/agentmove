@@ -135,6 +135,40 @@ export async function readAgentsDir(root: string, ext: string): Promise<AgentDef
   return agents;
 }
 
+/**
+ * Read custom agents from a directory recursively (for clients that scan
+ * subdirectories, e.g. Kimi Code CLI). Subdirectory paths become part of the
+ * agent name (`sub/helper`), so the relative layout round-trips. Hidden
+ * directories are skipped.
+ */
+export async function readAgentsDirRecursive(root: string, ext: string): Promise<AgentDef[]> {
+  const agents: AgentDef[] = [];
+  if (!(await isDir(root))) return agents;
+  const walk = async (dir: string, prefix: string): Promise<void> => {
+    for (const name of (await listDir(dir)).sort()) {
+      const full = path.join(dir, name);
+      if (await isDir(full)) {
+        if (!name.startsWith(".")) await walk(full, `${prefix}${name}/`);
+        continue;
+      }
+      if (!name.endsWith(ext) || name === ext) continue;
+      const content = await readText(full);
+      if (content !== undefined) {
+        agents.push({ name: `${prefix}${name.slice(0, -ext.length)}`, content });
+      }
+    }
+  };
+  await walk(root, "");
+  return agents;
+}
+
+/** Merge agent lists by name; later lists win on conflicts. */
+export function mergeAgentLists(...lists: AgentDef[][]): AgentDef[] {
+  const byName = new Map<string, AgentDef>();
+  for (const list of lists) for (const a of list) byName.set(a.name, a);
+  return [...byName.values()].sort((x, y) => x.name.localeCompare(y.name));
+}
+
 /** Plan writes for custom agents into a target agents root (relative to home). */
 export function planAgents(
   agents: AgentDef[],

@@ -12,9 +12,12 @@ import {
 } from "../model.js";
 import { isDir, readText } from "../fsutil.js";
 import {
+  mergeAgentLists,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -28,12 +31,21 @@ import {
  * a native `enabled` flag plus client-specific fields (bearerTokenEnvVar,
  * startupTimeoutMs, toolTimeoutMs, enabledTools, disabledTools). Global
  * instructions are ~/.kimi-code/AGENTS.md and user skills follow the Agent
- * Skills standard under ~/.kimi-code/skills/.
+ * Skills standard under ~/.kimi-code/skills/. Custom agents are markdown
+ * files with YAML frontmatter, discovered recursively under
+ * ~/.kimi-code/agents/ and the generic shared root ~/.agents/agents/ (user)
+ * plus .kimi-code/agents/ and .agents/agents/ (project); imports write only
+ * the brand-native directory to avoid double-ownership of the shared root.
  */
 const CONFIG_DIR_REL = ".kimi-code";
 const MCP_REL = ".kimi-code/mcp.json";
 const AGENTS_REL = ".kimi-code/AGENTS.md";
 const SKILLS_REL = ".kimi-code/skills";
+const AGENTS_DIR_REL = ".kimi-code/agents";
+const SHARED_AGENTS_DIR_REL = ".agents/agents";
+
+export const KIMI_AGENTS_WARNING =
+  "agents: frontmatter fields (tools/disallowedTools/subagents/model_preference/override) are client-specific and copied as-is; review after import";
 
 const CLIENT_SPECIFIC_FIELDS = [
   "bearerTokenEnvVar",
@@ -113,7 +125,8 @@ export async function planKimiMcp(
 export const kimi: ClientAdapter = {
   id: "kimi",
   label: "Kimi Code CLI",
-  defaultPath: "~/.kimi-code (mcp.json + AGENTS.md + skills/)",
+  defaultPath: "~/.kimi-code (mcp.json + AGENTS.md + skills/ + agents/)",
+  supportsAgents: true,
 
   async detect(home) {
     return isDir(path.join(home, CONFIG_DIR_REL));
@@ -129,6 +142,10 @@ export const kimi: ClientAdapter = {
     bundle.mcpServers = parseKimiServers(config, warnings);
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.agents = mergeAgentLists(
+      await readAgentsDirRecursive(path.join(home, SHARED_AGENTS_DIR_REL), ".md"),
+      await readAgentsDirRecursive(path.join(home, AGENTS_DIR_REL), ".md"),
+    );
     return { bundle, warnings };
   },
 
@@ -160,6 +177,10 @@ export const kimi: ClientAdapter = {
       warnings.push("memory: kimi has no durable memory store; skipped (consider --mif)");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
+      warnings.push(KIMI_AGENTS_WARNING);
+    }
     return { files, warnings };
   },
 };
