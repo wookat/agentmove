@@ -17,11 +17,13 @@ import {
 import { isDir, listDir, readText } from "./fsutil.js";
 import {
   appendSections,
+  mergeAgentLists,
   mergeMcpRecords,
   parseCommonMcpEntry,
   planAgents,
   planSkills,
   readAgentsDir,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -65,7 +67,12 @@ import {
   readAuggieSettings,
 } from "./adapters/auggie.js";
 import { parseKiloServers, planKiloMcp, readKiloConfig } from "./adapters/kilo.js";
-import { parseKimiServers, planKimiMcp, readKimiMcp } from "./adapters/kimi.js";
+import {
+  KIMI_AGENTS_WARNING,
+  parseKimiServers,
+  planKimiMcp,
+  readKimiMcp,
+} from "./adapters/kimi.js";
 import { parseCortexServers, planCortexMcp, readCortexMcp } from "./adapters/cortex.js";
 import { parseGrokServers, planGrokMcp, readGrokConfig } from "./adapters/grok.js";
 import { parseVibeServers, planVibeMcp, readVibeConfig } from "./adapters/vibe.js";
@@ -1466,6 +1473,7 @@ const kiloProject: ProjectAdapter = {
 };
 
 const kimiProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1474,6 +1482,10 @@ const kimiProject: ProjectAdapter = {
     bundle.mcpServers = parseKimiServers(config, warnings);
     bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".kimi-code/skills"), warnings);
+    bundle.agents = mergeAgentLists(
+      await readAgentsDirRecursive(path.join(dir, ".agents/agents"), ".md"),
+      await readAgentsDirRecursive(path.join(dir, ".kimi-code/agents"), ".md"),
+    );
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1500,6 +1512,10 @@ const kimiProject: ProjectAdapter = {
       warnings.push("memory: kimi has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".kimi-code/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".kimi-code/agents", ".md"));
+      warnings.push(KIMI_AGENTS_WARNING);
+    }
     return { files, warnings };
   },
 };

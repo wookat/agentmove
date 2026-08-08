@@ -10,6 +10,7 @@ import { cursor } from "../src/adapters/cursor.js";
 import { droid } from "../src/adapters/droid.js";
 import { codebuddy } from "../src/adapters/codebuddy.js";
 import { qoder } from "../src/adapters/qoder.js";
+import { kimi } from "../src/adapters/kimi.js";
 import { kiro } from "../src/adapters/kiro.js";
 import { opencode } from "../src/adapters/opencode.js";
 import { qwen } from "../src/adapters/qwen.js";
@@ -177,6 +178,42 @@ describe("custom agents layer", () => {
     expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
   });
 
+  it("kimi exports agents recursively from both user roots, kimi dir wins conflicts", async () => {
+    const { bundle } = await kimi.exportBundle(path.join(FIXTURES, "kimi-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual([
+      "reviewer",
+      "shared-helper",
+      "team/planner",
+    ]);
+    const brand = await fs.readFile(
+      path.join(FIXTURES, "kimi-home/.kimi-code/agents/reviewer.md"),
+      "utf8",
+    );
+    expect(bundle.agents.find((a) => a.name === "reviewer")!.content).toBe(brand);
+    const nested = await fs.readFile(
+      path.join(FIXTURES, "kimi-home/.kimi-code/agents/team/planner.md"),
+      "utf8",
+    );
+    expect(bundle.agents.find((a) => a.name === "team/planner")!.content).toBe(nested);
+    const shared = await fs.readFile(
+      path.join(FIXTURES, "kimi-home/.agents/agents/shared-helper.md"),
+      "utf8",
+    );
+    expect(bundle.agents.find((a) => a.name === "shared-helper")!.content).toBe(shared);
+  });
+
+  it("kimi plans agents into ~/.kimi-code/agents/*.md (nested paths kept) with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [
+      { name: "helper", content: "Help.\n" },
+      { name: "team/planner", content: "Plan.\n" },
+    ];
+    const { files, warnings } = await kimi.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".kimi-code/agents/helper.md")).toBe(true);
+    expect(files.some((f) => f.path === ".kimi-code/agents/team/planner.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
+  });
+
   it("opencode plans agents into ~/.config/opencode/agents/*.md with a warning", async () => {
     const bundle = emptyBundle();
     bundle.agents = [{ name: "helper", content: "Help.\n" }];
@@ -223,12 +260,17 @@ describe("custom agents layer", () => {
     expect(codebuddyFiles.some((f) => f.path === ".codebuddy/agents/helper.md")).toBe(true);
     const qoderFiles = (await getProjectAdapter("qoder").planImport(bundle, "/p", {})).files;
     expect(qoderFiles.some((f) => f.path === ".qoder/agents/helper.md")).toBe(true);
+    const kimiFiles = (await getProjectAdapter("kimi").planImport(bundle, "/p", {})).files;
+    expect(kimiFiles.some((f) => f.path === ".kimi-code/agents/helper.md")).toBe(true);
   });
 
   it("bundle round-trips the agents layer byte-faithfully", async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-agents-"));
     const bundle = emptyBundle();
-    bundle.agents = [{ name: "reviewer", content: "---\ntools: [read]\n---\n\nReview.\n" }];
+    bundle.agents = [
+      { name: "reviewer", content: "---\ntools: [read]\n---\n\nReview.\n" },
+      { name: "team/planner", content: "Plan.\n" },
+    ];
     await writeBundle(bundle, dir);
     const back = await readBundle(dir);
     expect(back.agents).toEqual(bundle.agents);

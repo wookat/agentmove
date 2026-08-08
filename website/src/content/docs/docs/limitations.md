@@ -104,14 +104,19 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `.cursor/agents/`), Kiro (`~/.kiro/agents/`, project
   `.kiro/agents/`), Droid (`~/.factory/droids/`, project
   `.factory/droids/`), CodeBuddy (`~/.codebuddy/agents/`, project
-  `.codebuddy/agents/`), and Qoder CLI (`~/.qoder/agents/`, project
-  `.qoder/agents/`).
+  `.codebuddy/agents/`), Qoder CLI (`~/.qoder/agents/`, project
+  `.qoder/agents/`), and Kimi Code CLI (`~/.kimi-code/agents/` plus the
+  shared `~/.agents/agents/`, project `.kimi-code/agents/` plus
+  `.agents/agents/`; directories are scanned recursively and subdirectory
+  paths are preserved — imports write only the brand-native
+  `.kimi-code/agents/` directory).
 - Content is copied **as-is**, including YAML frontmatter. Fields like
   `tools:`, `model:`, Cursor's `read_only:`/`is_background:`, Kiro's
   `permissions:`, Droid's `reasoningEffort:`/`mcpServers:`, Qoder's
-  `skills:`/`mcpServers:` allowlists, and CodeBuddy's
-  `effort:`/`maxTurns:`/`memory:`/`mcpServers:` are client-specific and may
-  need review after import — a warning is emitted.
+  `skills:`/`mcpServers:` allowlists, CodeBuddy's
+  `effort:`/`maxTurns:`/`memory:`/`mcpServers:`, and Kimi Code CLI's
+  `disallowedTools:`/`subagents:`/`model_preference:`/`override:` are
+  client-specific and may need review after import — a warning is emitted.
 - Kiro also accepts JSON agent configs (`.kiro/agents/*.json`); those are
   **not** migrated (warned) — Kiro supports the same fields in markdown.
 - Gemini CLI subagents are experimental (enabled by default;

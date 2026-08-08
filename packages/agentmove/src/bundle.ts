@@ -65,9 +65,10 @@ export async function writeBundle(bundle: Bundle, dir: string): Promise<void> {
     }
   }
   if (bundle.agents.length) {
-    await fs.mkdir(path.join(dir, "agents"), { recursive: true });
     for (const agent of bundle.agents) {
-      await fs.writeFile(path.join(dir, "agents", `${agent.name}.md`), agent.content);
+      const file = path.join(dir, "agents", `${agent.name}.md`);
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, agent.content);
     }
   }
 }
@@ -122,11 +123,19 @@ export async function readBundle(dir: string): Promise<Bundle> {
   const agentsDir = path.join(dir, "agents");
   if (await isDir(agentsDir)) {
     const agents: AgentDef[] = [];
-    for (const name of (await listDir(agentsDir)).sort()) {
-      if (!name.endsWith(".md")) continue;
-      const content = await readText(path.join(agentsDir, name));
-      if (content !== undefined) agents.push({ name: name.slice(0, -3), content });
-    }
+    const walk = async (sub: string, prefix: string): Promise<void> => {
+      for (const name of (await listDir(sub)).sort()) {
+        const full = path.join(sub, name);
+        if (await isDir(full)) {
+          await walk(full, `${prefix}${name}/`);
+          continue;
+        }
+        if (!name.endsWith(".md")) continue;
+        const content = await readText(full);
+        if (content !== undefined) agents.push({ name: `${prefix}${name.slice(0, -3)}`, content });
+      }
+    };
+    await walk(agentsDir, "");
     bundle.agents = agents;
   }
   return bundle;
