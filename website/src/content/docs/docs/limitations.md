@@ -99,11 +99,12 @@ persona, and a later export won't recover it as a separate `persona.md`.
   Copilot CLI (`~/.copilot/agents/*.agent.md`, project `.github/agents/`),
   Gemini CLI (`~/.gemini/agents/`, project `.gemini/agents/`), OpenCode
   (`~/.config/opencode/agents/`, legacy `agent/` also read, project
-  `.opencode/agents/`), and Qwen Code (`~/.qwen/agents/`, project
-  `.qwen/agents/`).
+  `.opencode/agents/`), Qwen Code (`~/.qwen/agents/`, project
+  `.qwen/agents/`), and Cursor (`~/.cursor/agents/`, project
+  `.cursor/agents/`).
 - Content is copied **as-is**, including YAML frontmatter. Fields like
-  `tools:` and `model:` are client-specific and may need review after
-  import — a warning is emitted.
+  `tools:`, `model:`, and Cursor's `read_only:`/`is_background:` are
+  client-specific and may need review after import — a warning is emitted.
 - Gemini CLI subagents are experimental (enabled by default;
   `"experimental": {"enableAgents": false}` in `settings.json` disables
   them) — warned on import.

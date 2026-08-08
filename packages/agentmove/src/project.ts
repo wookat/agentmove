@@ -228,6 +228,7 @@ const geminiProject: ProjectAdapter = {
 };
 
 const cursorProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -250,6 +251,7 @@ const cursorProject: ProjectAdapter = {
       }
     }
     bundle.skills = await readSkillsDir(path.join(dir, ".cursor/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".cursor/agents"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -284,6 +286,12 @@ const cursorProject: ProjectAdapter = {
     }
     if (bundle.memory.length) warnings.push("memory: cursor memories are app-managed; skipped");
     files.push(...planSkills(bundle.skills, ".cursor/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".cursor/agents", ".md"));
+      warnings.push(
+        "agents: frontmatter fields (model/read_only/is_background) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };
