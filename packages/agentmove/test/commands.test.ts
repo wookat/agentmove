@@ -19,6 +19,8 @@ import { kilo } from "../src/adapters/kilo.js";
 import { cline } from "../src/adapters/cline.js";
 import { auggie } from "../src/adapters/auggie.js";
 import { nanocoder } from "../src/adapters/nanocoder.js";
+import { continueAdapter } from "../src/adapters/continue.js";
+import { vscode } from "../src/adapters/vscode.js";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
 import { readBundle, writeBundle } from "../src/bundle.js";
@@ -530,6 +532,79 @@ describe("custom commands layer", () => {
     expect(auFiles.some((f) => f.path === ".augment/commands/frontend/component.md")).toBe(true);
     const naFiles = (await getProjectAdapter("nanocoder").planImport(na.bundle, "/p", {})).files;
     expect(naFiles.some((f) => f.path === ".nanocoder/commands/git/commit.md")).toBe(true);
+  });
+
+  it("continue exports ~/.continue/prompts recursively, byte-faithfully (legacy .prompt warned)", async () => {
+    const { bundle, warnings } = await continueAdapter.exportBundle(
+      path.join(FIXTURES, "continue-home"),
+    );
+    expect(bundle.commands.map((c) => c.name)).toEqual(["explain", "team/review"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "continue-home/.continue/prompts/explain.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "explain")!.content).toBe(raw);
+    expect(
+      warnings.some(
+        (w) => w.includes("commands:legacy.prompt") && w.includes("legacy v1 .prompt files"),
+      ),
+    ).toBe(true);
+  });
+
+  it("continue plans commands into ~/.continue/prompts (nested names kept) with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "explain", content: "Explain.\n" },
+      { name: "team/review", content: "Review.\n" },
+    ];
+    const { files, warnings } = await continueAdapter.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".continue/prompts/explain.md")).toBe(true);
+    expect(files.some((f) => f.path === ".continue/prompts/team/review.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("invokable: true"))).toBe(true);
+  });
+
+  it("vscode exports only *.prompt.md from the User/prompts folder, byte-faithfully", async () => {
+    const { bundle } = await vscode.exportBundle(path.join(FIXTURES, "vscode-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["gen-tests"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "vscode-home/.config/Code/User/prompts/gen-tests.prompt.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+  });
+
+  it("vscode plans flat <name>.prompt.md files, flattening nested names with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "gen-tests", content: "Tests.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await vscode.planImport(bundle, "/nonexistent-home", {});
+    expect(
+      files.some((f) => f.path === ".config/Code/User/prompts/gen-tests.prompt.md"),
+    ).toBe(true);
+    expect(
+      files.some((f) => f.path === ".config/Code/User/prompts/git-commit.prompt.md"),
+    ).toBe(true);
+    expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("Settings Sync"))).toBe(true);
+  });
+
+  it("project scope: continue and vscode commands round-trip", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-cmd-proj8-"));
+    await fs.mkdir(path.join(dir, ".continue/prompts/team"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".continue/prompts/explain.md"), "Explain.\n");
+    await fs.writeFile(path.join(dir, ".continue/prompts/team/review.md"), "Review.\n");
+    await fs.mkdir(path.join(dir, ".github/prompts"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".github/prompts/gen-tests.prompt.md"), "Tests.\n");
+    const co = await getProjectAdapter("continue").exportProject(dir);
+    expect(co.bundle.commands.map((c) => c.name)).toEqual(["explain", "team/review"]);
+    const vs = await getProjectAdapter("vscode").exportProject(dir);
+    expect(vs.bundle.commands.map((c) => c.name)).toEqual(["gen-tests"]);
+    const coFiles = (await getProjectAdapter("continue").planImport(co.bundle, "/p", {})).files;
+    expect(coFiles.some((f) => f.path === ".continue/prompts/team/review.md")).toBe(true);
+    const vsFiles = (await getProjectAdapter("vscode").planImport(vs.bundle, "/p", {})).files;
+    expect(vsFiles.some((f) => f.path === ".github/prompts/gen-tests.prompt.md")).toBe(true);
   });
 
   it("bundle round-trips the commands layer byte-faithfully (nested names)", async () => {

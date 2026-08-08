@@ -15,7 +15,9 @@ import { isDir, listDir, readText } from "../fsutil.js";
 import {
   appendSections,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDirRecursive,
   readSkillsDir,
   touchesMcpConfig,
 } from "./shared.js";
@@ -25,10 +27,39 @@ import {
  * `mcpServers` list (not map) of ~/.continue/config.yaml; each entry carries
  * its own `name` and remote entries use `type: sse`/`streamable-http` + `url`.
  * Global rules are markdown files under ~/.continue/rules/.
+ *
+ * Prompt files (slash commands) are markdown files under ~/.continue/prompts/
+ * (workspace scope: .continue/prompts/), discovered recursively; a file is
+ * listed as a `/` slash command when its frontmatter sets `invokable: true`.
+ * Legacy `.prompt` files use the v1 prompt-file format and are not migrated.
  */
 const CONFIG_REL = ".continue/config.yaml";
 const RULES_REL = ".continue/rules";
 const SKILLS_REL = ".continue/skills";
+const COMMANDS_REL = ".continue/prompts";
+
+export const CONTINUE_COMMANDS_WARNING =
+  "commands: continue lists a prompt file as a slash command only when its frontmatter sets invokable: true; frontmatter copied as-is, review after import";
+
+/** Warn (per file) about legacy v1 .prompt files, which are not migrated. */
+export async function warnContinueLegacyPromptFiles(
+  root: string,
+  warnings: string[],
+  prefix = "",
+): Promise<void> {
+  if (!(await isDir(root))) return;
+  for (const name of (await listDir(root)).sort()) {
+    if (name.startsWith(".")) continue;
+    const full = path.join(root, name);
+    if (await isDir(full)) {
+      await warnContinueLegacyPromptFiles(full, warnings, `${prefix}${name}/`);
+    } else if (name.endsWith(".prompt")) {
+      warnings.push(
+        `commands:${prefix}${name}: continue legacy v1 .prompt files are not migrated; convert to markdown prompts first`,
+      );
+    }
+  }
+}
 
 const CLIENT_KEYS = ["requestOptions", "connectionTimeout"] as const;
 
@@ -144,7 +175,8 @@ export async function readRulesDir(
 const continueAdapter: ClientAdapter = {
   id: "continue",
   label: "Continue",
-  defaultPath: "~/.continue (config.yaml + rules/ + skills/)",
+  defaultPath: "~/.continue (config.yaml + rules/ + skills/ + prompts/)",
+  supportsCommands: true,
 
   async detect(home) {
     return await isDir(path.join(home, ".continue"));
@@ -160,6 +192,8 @@ const continueAdapter: ClientAdapter = {
     bundle.mcpServers = parseContinueServers(config, warnings);
     bundle.instructions = await readRulesDir(path.join(home, RULES_REL), warnings, "global");
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_REL), ".md");
+    await warnContinueLegacyPromptFiles(path.join(home, COMMANDS_REL), warnings);
     return { bundle, warnings };
   },
 
@@ -203,6 +237,10 @@ const continueAdapter: ClientAdapter = {
       warnings.push("memory: continue has no durable memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_REL, ".md"));
+      warnings.push(CONTINUE_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };

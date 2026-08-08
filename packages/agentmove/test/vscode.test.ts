@@ -19,7 +19,11 @@ describe("vscode adapter", () => {
     expect(byName.playwright!.env).toEqual({ API_TOKEN: "test-not-a-real-token" });
     expect(byName.github!.transport).toBe("http");
     expect(byName.github!.url).toBe("https://api.githubcopilot.com/mcp");
-    expect(warnings.some((w) => w.includes("only user MCP servers and skills migrate"))).toBe(true);
+    expect(
+      warnings.some((w) =>
+        w.includes("user MCP servers, skills, and default-profile prompt files migrate"),
+      ),
+    ).toBe(true);
   });
 
   it("exports personal skills from ~/.agents/skills", async () => {

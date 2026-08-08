@@ -32,7 +32,13 @@ import {
 import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
 import { parseGooseMemoryFile } from "./adapters/goose.js";
 import { renderAmpEntry } from "./adapters/amp.js";
-import { parseVscodeServers, renderVscodeServers } from "./adapters/vscode.js";
+import {
+  parseVscodeServers,
+  planVscodePrompts,
+  renderVscodeServers,
+  VSCODE_COMMANDS_WARNING,
+  VSCODE_PROMPT_EXT,
+} from "./adapters/vscode.js";
 import { parseKiroServers, renderKiroServers, warnKiroJsonAgents } from "./adapters/kiro.js";
 import {
   parseRooServers,
@@ -41,10 +47,12 @@ import {
   ROO_COMMANDS_WARNING,
 } from "./adapters/roo.js";
 import {
+  CONTINUE_COMMANDS_WARNING,
   mergeContinueServers,
   parseContinueServers,
   readRulesDir as readContinueRulesDir,
   renderContinueServers,
+  warnContinueLegacyPromptFiles,
 } from "./adapters/continue.js";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { parseCrushServers, renderCrushServers } from "./adapters/crush.js";
@@ -816,12 +824,14 @@ const ampProject: ProjectAdapter = {
 };
 
 const vscodeProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
     bundle.manifest.exportedFrom = "vscode";
     const config = await readJsonMap(path.join(dir, ".vscode/mcp.json"));
     bundle.mcpServers = parseVscodeServers(config, warnings);
+    bundle.commands = await readAgentsDir(path.join(dir, ".github/prompts"), VSCODE_PROMPT_EXT);
     bundle.instructions = await readText(path.join(dir, ".github/copilot-instructions.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".github/skills"), warnings);
     return { bundle, warnings };
@@ -846,6 +856,10 @@ const vscodeProject: ProjectAdapter = {
     if (bundle.persona) warnings.push("persona: no project-scoped slot in vscode; skipped");
     if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in vscode; skipped");
     files.push(...planSkills(bundle.skills, ".github/skills"));
+    if (bundle.commands.length) {
+      files.push(...planVscodePrompts(bundle.commands, ".github/prompts", warnings));
+      warnings.push(VSCODE_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
@@ -993,6 +1007,7 @@ const rooProject: ProjectAdapter = {
 };
 
 const continueProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1026,6 +1041,8 @@ const continueProject: ProjectAdapter = {
       "project",
     );
     bundle.skills = await readSkillsDir(path.join(dir, ".continue/skills"), warnings);
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".continue/prompts"), ".md");
+    await warnContinueLegacyPromptFiles(path.join(dir, ".continue/prompts"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1053,6 +1070,10 @@ const continueProject: ProjectAdapter = {
       warnings.push("memory: continue has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".continue/skills"));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".continue/prompts", ".md"));
+      warnings.push(CONTINUE_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
