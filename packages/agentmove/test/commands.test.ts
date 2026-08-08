@@ -11,6 +11,8 @@ import { opencode } from "../src/adapters/opencode.js";
 import { qwen } from "../src/adapters/qwen.js";
 import { windsurf } from "../src/adapters/windsurf.js";
 import { amazonq } from "../src/adapters/amazonq.js";
+import { codebuddy } from "../src/adapters/codebuddy.js";
+import { droid } from "../src/adapters/droid.js";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
 import { readBundle, writeBundle } from "../src/bundle.js";
@@ -116,6 +118,71 @@ describe("custom commands layer", () => {
     expect(wsFiles.some((f) => f.path === ".windsurf/workflows/review.md")).toBe(true);
     const aqFiles = (await getProjectAdapter("amazonq").planImport(aq.bundle, "/p", {})).files;
     expect(aqFiles.some((f) => f.path === ".amazonq/prompts/analyze.md")).toBe(true);
+  });
+
+  it("codebuddy exports ~/.codebuddy/commands recursively, byte-faithfully", async () => {
+    const { bundle } = await codebuddy.exportBundle(path.join(FIXTURES, "codebuddy-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["team/deploy"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "codebuddy-home/.codebuddy/commands/team/deploy.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+  });
+
+  it("droid exports ~/.factory/commands markdown and warns on script commands", async () => {
+    const { bundle, warnings } = await droid.exportBundle(path.join(FIXTURES, "droid-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["review"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "droid-home/.factory/commands/review.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+    expect(
+      warnings.some(
+        (w) => w.includes("commands:cleanup.sh") && w.includes("script commands are not migrated"),
+      ),
+    ).toBe(true);
+  });
+
+  it("codebuddy plans commands into ~/.codebuddy/commands (nested names kept) with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "deploy", content: "Deploy.\n" },
+      { name: "team/deploy", content: "Team deploy.\n" },
+    ];
+    const { files, warnings } = await codebuddy.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".codebuddy/commands/deploy.md")).toBe(true);
+    expect(files.some((f) => f.path === ".codebuddy/commands/team/deploy.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("$ARGUMENTS"))).toBe(true);
+  });
+
+  it("droid plans commands into ~/.factory/commands (nested names kept) with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "review", content: "Review.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await droid.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".factory/commands/review.md")).toBe(true);
+    expect(files.some((f) => f.path === ".factory/commands/git/commit.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("slugs command filenames"))).toBe(true);
+  });
+
+  it("project scope: codebuddy and droid commands round-trip", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-cmd-proj4-"));
+    await fs.mkdir(path.join(dir, ".codebuddy/commands/team"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".codebuddy/commands/team/deploy.md"), "Deploy.\n");
+    await fs.mkdir(path.join(dir, ".factory/commands"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".factory/commands/review.md"), "Review.\n");
+    const cb = await getProjectAdapter("codebuddy").exportProject(dir);
+    expect(cb.bundle.commands.map((c) => c.name)).toEqual(["team/deploy"]);
+    const dr = await getProjectAdapter("droid").exportProject(dir);
+    expect(dr.bundle.commands.map((c) => c.name)).toEqual(["review"]);
+    const cbFiles = (await getProjectAdapter("codebuddy").planImport(cb.bundle, "/p", {})).files;
+    expect(cbFiles.some((f) => f.path === ".codebuddy/commands/team/deploy.md")).toBe(true);
+    const drFiles = (await getProjectAdapter("droid").planImport(dr.bundle, "/p", {})).files;
+    expect(drFiles.some((f) => f.path === ".factory/commands/review.md")).toBe(true);
   });
 
   it("claude-code plans commands into ~/.claude/commands (nested names kept) with a warning", async () => {

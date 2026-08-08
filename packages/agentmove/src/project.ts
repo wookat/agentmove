@@ -43,7 +43,12 @@ import {
 } from "./adapters/continue.js";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { parseCrushServers, renderCrushServers } from "./adapters/crush.js";
-import { parseDroidServers, renderDroidServers } from "./adapters/droid.js";
+import {
+  DROID_COMMANDS_WARNING,
+  parseDroidServers,
+  renderDroidServers,
+  warnDroidScriptCommands,
+} from "./adapters/droid.js";
 import { parseAmazonqServers, renderAmazonqServers } from "./adapters/amazonq.js";
 import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/warp.js";
 import { parseJunieServers, renderJunieServers } from "./adapters/junie.js";
@@ -51,6 +56,7 @@ import { parseTraeServers, planTraeMcp } from "./adapters/trae.js";
 import { parseComateServers, planComateMcp } from "./adapters/comate.js";
 import {
   CODEBUDDY_AGENTS_WARNING,
+  CODEBUDDY_COMMANDS_WARNING,
   parseCodebuddyServers,
   planCodebuddyMcp,
   readCodebuddyMcp,
@@ -1110,6 +1116,7 @@ const antigravityProject: ProjectAdapter = {
 
 const droidProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1121,6 +1128,8 @@ const droidProject: ProjectAdapter = {
       (await readText(path.join(dir, ".factory/AGENTS.md")));
     bundle.skills = await readSkillsDir(path.join(dir, ".factory/skills"), warnings);
     bundle.agents = await readAgentsDir(path.join(dir, ".factory/droids"), ".md");
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".factory/commands"), ".md");
+    await warnDroidScriptCommands(path.join(dir, ".factory/commands"), warnings);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1150,6 +1159,10 @@ const droidProject: ProjectAdapter = {
       warnings.push(
         "agents: frontmatter fields (tools/model/reasoningEffort/mcpServers) are client-specific and copied as-is; review after import",
       );
+    }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".factory/commands", ".md"));
+      warnings.push(DROID_COMMANDS_WARNING);
     }
     return { files, warnings };
   },
@@ -1340,6 +1353,7 @@ const traeProject: ProjectAdapter = {
 
 const codebuddyProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1359,6 +1373,7 @@ const codebuddyProject: ProjectAdapter = {
     }
     bundle.skills = await readSkillsDir(path.join(dir, ".codebuddy/skills"), warnings);
     bundle.agents = await readAgentsDir(path.join(dir, ".codebuddy/agents"), ".md");
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".codebuddy/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1388,6 +1403,10 @@ const codebuddyProject: ProjectAdapter = {
     if (bundle.agents.length) {
       files.push(...planAgents(bundle.agents, ".codebuddy/agents", ".md"));
       warnings.push(CODEBUDDY_AGENTS_WARNING);
+    }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".codebuddy/commands", ".md"));
+      warnings.push(CODEBUDDY_COMMANDS_WARNING);
     }
     return { files, warnings };
   },

@@ -19,6 +19,7 @@ import {
   planAgents,
   planSkills,
   readAgentsDir,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -40,9 +41,15 @@ const MCP_CANDIDATES = [".codebuddy/.mcp.json", ".codebuddy/mcp.json", ".codebud
 const MEMORY_REL = ".codebuddy/CODEBUDDY.md";
 const SKILLS_REL = ".codebuddy/skills";
 const AGENTS_DIR_REL = ".codebuddy/agents";
+// Custom slash commands: markdown files, nested directories become
+// colon-namespaced names (commands/team/deploy.md -> /team:deploy).
+const COMMANDS_DIR_REL = ".codebuddy/commands";
 
 export const CODEBUDDY_AGENTS_WARNING =
   "agents: frontmatter fields (tools/model/effort/maxTurns/memory/mcpServers) are client-specific and copied as-is; review after import";
+
+export const CODEBUDDY_COMMANDS_WARNING =
+  "commands: frontmatter fields (description/argument-hint/model/allowed-tools/disable-model-invocation) and argument placeholders ($ARGUMENTS) are client-specific and copied as-is; review after import";
 
 export async function readCodebuddyMcp(
   candidates: string[],
@@ -127,8 +134,9 @@ export async function planCodebuddyMcp(
 export const codebuddy: ClientAdapter = {
   id: "codebuddy",
   label: "CodeBuddy",
-  defaultPath: "~/.codebuddy (.mcp.json + CODEBUDDY.md + skills/ + agents/)",
+  defaultPath: "~/.codebuddy (.mcp.json + CODEBUDDY.md + skills/ + agents/ + commands/)",
   supportsAgents: true,
+  supportsCommands: true,
 
   async detect(home) {
     return (
@@ -156,6 +164,7 @@ export const codebuddy: ClientAdapter = {
     }
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
+    bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -190,6 +199,10 @@ export const codebuddy: ClientAdapter = {
     if (bundle.agents.length) {
       files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
       warnings.push(CODEBUDDY_AGENTS_WARNING);
+    }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_DIR_REL, ".md"));
+      warnings.push(CODEBUDDY_COMMANDS_WARNING);
     }
     return { files, warnings };
   },
