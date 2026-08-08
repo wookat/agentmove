@@ -22,6 +22,7 @@ import { nanocoder } from "../src/adapters/nanocoder.js";
 import { continueAdapter } from "../src/adapters/continue.js";
 import { vscode } from "../src/adapters/vscode.js";
 import { gemini, geminiCommandToToml } from "../src/adapters/gemini.js";
+import { crush } from "../src/adapters/crush.js";
 import { parse as parseToml } from "smol-toml";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
@@ -682,6 +683,48 @@ describe("custom commands layer", () => {
     const toml = geminiCommandToToml({ name: "plain", content: "Just a prompt.\n" }, warnings);
     expect((parseToml(toml) as { prompt: string }).prompt).toBe("Just a prompt.\n");
     expect(warnings).toEqual([]);
+  });
+
+  it("crush exports both user command roots recursively (XDG wins on conflicts)", async () => {
+    const { bundle, warnings } = await crush.exportBundle(path.join(FIXTURES, "crush-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["deploy", "git/commit", "review-pr"]);
+    const xdgRaw = await fs.readFile(
+      path.join(FIXTURES, "crush-home/.config/crush/commands/review-pr.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "review-pr")!.content).toBe(xdgRaw);
+    const homeRaw = await fs.readFile(
+      path.join(FIXTURES, "crush-home/.crush/commands/deploy.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "deploy")!.content).toBe(homeRaw);
+    expect(warnings.some((w) => w.includes("~/.crush/commands/ files exported"))).toBe(true);
+  });
+
+  it("crush plans nested commands into ~/.config/crush/commands only", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "git/commit", content: "Commit.\n" },
+      { name: "review-pr", content: "Review $PR_NUMBER.\n" },
+    ];
+    const { files, warnings } = await crush.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".config/crush/commands/git/commit.md")).toBe(true);
+    const written = files.find((f) => f.path === ".config/crush/commands/review-pr.md")!;
+    expect(written.content).toBe("Review $PR_NUMBER.\n");
+    expect(files.some((f) => f.path.startsWith(".crush/"))).toBe(false);
+    expect(warnings.some((w) => w.includes("$NAME argument placeholders"))).toBe(true);
+  });
+
+  it("project scope: crush commands round-trip under .crush/commands", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-crushproj-"));
+    await fs.mkdir(path.join(dir, ".crush/commands/git"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".crush/commands/git/commit.md"), "Commit.\n");
+    const ex = await getProjectAdapter("crush").exportProject(dir);
+    expect(ex.bundle.commands.map((c) => c.name)).toEqual(["git/commit"]);
+    const { files, warnings } = await getProjectAdapter("crush").planImport(ex.bundle, "/p", {});
+    const written = files.find((f) => f.path === ".crush/commands/git/commit.md")!;
+    expect(written.content).toBe("Commit.\n");
+    expect(warnings.some((w) => w.includes("$NAME argument placeholders"))).toBe(true);
   });
 
   it("bundle round-trips the commands layer byte-faithfully (nested names)", async () => {

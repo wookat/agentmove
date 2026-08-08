@@ -160,12 +160,14 @@ persona, and a later export won't recover it as a separate `persona.md`.
   namespaces), Continue (prompt files: `~/.continue/prompts/`, project
   `.continue/prompts/`; subdirectories preserved), VS Code (Copilot
   prompt files: default-profile `User/prompts/*.prompt.md`, project
-  `.github/prompts/*.prompt.md`; flat), and Gemini CLI
+  `.github/prompts/*.prompt.md`; flat), Gemini CLI
   (`~/.gemini/commands/**/*.toml`, project `.gemini/commands/`;
   subdirectories preserved as `:`-separated namespaces — a format
-  conversion, see below).
+  conversion, see below), and Crush (`~/.config/crush/commands/` plus
+  the secondary `~/.crush/commands/` root, project `.crush/commands/`;
+  subdirectories preserved as `:`-separated namespaces).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
-  `$1`…, `{{args}}`, `!{...}`, `@{...}`) and frontmatter fields
+  `$1`…, `{{args}}`, `!{...}`, `@{...}`, crush `$NAME`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
   client-specific and may need review after import — a warning is
   emitted.
@@ -208,6 +210,15 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `prompt` string are **not** migrated (warned per file); undocumented
   TOML fields are dropped with a per-file warning. `{{args}}`, `!{...}`,
   and `@{...}` placeholders are gemini-specific and copied as-is.
+- Crush reads two user command roots — `~/.config/crush/commands/` (XDG)
+  and `~/.crush/commands/` — both recursively; exports merge them with the
+  XDG root winning on name conflicts (warned), and imports write only the
+  XDG root so commands are not duplicated across roots. `$NAME` argument
+  placeholders are prompted for by Crush at invocation time and are
+  client-specific (warned). MCP-server prompts shown in the command
+  palette are runtime features, not files — never migrated. A custom
+  `data_directory` in crush.json can move the project commands root;
+  agentmove uses the default `.crush/commands/` only.
 - VS Code prompt files are only read from and written to the default
   profile's `User/prompts` folder (`*.prompt.md` files only — other
   customization types in that folder belong to their own layers);

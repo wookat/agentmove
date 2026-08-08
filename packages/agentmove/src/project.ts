@@ -61,7 +61,7 @@ import {
   warnContinueLegacyPromptFiles,
 } from "./adapters/continue.js";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { parseCrushServers, renderCrushServers } from "./adapters/crush.js";
+import { CRUSH_COMMANDS_WARNING, parseCrushServers, renderCrushServers } from "./adapters/crush.js";
 import {
   DROID_COMMANDS_WARNING,
   parseDroidServers,
@@ -1092,6 +1092,7 @@ const continueProject: ProjectAdapter = {
 };
 
 const crushProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1104,6 +1105,7 @@ const crushProject: ProjectAdapter = {
       (await readText(path.join(dir, "CRUSH.md"))) ??
       (await readText(path.join(dir, "AGENTS.md")));
     bundle.skills = await readSkillsDir(path.join(dir, ".crush/skills"), warnings);
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".crush/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1130,6 +1132,10 @@ const crushProject: ProjectAdapter = {
       warnings.push("memory: crush has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".crush/skills"));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".crush/commands", ".md"));
+      warnings.push(CRUSH_COMMANDS_WARNING);
+    }
     return { files, warnings };
   },
 };
