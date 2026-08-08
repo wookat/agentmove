@@ -79,6 +79,34 @@ describe("copilot adapter", () => {
     ).toBe(true);
   });
 
+  it("project scope: exports .claude/commands recursively, byte-faithful", async () => {
+    const adapter = getProjectAdapter("copilot");
+    const { bundle } = await adapter.exportProject(path.join(FIXTURES, "copilot-project"));
+    expect(bundle.commands.map((c) => c.name).sort()).toEqual(["git/commit", "review"]);
+    const review = bundle.commands.find((c) => c.name === "review")!;
+    expect(review.content).toContain("allowed-tools: shell");
+    expect(review.content).toContain("Review the staged diff");
+    const commit = bundle.commands.find((c) => c.name === "git/commit")!;
+    expect(commit.content).toBe("Write a conventional commit message for $ARGUMENTS.\n");
+  });
+
+  it("project scope: imports commands into .claude/commands with review + nested warnings", async () => {
+    const adapter = getProjectAdapter("copilot");
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "deploy", content: "Deploy the app.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await adapter.planImport(bundle, "/nonexistent-project", {});
+    expect(files.some((f) => f.path === ".claude/commands/deploy.md")).toBe(true);
+    expect(files.some((f) => f.path === ".claude/commands/git/commit.md")).toBe(true);
+    expect(
+      warnings.some((w) => w.startsWith("commands:git/commit:") && w.includes("may not be discovered")),
+    ).toBe(true);
+    expect(warnings.some((w) => w.includes("Claude-compatible .claude/commands/"))).toBe(true);
+    expect(adapter.supportsCommands).toBe(true);
+  });
+
   it("project scope: plans skills into .github/skills", async () => {
     const adapter = getProjectAdapter("copilot");
     const bundle = emptyBundle();

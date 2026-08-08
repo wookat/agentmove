@@ -250,10 +250,16 @@ persona, and a later export won't recover it as a separate `persona.md`.
   commands ship only inside plugins, so project-scope imports skip
   commands with a warning), goose (recipes:
   `~/.config/goose/recipes/*.yaml|json`, project `.goose/recipes/`;
-  flat — a format conversion, see below), and Antigravity (workflows:
+  flat — a format conversion, see below), Antigravity (workflows:
   `~/.gemini/config/global_workflows/`, project `.agents/workflows/`;
   flat, triggered as `/name` in AGY and AGY IDE — AGY CLI lists
-  workflows but cannot trigger them).
+  workflows but cannot trigger them), and GitHub Copilot CLI (project
+  scope only: Claude-compatible `.claude/commands/` single-file
+  commands, added in copilot 0.0.399 — there is no user-level commands
+  root since copilot 1.0.36 stopped loading `~/.claude/`, so user-scope
+  imports skip commands with a warning; copilot documents only
+  single-file commands, so nested names are kept for Claude Code
+  compatibility but warned that copilot may not discover them).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
   `$1`…, `{{args}}`, `!{...}`, `@{...}`, crush `$NAME`) and frontmatter fields
   (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
