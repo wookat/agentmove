@@ -31,6 +31,12 @@ import {
 } from "./adapters/shared.js";
 import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
 import { parseGooseMemoryFile } from "./adapters/goose.js";
+import {
+  GEMINI_COMMANDS_EXPORT_WARNING,
+  GEMINI_COMMANDS_IMPORT_WARNING,
+  planGeminiCommands,
+  readGeminiCommands,
+} from "./adapters/gemini.js";
 import { renderAmpEntry } from "./adapters/amp.js";
 import {
   parseVscodeServers,
@@ -241,6 +247,7 @@ const codexProject: ProjectAdapter = {
 
 const geminiProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -252,6 +259,8 @@ const geminiProject: ProjectAdapter = {
     bundle.instructions = await readText(path.join(dir, "GEMINI.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".gemini/skills"), warnings);
     bundle.agents = await readAgentsDir(path.join(dir, ".gemini/agents"), ".md");
+    bundle.commands = await readGeminiCommands(path.join(dir, ".gemini/commands"), warnings);
+    if (bundle.commands.length) warnings.push(GEMINI_COMMANDS_EXPORT_WARNING);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -278,6 +287,10 @@ const geminiProject: ProjectAdapter = {
         'agents: gemini subagents are experimental (enabled by default; "experimental": {"enableAgents": false} disables them); ' +
           "frontmatter fields are client-specific and copied as-is",
       );
+    }
+    if (bundle.commands.length) {
+      files.push(...planGeminiCommands(bundle.commands, ".gemini/commands", warnings));
+      warnings.push(GEMINI_COMMANDS_IMPORT_WARNING);
     }
     return { files, warnings };
   },

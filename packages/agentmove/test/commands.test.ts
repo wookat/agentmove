@@ -21,6 +21,8 @@ import { auggie } from "../src/adapters/auggie.js";
 import { nanocoder } from "../src/adapters/nanocoder.js";
 import { continueAdapter } from "../src/adapters/continue.js";
 import { vscode } from "../src/adapters/vscode.js";
+import { gemini, geminiCommandToToml } from "../src/adapters/gemini.js";
+import { parse as parseToml } from "smol-toml";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
 import { readBundle, writeBundle } from "../src/bundle.js";
@@ -605,6 +607,81 @@ describe("custom commands layer", () => {
     expect(coFiles.some((f) => f.path === ".continue/prompts/team/review.md")).toBe(true);
     const vsFiles = (await getProjectAdapter("vscode").planImport(vs.bundle, "/p", {})).files;
     expect(vsFiles.some((f) => f.path === ".github/prompts/gen-tests.prompt.md")).toBe(true);
+  });
+
+  it("gemini exports ~/.gemini/commands TOML files as markdown commands (nested names kept)", async () => {
+    const { bundle, warnings } = await gemini.exportBundle(path.join(FIXTURES, "gemini-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["changelog", "git/commit"]);
+    const changelog = bundle.commands.find((c) => c.name === "changelog")!;
+    expect(changelog.content.startsWith('---\ndescription: "Adds a new entry to the CHANGELOG file."\n---\n')).toBe(true);
+    expect(changelog.content).toContain("{{args}}");
+    const commit = bundle.commands.find((c) => c.name === "git/commit")!;
+    expect(commit.content.startsWith("---")).toBe(false);
+    expect(commit.content).toContain("!{git diff --staged}");
+    expect(
+      warnings.some((w) => w.includes("commands:broken.toml") && w.includes("no prompt string field")),
+    ).toBe(true);
+    expect(warnings.some((w) => w.includes('TOML field "model"'))).toBe(true);
+    expect(warnings.some((w) => w.includes("converted from gemini TOML"))).toBe(true);
+  });
+
+  it("gemini plans commands as TOML (frontmatter description lifted; prompt round-trips)", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "changelog", content: '---\ndescription: "Adds an entry."\n---\nUpdate CHANGELOG with {{args}}.\n' },
+      { name: "git/commit", content: "Write a commit message.\n" },
+      { name: "reviewer", content: "---\nmodel: fake\nargument-hint: file\n---\nReview.\n" },
+    ];
+    const { files, warnings } = await gemini.planImport(bundle, "/nonexistent-home", {});
+    const changelog = files.find((f) => f.path === ".gemini/commands/changelog.toml")!;
+    const parsed = parseToml(changelog.content) as { description: string; prompt: string };
+    expect(parsed.description).toBe("Adds an entry.");
+    expect(parsed.prompt).toBe("Update CHANGELOG with {{args}}.\n");
+    expect(files.some((f) => f.path === ".gemini/commands/git/commit.toml")).toBe(true);
+    const reviewer = parseToml(files.find((f) => f.path === ".gemini/commands/reviewer.toml")!.content) as {
+      prompt: string;
+    };
+    expect(reviewer.prompt).toContain("model: fake");
+    expect(
+      warnings.some((w) => w.includes("commands:reviewer") && w.includes("kept verbatim inside prompt")),
+    ).toBe(true);
+    expect(warnings.some((w) => w.includes("markdown bodies were converted to the prompt field"))).toBe(true);
+  });
+
+  it("gemini\u2192gemini command round-trip preserves prompt and description", async () => {
+    const { bundle } = await gemini.exportBundle(path.join(FIXTURES, "gemini-home"));
+    const { files } = await gemini.planImport(bundle, "/nonexistent-home", {});
+    for (const name of ["changelog", "git/commit"]) {
+      const original = await fs.readFile(
+        path.join(FIXTURES, `gemini-home/.gemini/commands/${name}.toml`),
+        "utf8",
+      );
+      const written = files.find((f) => f.path === `.gemini/commands/${name}.toml`)!;
+      expect(parseToml(written.content)).toEqual(parseToml(original));
+    }
+  });
+
+  it("project scope: gemini .gemini/commands round-trips", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-cmd-proj9-"));
+    await fs.mkdir(path.join(dir, ".gemini/commands/git"), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, ".gemini/commands/git/fix.toml"),
+      'description = "Fixes an issue."\nprompt = "Fix: {{args}}"\n',
+    );
+    const ex = await getProjectAdapter("gemini").exportProject(dir);
+    expect(ex.bundle.commands.map((c) => c.name)).toEqual(["git/fix"]);
+    const { files } = await getProjectAdapter("gemini").planImport(ex.bundle, "/p", {});
+    const written = files.find((f) => f.path === ".gemini/commands/git/fix.toml")!;
+    const parsed = parseToml(written.content) as { description: string; prompt: string };
+    expect(parsed.description).toBe("Fixes an issue.");
+    expect(parsed.prompt.trim()).toBe("Fix: {{args}}");
+  });
+
+  it("geminiCommandToToml keeps markdown without frontmatter verbatim as prompt", () => {
+    const warnings: string[] = [];
+    const toml = geminiCommandToToml({ name: "plain", content: "Just a prompt.\n" }, warnings);
+    expect((parseToml(toml) as { prompt: string }).prompt).toBe("Just a prompt.\n");
+    expect(warnings).toEqual([]);
   });
 
   it("bundle round-trips the commands layer byte-faithfully (nested names)", async () => {
