@@ -31,6 +31,12 @@ import {
 } from "./adapters/shared.js";
 import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
 import {
+  CODEX_AGENTS_EXPORT_WARNING,
+  CODEX_AGENTS_IMPORT_WARNING,
+  planCodexAgents,
+  readCodexAgents,
+} from "./adapters/codex.js";
+import {
   GOOSE_COMMANDS_EXPORT_WARNING,
   parseGooseMemoryFile,
   planGooseRecipes,
@@ -251,12 +257,15 @@ const claudeCodeProject: ProjectAdapter = {
 };
 
 const codexProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
     bundle.manifest.exportedFrom = "codex";
     bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".agents/skills"), warnings);
+    bundle.agents = await readCodexAgents(path.join(dir, ".codex/agents"), warnings);
+    if (bundle.agents.length) warnings.push(CODEX_AGENTS_EXPORT_WARNING);
     warnings.push("codex has no project-scoped MCP config; MCP servers stay user-scoped (~/.codex/config.toml)");
     return { bundle, warnings };
   },
@@ -273,6 +282,10 @@ const codexProject: ProjectAdapter = {
     if (bundle.persona) warnings.push("persona: no project-scoped slot in codex; skipped");
     if (bundle.memory.length) warnings.push("memory: no project-scoped memory store in codex; skipped");
     files.push(...planSkills(bundle.skills, ".agents/skills"));
+    if (bundle.agents.length) {
+      files.push(...planCodexAgents(bundle.agents, ".codex/agents", warnings));
+      warnings.push(CODEX_AGENTS_IMPORT_WARNING);
+    }
     return { files, warnings };
   },
 };
