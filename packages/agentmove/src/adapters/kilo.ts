@@ -1,6 +1,7 @@
 import path from "node:path";
 import JSON5 from "json5";
 import {
+  AgentDef,
   Bundle,
   ClientAdapter,
   emptyBundle,
@@ -16,9 +17,11 @@ import {
   mergeAgentLists,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planCommandsFlat,
   planSkills,
   readAgentsDir,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -38,6 +41,14 @@ import {
  * under ~/.config/kilo/commands/; the legacy ~/.kilocode/workflows/ location
  * is still read (the extension auto-migrates it) with the new location
  * winning on name conflicts. Imports only write the new location.
+ *
+ * Custom agents (custom modes) are markdown files with YAML frontmatter
+ * scanned recursively from the `agent/` and `agents/` subdirectories of
+ * ~/.config/kilo/ plus the legacy ~/.kilocode/ and ~/.kilo/ home roots
+ * (nested paths become namespaced names like `backend/sql`). Imports write
+ * only ~/.config/kilo/agents/. Legacy custom_modes.yaml / .kilocodemodes
+ * definitions are not migrated — Kilo itself auto-converts them to agent
+ * markdown files on startup.
  */
 const CONFIG_DIR_REL = ".config/kilo";
 const CONFIG_RELS = [".config/kilo/kilo.json", ".config/kilo/kilo.jsonc", ".config/kilo/config.json"];
@@ -45,6 +56,11 @@ const AGENTS_REL = ".config/kilo/AGENTS.md";
 const SKILLS_REL = ".kilo/skills";
 const COMMANDS_DIR_REL = ".config/kilo/commands";
 const LEGACY_WORKFLOWS_REL = ".kilocode/workflows";
+const AGENT_ROOT_RELS = [".kilocode", ".kilo", ".config/kilo"];
+const AGENTS_DIR_REL = ".config/kilo/agents";
+
+export const KILO_AGENTS_WARNING =
+  "agents: frontmatter fields (description/mode/model/permission/color/hidden) are client-specific and copied as-is; review after import";
 
 export const KILO_COMMANDS_WARNING =
   "commands: frontmatter fields (description/agent/model/subtask) and argument placeholders are client-specific and copied as-is; review after import";
@@ -149,10 +165,23 @@ export async function planKiloMcp(
   return files;
 }
 
+/**
+ * Read Kilo custom agents from one config root: both the `agent/` and
+ * `agents/` subdirectories are scanned recursively (matching Kilo's
+ * `{agent,agents}/**\/*.md` glob), with `agents/` winning on name conflicts.
+ */
+export async function readKiloAgents(root: string): Promise<AgentDef[]> {
+  return mergeAgentLists(
+    await readAgentsDirRecursive(path.join(root, "agent"), ".md"),
+    await readAgentsDirRecursive(path.join(root, "agents"), ".md"),
+  );
+}
+
 export const kilo: ClientAdapter = {
   id: "kilo",
   label: "Kilo Code",
-  defaultPath: "~/.config/kilo (kilo.json + AGENTS.md + commands/) + ~/.kilo/skills",
+  defaultPath: "~/.config/kilo (kilo.json + AGENTS.md + agents/ + commands/) + ~/.kilo/skills",
+  supportsAgents: true,
   supportsCommands: true,
 
   async detect(home) {
@@ -183,6 +212,16 @@ export const kilo: ClientAdapter = {
     if (legacy.length) {
       warnings.push(
         "commands: legacy ~/.kilocode/workflows/ files exported; kilo now uses ~/.config/kilo/commands/ (new location wins on name conflicts)",
+      );
+    }
+    const agentLists: AgentDef[][] = [];
+    for (const rel of AGENT_ROOT_RELS) {
+      agentLists.push(await readKiloAgents(path.join(home, rel)));
+    }
+    bundle.agents = mergeAgentLists(...agentLists);
+    if (agentLists.slice(0, 2).some((l) => l.length)) {
+      warnings.push(
+        "agents: legacy ~/.kilocode/ and ~/.kilo/ agent files exported; kilo's primary location is ~/.config/kilo/ (which wins on name conflicts)",
       );
     }
     return { bundle, warnings };
@@ -219,6 +258,10 @@ export const kilo: ClientAdapter = {
     if (bundle.commands.length) {
       files.push(...planCommandsFlat(bundle.commands, COMMANDS_DIR_REL, "kilo", warnings));
       warnings.push(KILO_COMMANDS_WARNING);
+    }
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
+      warnings.push(KILO_AGENTS_WARNING);
     }
     return { files, warnings };
   },
