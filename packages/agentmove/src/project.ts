@@ -1043,6 +1043,7 @@ const antigravityProject: ProjectAdapter = {
 };
 
 const droidProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1053,6 +1054,7 @@ const droidProject: ProjectAdapter = {
       (await readText(path.join(dir, "AGENTS.md"))) ??
       (await readText(path.join(dir, ".factory/AGENTS.md")));
     bundle.skills = await readSkillsDir(path.join(dir, ".factory/skills"), warnings);
+    bundle.agents = await readAgentsDir(path.join(dir, ".factory/droids"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1077,6 +1079,12 @@ const droidProject: ProjectAdapter = {
       warnings.push("memory: droid has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".factory/skills"));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".factory/droids", ".md"));
+      warnings.push(
+        "agents: frontmatter fields (tools/model/reasoningEffort/mcpServers) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };
