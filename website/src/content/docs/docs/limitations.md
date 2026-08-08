@@ -92,6 +92,21 @@ persona, and a later export won't recover it as a separate `persona.md`.
   project skills in `.vibe/skills/` migrate with `--project`.
 - Binary assets inside skill directories are currently skipped with a warning.
 
+## Custom agents (subagents)
+
+- Custom agent / subagent markdown definitions migrate natively between
+  Claude Code (`~/.claude/agents/`, project `.claude/agents/`), GitHub
+  Copilot CLI (`~/.copilot/agents/*.agent.md`, project `.github/agents/`),
+  and Gemini CLI (`~/.gemini/agents/`, project `.gemini/agents/`).
+- Content is copied **as-is**, including YAML frontmatter. Fields like
+  `tools:` and `model:` are client-specific and may need review after
+  import — a warning is emitted.
+- Gemini CLI subagents are experimental (enabled by default;
+  `"experimental": {"enableAgents": false}` in `settings.json` disables
+  them) — warned on import.
+- Every other client has no custom agents directory — imported agents are
+  **skipped** with a warning.
+
 ## MCP servers
 
 Near-lossless, with these edges:

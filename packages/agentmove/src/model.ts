@@ -52,6 +52,12 @@ export interface Skill {
   files: Record<string, string>;
 }
 
+/** A custom agent / subagent definition (markdown with YAML frontmatter). */
+export interface AgentDef {
+  name: string;
+  content: string;
+}
+
 export interface BundleManifest {
   schemaVersion: 1;
   exportedFrom?: string;
@@ -69,11 +75,12 @@ export interface Bundle {
   persona?: string;
   memory: MemoryEntry[];
   skills: Skill[];
+  agents: AgentDef[];
 }
 
-export type Layer = "mcp" | "skills" | "memory" | "instructions" | "persona";
+export type Layer = "mcp" | "skills" | "agents" | "memory" | "instructions" | "persona";
 
-export const LAYERS: Layer[] = ["mcp", "skills", "memory", "instructions", "persona"];
+export const LAYERS: Layer[] = ["mcp", "skills", "agents", "memory", "instructions", "persona"];
 
 /** Parse a comma-separated `--only` value into layers (usage error on unknowns). */
 export function parseLayers(only: string): Layer[] {
@@ -93,6 +100,7 @@ export function filterBundle(bundle: Bundle, layers: Layer[]): Bundle {
     ...bundle,
     mcpServers: keep.has("mcp") ? bundle.mcpServers : [],
     skills: keep.has("skills") ? bundle.skills : [],
+    agents: keep.has("agents") ? bundle.agents : [],
     memory: keep.has("memory") ? bundle.memory : [],
     instructions: keep.has("instructions") ? bundle.instructions : undefined,
     persona: keep.has("persona") ? bundle.persona : undefined,
@@ -106,6 +114,7 @@ export function emptyBundle(): Bundle {
     mcpServers: [],
     memory: [],
     skills: [],
+    agents: [],
   };
 }
 
@@ -234,6 +243,8 @@ export interface ClientAdapter {
   label: string;
   /** Human-readable default location of the client's data, for docs/doctor. */
   defaultPath: string;
+  /** Whether the client has a custom agents (subagents) directory. */
+  supportsAgents?: boolean;
   /** Whether the client appears to be configured under the given home dir. */
   detect(home: string): Promise<boolean>;
   exportBundle(home: string): Promise<ExportResult>;

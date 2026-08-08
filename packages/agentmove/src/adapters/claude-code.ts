@@ -12,7 +12,17 @@ import {
   parseFile,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
-import { appendSections, mergeMcpRecords, parseCommonMcpEntry, planSkills, readSkillsDir, renderCommonMcpEntry, touchesMcpConfig } from "./shared.js";
+import {
+  appendSections,
+  mergeMcpRecords,
+  parseCommonMcpEntry,
+  planAgents,
+  planSkills,
+  readAgentsDir,
+  readSkillsDir,
+  renderCommonMcpEntry,
+  touchesMcpConfig,
+} from "./shared.js";
 
 export interface ClaudeStyleLayout {
   id: ClientId;
@@ -20,6 +30,8 @@ export interface ClaudeStyleLayout {
   defaultPath: string;
   /** Directory prefix (relative to home, "" for the standalone CLI). */
   root: string;
+  /** Whether the client discovers custom subagents in .claude/agents/. */
+  supportsAgents?: boolean;
 }
 
 /**
@@ -34,6 +46,7 @@ export function makeClaudeStyleAdapter(layout: ClaudeStyleLayout): ClientAdapter
   const MCP_REL = rel(".claude.json");
   const MD_REL = rel(".claude/CLAUDE.md");
   const SKILLS_REL = rel(".claude/skills");
+  const AGENTS_REL = rel(".claude/agents");
 
   async function readUserConfig(home: string): Promise<Record<string, unknown>> {
     const file = path.join(home, MCP_REL);
@@ -47,6 +60,7 @@ export function makeClaudeStyleAdapter(layout: ClaudeStyleLayout): ClientAdapter
     id,
     label: layout.label,
     defaultPath: layout.defaultPath,
+    supportsAgents: layout.supportsAgents,
 
     async detect(home) {
       return (await exists(path.join(home, MCP_REL))) || (await isDir(path.join(home, rel(".claude"))));
@@ -69,6 +83,9 @@ export function makeClaudeStyleAdapter(layout: ClaudeStyleLayout): ClientAdapter
 
       bundle.instructions = await readText(path.join(home, MD_REL));
       bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+      if (layout.supportsAgents) {
+        bundle.agents = await readAgentsDir(path.join(home, AGENTS_REL), ".md");
+      }
       warnings.push(
         `${id} auto memory is session/project-scoped and not exported in v0; ` +
           "durable notes should live in CLAUDE.md (exported as instructions)",
@@ -110,6 +127,12 @@ export function makeClaudeStyleAdapter(layout: ClaudeStyleLayout): ClientAdapter
       if (instructions) files.push({ path: MD_REL, content: instructions });
 
       files.push(...planSkills(bundle.skills, SKILLS_REL));
+      if (layout.supportsAgents && bundle.agents.length) {
+        files.push(...planAgents(bundle.agents, AGENTS_REL, ".md"));
+        warnings.push(
+          "agents: frontmatter fields (tools/model) are client-specific and copied as-is; review after import",
+        );
+      }
       return { files, warnings };
     },
   };
@@ -120,4 +143,5 @@ export const claudeCode: ClientAdapter = makeClaudeStyleAdapter({
   label: "Claude Code",
   defaultPath: "~/.claude + ~/.claude.json",
   root: "",
+  supportsAgents: true,
 });

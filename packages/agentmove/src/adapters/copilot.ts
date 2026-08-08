@@ -14,7 +14,9 @@ import { exists, isDir, listDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -25,12 +27,15 @@ import {
  * MCP servers live in ~/.copilot/mcp-config.json under an `mcpServers` map;
  * stdio servers are spelled `"type": "local"`, remote ones `"http"`/`"sse"`.
  * User instructions are ~/.copilot/copilot-instructions.md plus modular
- * ~/.copilot/instructions/*.instructions.md files.
+ * ~/.copilot/instructions/*.instructions.md files. Custom agents live in
+ * ~/.copilot/agents/*.agent.md.
  */
 const MCP_REL = ".copilot/mcp-config.json";
 const INSTRUCTIONS_FILE_REL = ".copilot/copilot-instructions.md";
 const INSTRUCTIONS_DIR_REL = ".copilot/instructions";
 const SKILLS_REL = ".copilot/skills";
+const AGENTS_REL = ".copilot/agents";
+const AGENT_EXT = ".agent.md";
 
 async function readMcpConfig(home: string): Promise<Record<string, unknown>> {
   const file = path.join(home, MCP_REL);
@@ -51,7 +56,8 @@ function normalizeEntry(entry: unknown): unknown {
 export const copilot: ClientAdapter = {
   id: "copilot",
   label: "GitHub Copilot CLI",
-  defaultPath: "~/.copilot (mcp-config.json + copilot-instructions.md + skills/)",
+  defaultPath: "~/.copilot (mcp-config.json + copilot-instructions.md + skills/ + agents/)",
+  supportsAgents: true,
 
   async detect(home) {
     return (
@@ -97,6 +103,7 @@ export const copilot: ClientAdapter = {
     if (parts.length) bundle.instructions = parts.join("\n\n") + "\n";
 
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.agents = await readAgentsDir(path.join(home, AGENTS_REL), AGENT_EXT);
     return { bundle, warnings };
   },
 
@@ -140,6 +147,12 @@ export const copilot: ClientAdapter = {
       warnings.push("memory: copilot has no durable memory store; skipped (consider --mif)");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, AGENTS_REL, AGENT_EXT));
+      warnings.push(
+        "agents: frontmatter fields (tools/model) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };

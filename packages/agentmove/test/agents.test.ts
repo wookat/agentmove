@@ -1,0 +1,115 @@
+import { describe, expect, it } from "vitest";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { copilot } from "../src/adapters/copilot.js";
+import { claudeCode } from "../src/adapters/claude-code.js";
+import { gemini } from "../src/adapters/gemini.js";
+import { getProjectAdapter } from "../src/project.js";
+import { emptyBundle, filterBundle } from "../src/model.js";
+import { readBundle, writeBundle } from "../src/bundle.js";
+import { diffBundles } from "../src/diff.js";
+
+const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
+
+describe("custom agents layer", () => {
+  it("copilot exports ~/.copilot/agents/*.agent.md byte-faithfully", async () => {
+    const { bundle } = await copilot.exportBundle(path.join(FIXTURES, "copilot-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["code-reviewer"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "copilot-home/.copilot/agents/code-reviewer.agent.md"),
+      "utf8",
+    );
+    expect(bundle.agents[0]!.content).toBe(raw);
+  });
+
+  it("claude-code exports ~/.claude/agents/*.md", async () => {
+    const { bundle } = await claudeCode.exportBundle(path.join(FIXTURES, "claude-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["test-runner"]);
+    expect(bundle.agents[0]!.content).toContain("tools: Bash, Read");
+  });
+
+  it("gemini exports ~/.gemini/agents/*.md", async () => {
+    const { bundle } = await gemini.exportBundle(path.join(FIXTURES, "gemini-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["doc-writer"]);
+  });
+
+  it("copilot plans agents into ~/.copilot/agents with the .agent.md extension", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "---\nname: helper\n---\n\nHelp.\n" }];
+    const { files, warnings } = await copilot.planImport(bundle, "/nonexistent-home", {});
+    const plan = files.find((f) => f.path === ".copilot/agents/helper.agent.md")!;
+    expect(plan.content).toBe("---\nname: helper\n---\n\nHelp.\n");
+    expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
+  });
+
+  it("claude-code plans agents into ~/.claude/agents/*.md", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "Help.\n" }];
+    const { files } = await claudeCode.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".claude/agents/helper.md")).toBe(true);
+  });
+
+  it("gemini plans agents into ~/.gemini/agents and warns about the experimental flag", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "Help.\n" }];
+    const { files, warnings } = await gemini.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".gemini/agents/helper.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("experimental"))).toBe(true);
+  });
+
+  it("does not plan or warn when the bundle has no agents", async () => {
+    const { files, warnings } = await copilot.planImport(emptyBundle(), "/nonexistent-home", {});
+    expect(files.some((f) => f.path.startsWith(".copilot/agents/"))).toBe(false);
+    expect(warnings.some((w) => w.startsWith("agents:"))).toBe(false);
+  });
+
+  it("project scope: copilot .github/agents, claude-code .claude/agents, gemini .gemini/agents", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "Help.\n" }];
+    const copilotFiles = (await getProjectAdapter("copilot").planImport(bundle, "/p", {})).files;
+    expect(copilotFiles.some((f) => f.path === ".github/agents/helper.agent.md")).toBe(true);
+    const claudeFiles = (await getProjectAdapter("claude-code").planImport(bundle, "/p", {})).files;
+    expect(claudeFiles.some((f) => f.path === ".claude/agents/helper.md")).toBe(true);
+    const geminiFiles = (await getProjectAdapter("gemini").planImport(bundle, "/p", {})).files;
+    expect(geminiFiles.some((f) => f.path === ".gemini/agents/helper.md")).toBe(true);
+  });
+
+  it("bundle round-trips the agents layer byte-faithfully", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-agents-"));
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "reviewer", content: "---\ntools: [read]\n---\n\nReview.\n" }];
+    await writeBundle(bundle, dir);
+    const back = await readBundle(dir);
+    expect(back.agents).toEqual(bundle.agents);
+  });
+
+  it("filterBundle keeps/drops the agents layer via --only semantics", () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "a", content: "x" }];
+    expect(filterBundle(bundle, ["agents"]).agents).toHaveLength(1);
+    expect(filterBundle(bundle, ["mcp"]).agents).toHaveLength(0);
+  });
+
+  it("diff reports added/removed/changed agents", () => {
+    const a = emptyBundle();
+    const b = emptyBundle();
+    a.agents = [
+      { name: "same", content: "x" },
+      { name: "gone", content: "y" },
+      { name: "edit", content: "v1" },
+    ];
+    b.agents = [
+      { name: "same", content: "x" },
+      { name: "edit", content: "v2" },
+      { name: "new", content: "z" },
+    ];
+    const items = diffBundles(a, b).filter((i) => i.layer === "agents");
+    expect(items).toEqual([
+      { layer: "agents", kind: "removed", name: "gone" },
+      { layer: "agents", kind: "changed", name: "edit" },
+      { layer: "agents", kind: "added", name: "new" },
+    ]);
+  });
+});

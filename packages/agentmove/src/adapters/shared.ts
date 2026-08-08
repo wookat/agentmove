@@ -1,5 +1,6 @@
 import path from "node:path";
 import {
+  AgentDef,
   asStringRecord,
   isRecord,
   McpServer,
@@ -7,7 +8,7 @@ import {
   stringArgs,
   Transport,
 } from "../model.js";
-import { isDir, listDir, readTextTree } from "../fsutil.js";
+import { isDir, listDir, readText, readTextTree } from "../fsutil.js";
 
 /** Parse a `mcpServers`-style map entry (Claude Code / Cursor / Gemini shape). */
 export function parseCommonMcpEntry(
@@ -120,6 +121,27 @@ export function planSkills(skills: Skill[], rootRel: string): { path: string; co
     }
   }
   return plans;
+}
+
+/** Read custom agent definitions (`<name><ext>` markdown files) under a root. */
+export async function readAgentsDir(root: string, ext: string): Promise<AgentDef[]> {
+  const agents: AgentDef[] = [];
+  if (!(await isDir(root))) return agents;
+  for (const name of (await listDir(root)).sort()) {
+    if (!name.endsWith(ext) || name === ext) continue;
+    const content = await readText(path.join(root, name));
+    if (content !== undefined) agents.push({ name: name.slice(0, -ext.length), content });
+  }
+  return agents;
+}
+
+/** Plan writes for custom agents into a target agents root (relative to home). */
+export function planAgents(
+  agents: AgentDef[],
+  rootRel: string,
+  ext: string,
+): { path: string; content: string }[] {
+  return agents.map((a) => ({ path: `${rootRel}/${a.name}${ext}`, content: a.content }));
 }
 
 export function mergeSkills(existing: Skill[], incoming: Skill[]): Skill[] {

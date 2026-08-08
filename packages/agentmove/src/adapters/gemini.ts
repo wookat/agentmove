@@ -15,7 +15,9 @@ import { exists, isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -47,6 +49,8 @@ export interface GeminiStyleLayout {
   configDir: string;
   /** Agent Skills directory relative to home; omitted when the client has none. */
   skillsDir?: string;
+  /** Custom subagents directory relative to home; omitted when the client has none. */
+  agentsDir?: string;
 }
 
 /**
@@ -56,7 +60,7 @@ export interface GeminiStyleLayout {
  * Skills under ~/.gemini/skills/ (with ~/.agents/skills/ as an alias).
  */
 export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter {
-  const { id, configDir, skillsDir } = layout;
+  const { id, configDir, skillsDir, agentsDir } = layout;
   const SETTINGS_REL = `${configDir}/settings.json`;
   const CONTEXT_REL = `${configDir}/GEMINI.md`;
 
@@ -64,6 +68,7 @@ export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter
     id,
     label: layout.label,
     defaultPath: layout.defaultPath,
+    supportsAgents: Boolean(agentsDir),
 
     async detect(home) {
       return (await exists(path.join(home, SETTINGS_REL))) || (await isDir(path.join(home, configDir)));
@@ -102,6 +107,9 @@ export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter
       }
       if (skillsDir) {
         bundle.skills = await readSkillsDir(path.join(home, skillsDir), warnings);
+      }
+      if (agentsDir) {
+        bundle.agents = await readAgentsDir(path.join(home, agentsDir), ".md");
       }
       if (await isDir(path.join(home, `${configDir}/extensions`))) {
         warnings.push(`${id} extensions are not exported in v0 (install them on the target machine instead)`);
@@ -152,6 +160,13 @@ export function makeGeminiStyleAdapter(layout: GeminiStyleLayout): ClientAdapter
       } else if (bundle.skills.length) {
         warnings.push(`skills: ${id} has no SKILL.md mechanism; skipped (consider a gemini extension)`);
       }
+      if (agentsDir && bundle.agents.length) {
+        files.push(...planAgents(bundle.agents, agentsDir, ".md"));
+        warnings.push(
+          `agents: ${id} subagents are experimental (enabled by default; "experimental": {"enableAgents": false} disables them); ` +
+            "frontmatter fields are client-specific and copied as-is",
+        );
+      }
       return { files, warnings };
     },
   };
@@ -163,4 +178,5 @@ export const gemini: ClientAdapter = makeGeminiStyleAdapter({
   defaultPath: "~/.gemini",
   configDir: ".gemini",
   skillsDir: ".gemini/skills",
+  agentsDir: ".gemini/agents",
 });

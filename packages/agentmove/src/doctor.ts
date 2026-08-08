@@ -9,6 +9,7 @@ export interface DoctorClientReport {
   inventory?: {
     mcpServers: number;
     skills: number;
+    agents: number;
     memoryEntries: number;
     hasInstructions: boolean;
     hasPersona: boolean;
@@ -46,6 +47,7 @@ function inventory(bundle: Bundle) {
   return {
     mcpServers: bundle.mcpServers.length,
     skills: bundle.skills.length,
+    agents: bundle.agents.length,
     memoryEntries: bundle.memory.length,
     hasInstructions: bundle.instructions !== undefined,
     hasPersona: bundle.persona !== undefined,
@@ -66,6 +68,7 @@ export function formatDoctor(reports: DoctorClientReport[]): string {
     const inv = r.inventory!;
     lines.push(
       `✓ ${r.label} (${r.id}) — ${inv.mcpServers} MCP server(s), ${inv.skills} skill(s), ` +
+        `${inv.agents} agent(s), ` +
         `${inv.memoryEntries} memory entr(ies), instructions: ${inv.hasInstructions ? "yes" : "no"}, ` +
         `persona: ${inv.hasPersona ? "yes" : "no"}`,
     );
