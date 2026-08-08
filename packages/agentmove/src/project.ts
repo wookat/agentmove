@@ -104,7 +104,14 @@ import {
   readAuggieRulesDir,
   readAuggieSettings,
 } from "./adapters/auggie.js";
-import { KILO_COMMANDS_WARNING, parseKiloServers, planKiloMcp, readKiloConfig } from "./adapters/kilo.js";
+import {
+  KILO_AGENTS_WARNING,
+  KILO_COMMANDS_WARNING,
+  parseKiloServers,
+  planKiloMcp,
+  readKiloAgents,
+  readKiloConfig,
+} from "./adapters/kilo.js";
 import { CLINE_COMMANDS_WARNING, warnClineNonMarkdownWorkflows } from "./adapters/cline.js";
 import {
   KIMI_AGENTS_WARNING,
@@ -1625,6 +1632,7 @@ const auggieProject: ProjectAdapter = {
 };
 
 const kiloProject: ProjectAdapter = {
+  supportsAgents: true,
   supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
@@ -1647,6 +1655,10 @@ const kiloProject: ProjectAdapter = {
         "commands: legacy .kilocode/workflows/ files exported; kilo now uses .kilo/commands/ (new location wins on name conflicts)",
       );
     }
+    bundle.agents = mergeAgentLists(
+      await readKiloAgents(path.join(dir, ".kilocode")),
+      await readKiloAgents(path.join(dir, ".kilo")),
+    );
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1679,6 +1691,10 @@ const kiloProject: ProjectAdapter = {
     if (bundle.commands.length) {
       files.push(...planCommandsFlat(bundle.commands, ".kilo/commands", "kilo", warnings));
       warnings.push(KILO_COMMANDS_WARNING);
+    }
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, ".kilo/agents", ".md"));
+      warnings.push(KILO_AGENTS_WARNING);
     }
     return { files, warnings };
   },
