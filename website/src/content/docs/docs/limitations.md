@@ -130,18 +130,25 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Markdown slash commands / reusable prompts migrate natively between
   Claude Code (`~/.claude/commands/`, project `.claude/commands/`;
   subdirectories become namespaced command names and are preserved),
-  Cursor (`~/.cursor/commands/`, project `.cursor/commands/`), and
+  Cursor (`~/.cursor/commands/`, project `.cursor/commands/`),
   Codex CLI (`~/.codex/prompts/`, user scope only, invoked as
-  `/prompts:<name>`).
+  `/prompts:<name>`), OpenCode (`~/.config/opencode/commands/`, project
+  `.opencode/commands/`; subdirectories preserved), and Qwen Code
+  (`~/.qwen/commands/`, project `.qwen/commands/`; subdirectories
+  preserved and shown as `/git:commit`-style namespaced names).
 - Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
-  `$1`…) and frontmatter fields (`allowed-tools:`, `model:`,
-  `argument-hint:`) are client-specific and may need review after
-  import — a warning is emitted.
+  `$1`…, `{{args}}`, `!{...}`, `@{...}`) and frontmatter fields
+  (`allowed-tools:`, `model:`, `argument-hint:`, `agent:`) are
+  client-specific and may need review after import — a warning is
+  emitted.
 - Cursor and Codex only discover top-level command files: nested names
   like `git/commit` are flattened to `git-commit` on import there, with
   a warning (name collisions after flattening skip the command).
 - Codex custom prompts are deprecated in favor of skills but still
   supported — noted as a warning on import.
+- Qwen Code's legacy TOML command files (`*.toml`) are deprecated and
+  **not** migrated — each one is warned on export; convert them to
+  markdown first.
 - Every other client has no documented commands/prompts directory —
   imported commands are **skipped** with a warning.
 

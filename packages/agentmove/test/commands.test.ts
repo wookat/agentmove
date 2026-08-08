@@ -7,6 +7,8 @@ import { claudeCode } from "../src/adapters/claude-code.js";
 import { cursor } from "../src/adapters/cursor.js";
 import { codex } from "../src/adapters/codex.js";
 import { copilot } from "../src/adapters/copilot.js";
+import { opencode } from "../src/adapters/opencode.js";
+import { qwen } from "../src/adapters/qwen.js";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
 import { readBundle, writeBundle } from "../src/bundle.js";
@@ -80,6 +82,63 @@ describe("custom commands layer", () => {
     const { files, warnings } = await codex.planImport(bundle, "/nonexistent-home", {});
     expect(files.some((f) => f.path === ".codex/prompts/fix-issue.md")).toBe(true);
     expect(warnings.some((w) => w.includes("deprecated in favor of skills"))).toBe(true);
+  });
+
+  it("opencode exports ~/.config/opencode/commands recursively, byte-faithfully", async () => {
+    const { bundle } = await opencode.exportBundle(path.join(FIXTURES, "opencode-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["team/review"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "opencode-home/.config/opencode/commands/team/review.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+  });
+
+  it("qwen exports ~/.qwen/commands markdown and warns on deprecated TOML files", async () => {
+    const { bundle, warnings } = await qwen.exportBundle(path.join(FIXTURES, "qwen-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["analyze"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "qwen-home/.qwen/commands/analyze.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+    expect(warnings.some((w) => w.includes("commands:legacy") && w.includes("TOML"))).toBe(true);
+  });
+
+  it("opencode plans commands into ~/.config/opencode/commands (nested names kept)", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "deploy", content: "Deploy.\n" },
+      { name: "team/review", content: "Review.\n" },
+    ];
+    const { files, warnings } = await opencode.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".config/opencode/commands/deploy.md")).toBe(true);
+    expect(files.some((f) => f.path === ".config/opencode/commands/team/review.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("commands:"))).toBe(true);
+  });
+
+  it("qwen plans commands into ~/.qwen/commands (nested names kept) with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [{ name: "git/commit", content: "Commit.\n" }];
+    const { files, warnings } = await qwen.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".qwen/commands/git/commit.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("commands:"))).toBe(true);
+  });
+
+  it("project scope: opencode and qwen commands round-trip", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-cmd-proj2-"));
+    await fs.mkdir(path.join(dir, ".opencode/commands/team"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".opencode/commands/team/review.md"), "Review.\n");
+    await fs.mkdir(path.join(dir, ".qwen/commands"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".qwen/commands/analyze.md"), "Analyze.\n");
+    const oc = await getProjectAdapter("opencode").exportProject(dir);
+    expect(oc.bundle.commands.map((c) => c.name)).toEqual(["team/review"]);
+    const qw = await getProjectAdapter("qwen").exportProject(dir);
+    expect(qw.bundle.commands.map((c) => c.name)).toEqual(["analyze"]);
+    const ocFiles = (await getProjectAdapter("opencode").planImport(oc.bundle, "/p", {})).files;
+    expect(ocFiles.some((f) => f.path === ".opencode/commands/team/review.md")).toBe(true);
+    const qwFiles = (await getProjectAdapter("qwen").planImport(qw.bundle, "/p", {})).files;
+    expect(qwFiles.some((f) => f.path === ".qwen/commands/analyze.md")).toBe(true);
   });
 
   it("skips flattened commands whose names collide, with a warning", async () => {

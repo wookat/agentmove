@@ -18,6 +18,7 @@ import {
   planAgents,
   planSkills,
   readAgentsDir,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -31,7 +32,8 @@ import {
  * `enabled` boolean. Instructions are ~/.config/opencode/AGENTS.md and
  * skills are native SKILL.md directories under ~/.config/opencode/skills/.
  * Custom agents/subagents are markdown files under ~/.config/opencode/agents/
- * (legacy singular agent/ also read).
+ * (legacy singular agent/ also read). Custom commands are markdown files
+ * under ~/.config/opencode/commands/ (nested paths become `/team/review`).
  */
 const CONFIG_DIR_REL = ".config/opencode";
 const CONFIG_REL = ".config/opencode/opencode.json";
@@ -40,6 +42,7 @@ const AGENTS_REL = ".config/opencode/AGENTS.md";
 const SKILLS_REL = ".config/opencode/skills";
 const AGENTS_DIR_REL = ".config/opencode/agents";
 const AGENT_DIR_LEGACY_REL = ".config/opencode/agent";
+const COMMANDS_DIR_REL = ".config/opencode/commands";
 
 async function readConfig(
   home: string,
@@ -110,8 +113,9 @@ async function readAgentsDirs(home: string) {
 export const opencode: ClientAdapter = {
   id: "opencode",
   label: "OpenCode",
-  defaultPath: "~/.config/opencode (opencode.json + AGENTS.md + skills/ + agents/)",
+  defaultPath: "~/.config/opencode (opencode.json + AGENTS.md + skills/ + agents/ + commands/)",
   supportsAgents: true,
+  supportsCommands: true,
 
   async detect(home) {
     return (
@@ -142,6 +146,7 @@ export const opencode: ClientAdapter = {
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     bundle.agents = await readAgentsDirs(home);
+    bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -176,6 +181,13 @@ export const opencode: ClientAdapter = {
       files.push(...planAgents(bundle.agents, AGENTS_DIR_REL, ".md"));
       warnings.push(
         "agents: frontmatter fields (mode/model/permission) are client-specific and copied as-is; review after import",
+      );
+    }
+
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_DIR_REL, ".md"));
+      warnings.push(
+        "commands: frontmatter fields (agent/model) and argument placeholders are client-specific and copied as-is; review after import",
       );
     }
 

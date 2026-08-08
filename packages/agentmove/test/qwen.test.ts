@@ -23,7 +23,9 @@ describe("qwen adapter", () => {
       "The project uses pnpm workspaces.",
     ]);
     expect(bundle.skills.map((s) => s.name)).toEqual(["review"]);
-    expect(warnings).toEqual([]);
+    expect(warnings).toEqual([
+      "commands:legacy: qwen TOML commands are deprecated and not migrated; convert to markdown first",
+    ]);
   });
 
   it("imports MCP (merge), instructions + memories into QWEN.md, skills natively", async () => {

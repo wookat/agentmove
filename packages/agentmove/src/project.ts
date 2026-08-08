@@ -613,6 +613,7 @@ const copilotProject: ProjectAdapter = {
 
 const opencodeProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -633,6 +634,7 @@ const opencodeProject: ProjectAdapter = {
       if (!bundle.agents.some((b) => b.name === a.name)) bundle.agents.push(a);
     }
     bundle.agents.sort((a, b) => a.name.localeCompare(b.name));
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".opencode/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -662,6 +664,12 @@ const opencodeProject: ProjectAdapter = {
         "agents: frontmatter fields (mode/model/permission) are client-specific and copied as-is; review after import",
       );
     }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".opencode/commands", ".md"));
+      warnings.push(
+        "commands: frontmatter fields (agent/model) and argument placeholders are client-specific and copied as-is; review after import",
+      );
+    }
     if (bundle.memory.length) {
       warnings.push("memory: opencode has no project-scoped memory store; skipped");
     }
@@ -671,6 +679,7 @@ const opencodeProject: ProjectAdapter = {
 
 const qwenProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -682,6 +691,13 @@ const qwenProject: ProjectAdapter = {
     bundle.instructions = await readText(path.join(dir, "QWEN.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".qwen/skills"), warnings);
     bundle.agents = await readAgentsDir(path.join(dir, ".qwen/agents"), ".md");
+    const commandsRoot = path.join(dir, ".qwen/commands");
+    bundle.commands = await readAgentsDirRecursive(commandsRoot, ".md");
+    for (const t of await readAgentsDirRecursive(commandsRoot, ".toml")) {
+      warnings.push(
+        `commands:${t.name}: qwen TOML commands are deprecated and not migrated; convert to markdown first`,
+      );
+    }
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -706,6 +722,12 @@ const qwenProject: ProjectAdapter = {
       files.push(...planAgents(bundle.agents, ".qwen/agents", ".md"));
       warnings.push(
         "agents: frontmatter fields (tools/model/approvalMode) are client-specific and copied as-is; review after import",
+      );
+    }
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".qwen/commands", ".md"));
+      warnings.push(
+        "commands: argument placeholders ({{args}}/!{...}/@{...}) and frontmatter are client-specific and copied as-is; review after import",
       );
     }
     return { files, warnings };

@@ -1,0 +1,2 @@
+description = "Legacy TOML command"
+prompt = "Please analyze code: {{args}}"
