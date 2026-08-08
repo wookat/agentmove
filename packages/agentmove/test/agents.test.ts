@@ -8,6 +8,7 @@ import { claudeCode } from "../src/adapters/claude-code.js";
 import { gemini } from "../src/adapters/gemini.js";
 import { cursor } from "../src/adapters/cursor.js";
 import { droid } from "../src/adapters/droid.js";
+import { codebuddy } from "../src/adapters/codebuddy.js";
 import { kiro } from "../src/adapters/kiro.js";
 import { opencode } from "../src/adapters/opencode.js";
 import { qwen } from "../src/adapters/qwen.js";
@@ -139,6 +140,24 @@ describe("custom agents layer", () => {
     expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
   });
 
+  it("codebuddy exports ~/.codebuddy/agents/*.md byte-faithfully", async () => {
+    const { bundle } = await codebuddy.exportBundle(path.join(FIXTURES, "codebuddy-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["code-reviewer"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "codebuddy-home/.codebuddy/agents/code-reviewer.md"),
+      "utf8",
+    );
+    expect(bundle.agents[0]!.content).toBe(raw);
+  });
+
+  it("codebuddy plans agents into ~/.codebuddy/agents/*.md with a warning", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [{ name: "helper", content: "Help.\n" }];
+    const { files, warnings } = await codebuddy.planImport(bundle, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".codebuddy/agents/helper.md")).toBe(true);
+    expect(warnings.some((w) => w.startsWith("agents:"))).toBe(true);
+  });
+
   it("opencode plans agents into ~/.config/opencode/agents/*.md with a warning", async () => {
     const bundle = emptyBundle();
     bundle.agents = [{ name: "helper", content: "Help.\n" }];
@@ -180,6 +199,9 @@ describe("custom agents layer", () => {
     expect(kiroFiles.some((f) => f.path === ".kiro/agents/helper.md")).toBe(true);
     const droidFiles = (await getProjectAdapter("droid").planImport(bundle, "/p", {})).files;
     expect(droidFiles.some((f) => f.path === ".factory/droids/helper.md")).toBe(true);
+    const codebuddyFiles = (await getProjectAdapter("codebuddy").planImport(bundle, "/p", {}))
+      .files;
+    expect(codebuddyFiles.some((f) => f.path === ".codebuddy/agents/helper.md")).toBe(true);
   });
 
   it("bundle round-trips the agents layer byte-faithfully", async () => {
