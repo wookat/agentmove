@@ -937,6 +937,7 @@ const gooseProject: ProjectAdapter = {
 
 const kiroProject: ProjectAdapter = {
   supportsAgents: true,
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -961,6 +962,7 @@ const kiroProject: ProjectAdapter = {
     bundle.skills = await readSkillsDir(path.join(dir, ".kiro/skills"), warnings);
     bundle.agents = await readAgentsDir(path.join(dir, ".kiro/agents"), ".md");
     await warnKiroJsonAgents(path.join(dir, ".kiro/agents"), warnings);
+    bundle.commands = await readAgentsDir(path.join(dir, ".kiro/prompts"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -989,6 +991,12 @@ const kiroProject: ProjectAdapter = {
       files.push(...planAgents(bundle.agents, ".kiro/agents", ".md"));
       warnings.push(
         "agents: frontmatter fields (tools/model/permissions) are client-specific and copied as-is; review after import",
+      );
+    }
+    if (bundle.commands.length) {
+      files.push(...planCommandsFlat(bundle.commands, ".kiro/prompts", "kiro", warnings));
+      warnings.push(
+        "commands: saved prompts are invoked as @name in kiro-cli (no arguments); workspace .kiro/prompts/ prompts override global ones with the same name",
       );
     }
     return { files, warnings };

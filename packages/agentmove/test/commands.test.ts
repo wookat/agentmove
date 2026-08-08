@@ -11,6 +11,7 @@ import { opencode } from "../src/adapters/opencode.js";
 import { qwen } from "../src/adapters/qwen.js";
 import { windsurf } from "../src/adapters/windsurf.js";
 import { amazonq } from "../src/adapters/amazonq.js";
+import { kiro } from "../src/adapters/kiro.js";
 import { codebuddy } from "../src/adapters/codebuddy.js";
 import { droid } from "../src/adapters/droid.js";
 import { qoder } from "../src/adapters/qoder.js";
@@ -89,6 +90,27 @@ describe("custom commands layer", () => {
       "utf8",
     );
     expect(bundle.commands[0]!.content).toBe(raw);
+  });
+
+  it("kiro exports ~/.kiro/prompts/*.md byte-faithfully and plans them flat", async () => {
+    const { bundle } = await kiro.exportBundle(path.join(FIXTURES, "kiro-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["code-review"]);
+    const raw = await fs.readFile(
+      path.join(FIXTURES, "kiro-home/.kiro/prompts/code-review.md"),
+      "utf8",
+    );
+    expect(bundle.commands[0]!.content).toBe(raw);
+
+    const incoming = emptyBundle();
+    incoming.commands = [
+      { name: "deploy", content: "Deploy.\n" },
+      { name: "git/commit", content: "Commit.\n" },
+    ];
+    const { files, warnings } = await kiro.planImport(incoming, "/nonexistent-home", {});
+    expect(files.some((f) => f.path === ".kiro/prompts/deploy.md")).toBe(true);
+    expect(files.some((f) => f.path === ".kiro/prompts/git-commit.md")).toBe(true);
+    expect(warnings.some((w) => w.includes("imported as git-commit"))).toBe(true);
+    expect(warnings.some((w) => w.includes("@name"))).toBe(true);
   });
 
   it("windsurf plans commands flat, flattening nested names and warning on oversize workflows", async () => {
