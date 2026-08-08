@@ -15,7 +15,9 @@ import {
   appendSections,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDir,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -27,11 +29,14 @@ import {
  * command/args/env, remote uses url/headers/oauth; native `disabled` flag;
  * ${NAME} references are expanded from the shell environment). Personal
  * instructions live in ~/.factory/AGENTS.md and personal skills follow the
- * open Agent Skills standard under ~/.factory/skills/.
+ * open Agent Skills standard under ~/.factory/skills/. Custom droids
+ * (subagents) are markdown files with YAML frontmatter under
+ * ~/.factory/droids/ (personal) and .factory/droids/ (project).
  */
 const MCP_REL = ".factory/mcp.json";
 const AGENTS_REL = ".factory/AGENTS.md";
 const SKILLS_REL = ".factory/skills";
+const DROIDS_REL = ".factory/droids";
 
 const CLIENT_KEYS = ["disabledTools", "timeout", "connectTimeout", "oauth"] as const;
 
@@ -77,7 +82,8 @@ export function renderDroidServers(bundle: Bundle): Record<string, unknown> {
 export const droid: ClientAdapter = {
   id: "droid",
   label: "Droid",
-  defaultPath: "~/.factory (mcp.json + AGENTS.md + skills/)",
+  defaultPath: "~/.factory (mcp.json + AGENTS.md + skills/ + droids/)",
+  supportsAgents: true,
 
   async detect(home) {
     return (await exists(path.join(home, MCP_REL))) || (await isDir(path.join(home, ".factory")));
@@ -93,6 +99,7 @@ export const droid: ClientAdapter = {
     bundle.mcpServers = parseDroidServers(config, warnings);
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.agents = await readAgentsDir(path.join(home, DROIDS_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -124,6 +131,12 @@ export const droid: ClientAdapter = {
       warnings.push("memory: droid has no durable memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.agents.length) {
+      files.push(...planAgents(bundle.agents, DROIDS_REL, ".md"));
+      warnings.push(
+        "agents: frontmatter fields (tools/model/reasoningEffort/mcpServers) are client-specific and copied as-is; review after import",
+      );
+    }
     return { files, warnings };
   },
 };

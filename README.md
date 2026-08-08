@@ -124,7 +124,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Crush | `crush` | `~/.config/crush/crush.json` (`mcp`), `~/.config/crush/skills/` |
 | goose | `goose` | `~/.config/goose/config.yaml` (`extensions`), `~/.config/goose/.goosehints`, `~/.config/goose/memory/`, `~/.agents/skills/` |
 | Antigravity | `antigravity` | `~/.gemini/config/mcp_config.json` (`mcpServers`), `~/.gemini/config/skills/` — the shared Antigravity 2.0 config used by the desktop app, the IDE, and the Antigravity CLI (`agy`) |
-| Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`), `~/.factory/AGENTS.md`, `~/.factory/skills/` |
+| Droid | `droid` | `~/.factory/mcp.json` (`mcpServers`), `~/.factory/AGENTS.md`, `~/.factory/skills/`, `~/.factory/droids/` (custom droids / subagents) |
 | Amazon Q Developer CLI | `amazonq` | `~/.aws/amazonq/mcp.json` (`mcpServers`); project scope: `.amazonq/mcp.json` + `AmazonQ.md` |
 | Warp | `warp` | `~/.warp/.mcp.json` (`mcpServers`, no `type` field), `~/.warp/skills/`; project scope: `.warp/.mcp.json` + `AGENTS.md` + `.warp/skills/` |
 | Junie | `junie` | `~/.junie/mcp/mcp.json` (`mcpServers`) + `~/.junie/AGENTS.md` + `~/.junie/skills/`; project scope: `.junie/mcp/mcp.json` + `.junie/AGENTS.md` + `.junie/skills/` |
