@@ -1,7 +1,7 @@
 import { Bundle, McpServer } from "./model.js";
 
 export interface DiffItem {
-  layer: "config" | "mcp" | "instructions" | "persona" | "memory" | "skills" | "agents";
+  layer: "config" | "mcp" | "instructions" | "persona" | "memory" | "skills" | "agents" | "commands";
   kind: "added" | "removed" | "changed";
   name: string;
   detail?: string;
@@ -74,6 +74,17 @@ export function diffBundles(a: Bundle, b: Bundle): DiffItem[] {
     bAgents.delete(agent.name);
   }
   for (const name of bAgents.keys()) items.push({ layer: "agents", kind: "added", name });
+
+  const bCommands = new Map(b.commands.map((c) => [c.name, c]));
+  for (const cmd of a.commands) {
+    const other = bCommands.get(cmd.name);
+    if (!other) items.push({ layer: "commands", kind: "removed", name: cmd.name });
+    else if (cmd.content !== other.content) {
+      items.push({ layer: "commands", kind: "changed", name: cmd.name });
+    }
+    bCommands.delete(cmd.name);
+  }
+  for (const name of bCommands.keys()) items.push({ layer: "commands", kind: "added", name });
 
   return items;
 }

@@ -1,7 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
-  AgentDef,
   Bundle,
   CliError,
   emptyBundle,
@@ -16,7 +15,8 @@ import { listDir, isDir, readText, readTextTree } from "./fsutil.js";
 /**
  * On-disk bundle layout:
  *   manifest.json, config.json, mcp-servers.json, instructions.md, persona.md,
- *   memory/memory.json, memory/raw/<source files>, skills/<name>/..., agents/<name>.md
+ *   memory/memory.json, memory/raw/<source files>, skills/<name>/..., agents/<name>.md,
+ *   commands/<name>.md
  */
 /** Bundle-owned entries removed before a re-export so no stale layers linger. */
 const BUNDLE_ENTRIES = [
@@ -28,6 +28,7 @@ const BUNDLE_ENTRIES = [
   "memory",
   "skills",
   "agents",
+  "commands",
 ];
 
 export async function writeBundle(bundle: Bundle, dir: string): Promise<void> {
@@ -64,13 +65,34 @@ export async function writeBundle(bundle: Bundle, dir: string): Promise<void> {
       await fs.writeFile(file, content);
     }
   }
-  if (bundle.agents.length) {
-    for (const agent of bundle.agents) {
-      const file = path.join(dir, "agents", `${agent.name}.md`);
-      await fs.mkdir(path.dirname(file), { recursive: true });
-      await fs.writeFile(file, agent.content);
-    }
+  await writeNamedMdDir(bundle.agents, path.join(dir, "agents"));
+  await writeNamedMdDir(bundle.commands, path.join(dir, "commands"));
+}
+
+async function writeNamedMdDir(defs: { name: string; content: string }[], root: string): Promise<void> {
+  for (const def of defs) {
+    const file = path.join(root, `${def.name}.md`);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, def.content);
   }
+}
+
+async function readNamedMdDir(root: string): Promise<{ name: string; content: string }[]> {
+  const defs: { name: string; content: string }[] = [];
+  const walk = async (sub: string, prefix: string): Promise<void> => {
+    for (const name of (await listDir(sub)).sort()) {
+      const full = path.join(sub, name);
+      if (await isDir(full)) {
+        await walk(full, `${prefix}${name}/`);
+        continue;
+      }
+      if (!name.endsWith(".md")) continue;
+      const content = await readText(full);
+      if (content !== undefined) defs.push({ name: `${prefix}${name.slice(0, -3)}`, content });
+    }
+  };
+  await walk(root, "");
+  return defs;
 }
 
 export async function readBundle(dir: string): Promise<Bundle> {
@@ -121,23 +143,9 @@ export async function readBundle(dir: string): Promise<Bundle> {
   }
 
   const agentsDir = path.join(dir, "agents");
-  if (await isDir(agentsDir)) {
-    const agents: AgentDef[] = [];
-    const walk = async (sub: string, prefix: string): Promise<void> => {
-      for (const name of (await listDir(sub)).sort()) {
-        const full = path.join(sub, name);
-        if (await isDir(full)) {
-          await walk(full, `${prefix}${name}/`);
-          continue;
-        }
-        if (!name.endsWith(".md")) continue;
-        const content = await readText(full);
-        if (content !== undefined) agents.push({ name: `${prefix}${name.slice(0, -3)}`, content });
-      }
-    };
-    await walk(agentsDir, "");
-    bundle.agents = agents;
-  }
+  if (await isDir(agentsDir)) bundle.agents = await readNamedMdDir(agentsDir);
+  const commandsDir = path.join(dir, "commands");
+  if (await isDir(commandsDir)) bundle.commands = await readNamedMdDir(commandsDir);
   return bundle;
 }
 

@@ -19,6 +19,7 @@ import {
   planAgents,
   planSkills,
   readAgentsDir,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -32,6 +33,8 @@ export interface ClaudeStyleLayout {
   root: string;
   /** Whether the client discovers custom subagents in .claude/agents/. */
   supportsAgents?: boolean;
+  /** Whether the client discovers custom slash commands in .claude/commands/. */
+  supportsCommands?: boolean;
 }
 
 /**
@@ -47,6 +50,7 @@ export function makeClaudeStyleAdapter(layout: ClaudeStyleLayout): ClientAdapter
   const MD_REL = rel(".claude/CLAUDE.md");
   const SKILLS_REL = rel(".claude/skills");
   const AGENTS_REL = rel(".claude/agents");
+  const COMMANDS_REL = rel(".claude/commands");
 
   async function readUserConfig(home: string): Promise<Record<string, unknown>> {
     const file = path.join(home, MCP_REL);
@@ -61,6 +65,7 @@ export function makeClaudeStyleAdapter(layout: ClaudeStyleLayout): ClientAdapter
     label: layout.label,
     defaultPath: layout.defaultPath,
     supportsAgents: layout.supportsAgents,
+    supportsCommands: layout.supportsCommands,
 
     async detect(home) {
       return (await exists(path.join(home, MCP_REL))) || (await isDir(path.join(home, rel(".claude"))));
@@ -85,6 +90,9 @@ export function makeClaudeStyleAdapter(layout: ClaudeStyleLayout): ClientAdapter
       bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
       if (layout.supportsAgents) {
         bundle.agents = await readAgentsDir(path.join(home, AGENTS_REL), ".md");
+      }
+      if (layout.supportsCommands) {
+        bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_REL), ".md");
       }
       warnings.push(
         `${id} auto memory is session/project-scoped and not exported in v0; ` +
@@ -133,6 +141,12 @@ export function makeClaudeStyleAdapter(layout: ClaudeStyleLayout): ClientAdapter
           "agents: frontmatter fields (tools/model) are client-specific and copied as-is; review after import",
         );
       }
+      if (layout.supportsCommands && bundle.commands.length) {
+        files.push(...planAgents(bundle.commands, COMMANDS_REL, ".md"));
+        warnings.push(
+          "commands: argument placeholders and frontmatter fields (allowed-tools/model) are client-specific and copied as-is; review after import",
+        );
+      }
       return { files, warnings };
     },
   };
@@ -144,4 +158,5 @@ export const claudeCode: ClientAdapter = makeClaudeStyleAdapter({
   defaultPath: "~/.claude + ~/.claude.json",
   root: "",
   supportsAgents: true,
+  supportsCommands: true,
 });

@@ -125,6 +125,26 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Every other client has no custom agents directory — imported agents are
   **skipped** with a warning.
 
+## Commands / custom prompts
+
+- Markdown slash commands / reusable prompts migrate natively between
+  Claude Code (`~/.claude/commands/`, project `.claude/commands/`;
+  subdirectories become namespaced command names and are preserved),
+  Cursor (`~/.cursor/commands/`, project `.cursor/commands/`), and
+  Codex CLI (`~/.codex/prompts/`, user scope only, invoked as
+  `/prompts:<name>`).
+- Content is copied **as-is**. Argument placeholders (`$ARGUMENTS`,
+  `$1`…) and frontmatter fields (`allowed-tools:`, `model:`,
+  `argument-hint:`) are client-specific and may need review after
+  import — a warning is emitted.
+- Cursor and Codex only discover top-level command files: nested names
+  like `git/commit` are flattened to `git-commit` on import there, with
+  a warning (name collisions after flattening skip the command).
+- Codex custom prompts are deprecated in favor of skills but still
+  supported — noted as a warning on import.
+- Every other client has no documented commands/prompts directory —
+  imported commands are **skipped** with a warning.
+
 ## MCP servers
 
 Near-lossless, with these edges:
