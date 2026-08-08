@@ -159,6 +159,17 @@ persona, and a later export won't recover it as a separate `persona.md`.
   (`backend/sql` → `backend-sql`, warned), and frontmatter with fields
   beyond `description` is kept verbatim inside `roleDefinition` (warned).
   Mode-specific `.roo/rules-{slug}/` rule folders are **not** migrated.
+- Nanocoder subagents are **flat** markdown files
+  (`~/.config/nanocoder/agents/`, project `.nanocoder/agents/`) and
+  nanocoder refuses to load an agent whose frontmatter lacks a non-empty
+  `name` and `description`. Content is copied as-is, but imports inject
+  the missing required keys (a synthesized description reads
+  `Imported by agentmove from agent <name>`) — warned per field. Nested
+  agent names are flattened (`backend/sql` → `backend-sql`, warned;
+  collisions after flattening are skipped with a warning), and
+  nanocoder-specific frontmatter (`provider`, `model`, `contextWindow`,
+  `tools`, `disallowedTools`, `subscribe`) is copied as-is — review
+  after import.
 - Every other client has no custom agents directory — imported agents are
   **skipped** with a warning.
 

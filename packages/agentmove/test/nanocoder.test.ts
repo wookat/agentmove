@@ -125,4 +125,83 @@ describe("nanocoder adapter", () => {
     expect(expWarnings).toEqual([]);
     await fs.rm(dir, { recursive: true, force: true });
   });
+
+  it("exports flat custom agents byte-faithfully", async () => {
+    const { bundle } = await nanocoder.exportBundle(HOME);
+    expect(bundle.agents.map((a) => a.name)).toEqual(["code-reviewer"]);
+    expect(bundle.agents[0]!.content).toContain("name: code-reviewer");
+    expect(bundle.agents[0]!.content).toContain("You are a code review specialist.");
+  });
+
+  it("imports agents, injecting required frontmatter and flattening nested names", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [
+      {
+        name: "full",
+        content: "---\nname: full\ndescription: Complete agent\nmodel: inherit\n---\nBody full.\n",
+      },
+      { name: "desc-only", content: "---\ndescription: Has description\n---\nBody desc.\n" },
+      { name: "bare", content: "Just a system prompt.\n" },
+      { name: "backend/sql", content: "---\nname: sql\ndescription: SQL helper\n---\nSQL body.\n" },
+      { name: "backend-sql", content: "Collides after flattening.\n" },
+    ];
+    const { files, warnings } = await nanocoder.planImport(bundle, HOME, {});
+    const byPath = Object.fromEntries(files.map((f) => [f.path, f.content]));
+    expect(byPath[".config/nanocoder/agents/full.md"]).toBe(
+      "---\nname: full\ndescription: Complete agent\nmodel: inherit\n---\nBody full.\n",
+    );
+    expect(byPath[".config/nanocoder/agents/desc-only.md"]).toBe(
+      '---\nname: "desc-only"\ndescription: Has description\n---\nBody desc.\n',
+    );
+    expect(warnings).toContain(
+      "agents:desc-only: nanocoder requires a name frontmatter field; added",
+    );
+    expect(byPath[".config/nanocoder/agents/bare.md"]).toBe(
+      '---\nname: "bare"\ndescription: "Imported by agentmove from agent bare"\n---\nJust a system prompt.\n',
+    );
+    expect(warnings).toContain(
+      "agents:bare: nanocoder requires name/description frontmatter; a frontmatter block was added",
+    );
+    expect(byPath[".config/nanocoder/agents/backend-sql.md"]).toBe(
+      "---\nname: sql\ndescription: SQL helper\n---\nSQL body.\n",
+    );
+    expect(warnings).toContain(
+      "agents:backend/sql: nanocoder only discovers top-level agent files; imported as backend-sql",
+    );
+    expect(warnings).toContain(
+      "agents:backend-sql: name collides with another agent after flattening; skipped",
+    );
+    expect(warnings).toContain(
+      "agents: frontmatter fields (provider/model/contextWindow/tools/disallowedTools/subscribe) are client-specific and copied as-is; review after import",
+    );
+  });
+
+  it("round-trips complete agents byte-faithfully", async () => {
+    const { bundle } = await nanocoder.exportBundle(HOME);
+    const { files } = await nanocoder.planImport(bundle, HOME, {});
+    const original = bundle.agents[0]!.content;
+    expect(files.find((f) => f.path === ".config/nanocoder/agents/code-reviewer.md")!.content).toBe(
+      original,
+    );
+  });
+
+  it("project scope: .nanocoder/agents export/import", async () => {
+    const adapter = getProjectAdapter("nanocoder");
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "nanocoder-agents-proj-"));
+    await fs.mkdir(path.join(dir, ".nanocoder/agents"), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, ".nanocoder/agents/helper.md"),
+      "---\nname: helper\ndescription: Helps here\n---\nProject helper.\n",
+    );
+    const { bundle: exported } = await adapter.exportProject(dir);
+    expect(exported.agents.map((a) => a.name)).toEqual(["helper"]);
+    const bundle = emptyBundle();
+    bundle.agents = exported.agents;
+    const { files, warnings } = await adapter.planImport(bundle, dir, {});
+    expect(files.find((f) => f.path === ".nanocoder/agents/helper.md")!.content).toBe(
+      "---\nname: helper\ndescription: Helps here\n---\nProject helper.\n",
+    );
+    expect(warnings.some((w) => w.includes("client-specific and copied as-is"))).toBe(true);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
 });

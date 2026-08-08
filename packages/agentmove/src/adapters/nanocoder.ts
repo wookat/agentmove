@@ -15,7 +15,7 @@ import {
   Transport,
 } from "../model.js";
 import { exists, isDir, listDir, readText } from "../fsutil.js";
-import { mergeMcpRecords, planAgents, touchesMcpConfig } from "./shared.js";
+import { mergeMcpRecords, planAgents, readAgentsDir, touchesMcpConfig } from "./shared.js";
 
 /**
  * Nanocoder (Nano Collective). Global MCP servers live under the `mcpServers`
@@ -31,12 +31,92 @@ import { mergeMcpRecords, planAgents, touchesMcpConfig } from "./shared.js";
  * subdirectories become `:`-separated namespaces, so nested layouts are
  * preserved. A directory containing <dirname>.md is a directory-as-command
  * bundle whose optional resources/ files are client-specific.
+ *
+ * Custom subagents are flat markdown files under ~/.config/nanocoder/agents/
+ * (personal) and .nanocoder/agents/ (project). Nanocoder refuses to load an
+ * agent whose frontmatter lacks a non-empty `name` and `description`, so
+ * imports inject those keys when missing; everything else is copied as-is.
  */
 const MCP_REL = ".config/nanocoder/.mcp.json";
 const COMMANDS_DIR_REL = ".config/nanocoder/commands";
+const AGENTS_DIR_REL = ".config/nanocoder/agents";
 
 export const NANOCODER_COMMANDS_WARNING =
   "commands: frontmatter fields (description/aliases/triggers/tags) and {{parameter}} placeholders are client-specific and copied as-is; review after import";
+
+export const NANOCODER_AGENTS_WARNING =
+  "agents: frontmatter fields (provider/model/contextWindow/tools/disallowedTools/subscribe) are client-specific and copied as-is; review after import";
+
+function frontmatterLine(key: string, value: string): string {
+  return `${key}: ${JSON.stringify(value)}`;
+}
+
+/**
+ * Nanocoder only loads agents whose frontmatter has a non-empty `name` and
+ * `description`; inject the missing keys (with warnings) so imported agents
+ * actually appear in the client.
+ */
+export function ensureNanocoderAgentFrontmatter(
+  name: string,
+  content: string,
+  warnings: string[],
+): string {
+  const nameLine = frontmatterLine("name", name);
+  const descLine = frontmatterLine("description", `Imported by agentmove from agent ${name}`);
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(content);
+  if (!m) {
+    warnings.push(
+      `agents:${name}: nanocoder requires name/description frontmatter; a frontmatter block was added`,
+    );
+    return `---\n${nameLine}\n${descLine}\n---\n${content}`;
+  }
+  const block = m[1] ?? "";
+  const hasKey = (key: string): boolean =>
+    block.split(/\r?\n/).some((line) => new RegExp(`^${key}:\\s*\\S`).test(line));
+  const additions: string[] = [];
+  if (!hasKey("name")) {
+    additions.push(nameLine);
+    warnings.push(`agents:${name}: nanocoder requires a name frontmatter field; added`);
+  }
+  if (!hasKey("description")) {
+    additions.push(descLine);
+    warnings.push(`agents:${name}: nanocoder requires a description frontmatter field; added`);
+  }
+  if (!additions.length) return content;
+  return `---\n${additions.join("\n")}\n${block}\n---\n${content.slice(m[0].length)}`;
+}
+
+/**
+ * Plan writes into a flat nanocoder agents root: nested names are flattened
+ * with a warning (collisions skipped) and required frontmatter is injected.
+ */
+export function planNanocoderAgents(
+  agents: AgentDef[],
+  rootRel: string,
+  warnings: string[],
+): FilePlan[] {
+  const plans: FilePlan[] = [];
+  const used = new Set<string>();
+  for (const a of agents) {
+    let name = a.name;
+    if (name.includes("/")) {
+      name = name.replace(/\//g, "-");
+      warnings.push(
+        `agents:${a.name}: nanocoder only discovers top-level agent files; imported as ${name}`,
+      );
+    }
+    if (used.has(name)) {
+      warnings.push(`agents:${a.name}: name collides with another agent after flattening; skipped`);
+      continue;
+    }
+    used.add(name);
+    plans.push({
+      path: `${rootRel}/${name}.md`,
+      content: ensureNanocoderAgentFrontmatter(name, a.content, warnings),
+    });
+  }
+  return plans;
+}
 
 /**
  * Read a nanocoder commands tree. Subdirectories are namespaces unless they
@@ -191,7 +271,8 @@ export async function planNanocoderMcp(
 export const nanocoder: ClientAdapter = {
   id: "nanocoder",
   label: "Nanocoder",
-  defaultPath: "~/.config/nanocoder (.mcp.json + commands/)",
+  defaultPath: "~/.config/nanocoder (.mcp.json + commands/ + agents/)",
+  supportsAgents: true,
   supportsCommands: true,
 
   async detect(home) {
@@ -213,6 +294,7 @@ export const nanocoder: ClientAdapter = {
       path.join(home, COMMANDS_DIR_REL),
       warnings,
     );
+    bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
     return { bundle, warnings };
   },
 
@@ -249,6 +331,10 @@ export const nanocoder: ClientAdapter = {
     if (bundle.commands.length) {
       files.push(...planAgents(bundle.commands, COMMANDS_DIR_REL, ".md"));
       warnings.push(NANOCODER_COMMANDS_WARNING);
+    }
+    if (bundle.agents.length) {
+      files.push(...planNanocoderAgents(bundle.agents, AGENTS_DIR_REL, warnings));
+      warnings.push(NANOCODER_AGENTS_WARNING);
     }
     return { files, warnings };
   },
