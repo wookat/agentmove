@@ -1,5 +1,11 @@
 # agentmove-cli
 
+## 0.74.0
+
+### Minor Changes
+
+- 7e5eb70: Commands layer for CodeBuddy and Droid (Factory): migrate markdown slash commands to/from CodeBuddy (`~/.codebuddy/commands/`; project `.codebuddy/commands/`; nested directories preserved as `/group:command` names) and Droid (`~/.factory/commands/`; project `.factory/commands/`; nested directories preserved). Droid shebang script commands are warned per file and not migrated; frontmatter and argument placeholders are copied as-is with client-specific warnings.
+
 ## 0.73.0
 
 ### Minor Changes
