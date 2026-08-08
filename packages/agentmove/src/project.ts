@@ -71,7 +71,12 @@ import {
 import { parseAmazonqServers, renderAmazonqServers } from "./adapters/amazonq.js";
 import { parseWarpServers, renderWarpServers, warpWrapperKey } from "./adapters/warp.js";
 import { parseJunieServers, renderJunieServers } from "./adapters/junie.js";
-import { parseTraeServers, planTraeMcp } from "./adapters/trae.js";
+import {
+  parseTraeServers,
+  planTraeMcp,
+  TRAE_COMMANDS_WARNING,
+  warnTraeCommandDepth,
+} from "./adapters/trae.js";
 import { parseComateServers, planComateMcp } from "./adapters/comate.js";
 import {
   CODEBUDDY_AGENTS_WARNING,
@@ -1363,6 +1368,7 @@ const warpProject: ProjectAdapter = {
 };
 
 const traeProject: ProjectAdapter = {
+  supportsCommands: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1383,6 +1389,7 @@ const traeProject: ProjectAdapter = {
       }
     }
     bundle.skills = await readSkillsDir(path.join(dir, ".trae/skills"), warnings);
+    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".trae/commands"), ".md");
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1414,6 +1421,11 @@ const traeProject: ProjectAdapter = {
       warnings.push("memory: trae memories are app-managed; skipped");
     }
     files.push(...planSkills(bundle.skills, ".trae/skills"));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, ".trae/commands", ".md"));
+      warnings.push(TRAE_COMMANDS_WARNING);
+      warnTraeCommandDepth(bundle.commands, warnings, ".trae/commands");
+    }
     return { files, warnings };
   },
 };

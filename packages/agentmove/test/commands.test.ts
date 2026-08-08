@@ -23,6 +23,7 @@ import { continueAdapter } from "../src/adapters/continue.js";
 import { vscode } from "../src/adapters/vscode.js";
 import { gemini, geminiCommandToToml } from "../src/adapters/gemini.js";
 import { crush } from "../src/adapters/crush.js";
+import { trae } from "../src/adapters/trae.js";
 import { parse as parseToml } from "smol-toml";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle, filterBundle } from "../src/model.js";
@@ -725,6 +726,57 @@ describe("custom commands layer", () => {
     const written = files.find((f) => f.path === ".crush/commands/git/commit.md")!;
     expect(written.content).toBe("Commit.\n");
     expect(warnings.some((w) => w.includes("$NAME argument placeholders"))).toBe(true);
+  });
+
+  it("trae exports both user command roots recursively (~/.trae wins on conflicts)", async () => {
+    const { bundle, warnings } = await trae.exportBundle(path.join(FIXTURES, "trae-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual([
+      "cn-only",
+      "module-a/command-a",
+      "summarize-pr",
+    ]);
+    const mainRaw = await fs.readFile(
+      path.join(FIXTURES, "trae-home/.trae/commands/summarize-pr.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "summarize-pr")!.content).toBe(mainRaw);
+    const cnRaw = await fs.readFile(
+      path.join(FIXTURES, "trae-home/.trae-cn/commands/cn-only.md"),
+      "utf8",
+    );
+    expect(bundle.commands.find((c) => c.name === "cn-only")!.content).toBe(cnRaw);
+    expect(warnings.some((w) => w.includes("~/.trae-cn/commands/ (CN edition) files exported"))).toBe(
+      true,
+    );
+  });
+
+  it("trae plans nested commands into ~/.trae/commands only, warns beyond 3 levels", async () => {
+    const bundle = emptyBundle();
+    bundle.commands = [
+      { name: "module-a/command-a", content: "Run $1.\n" },
+      { name: "a/b/c/d/too-deep", content: "Too deep.\n" },
+    ];
+    const { files, warnings } = await trae.planImport(bundle, "/nonexistent-home", {});
+    const written = files.find((f) => f.path === ".trae/commands/module-a/command-a.md")!;
+    expect(written.content).toBe("Run $1.\n");
+    expect(files.some((f) => f.path === ".trae/commands/a/b/c/d/too-deep.md")).toBe(true);
+    expect(files.some((f) => f.path.startsWith(".trae-cn/"))).toBe(false);
+    expect(warnings.some((w) => w.includes("frontmatter (name/description)"))).toBe(true);
+    expect(
+      warnings.some((w) => w.includes("commands:a/b/c/d/too-deep") && w.includes("3 nested")),
+    ).toBe(true);
+  });
+
+  it("project scope: trae commands round-trip under .trae/commands", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-traeproj-"));
+    await fs.mkdir(path.join(dir, ".trae/commands/module-a"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".trae/commands/module-a/command-a.md"), "Run $1.\n");
+    const ex = await getProjectAdapter("trae").exportProject(dir);
+    expect(ex.bundle.commands.map((c) => c.name)).toEqual(["module-a/command-a"]);
+    const { files, warnings } = await getProjectAdapter("trae").planImport(ex.bundle, "/p", {});
+    const written = files.find((f) => f.path === ".trae/commands/module-a/command-a.md")!;
+    expect(written.content).toBe("Run $1.\n");
+    expect(warnings.some((w) => w.includes("frontmatter (name/description)"))).toBe(true);
   });
 
   it("bundle round-trips the commands layer byte-faithfully (nested names)", async () => {

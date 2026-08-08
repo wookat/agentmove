@@ -12,9 +12,12 @@ import {
 } from "../model.js";
 import { isDir, readText } from "../fsutil.js";
 import {
+  mergeAgentLists,
   mergeMcpRecords,
   parseCommonMcpEntry,
+  planAgents,
   planSkills,
+  readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
   touchesMcpConfig,
@@ -23,14 +26,35 @@ import {
 /**
  * Trae (ByteDance, VS Code-based AI IDE). User-scoped MCP servers, rules,
  * and memories are app-managed through Settings and have no documented
- * config file; the only documented user-level files are global skills under
- * ~/.trae/skills/ (Agent Skills standard). Project scope is where Trae's
- * files live: .trae/mcp.json (`mcpServers`, standard notation — stdio uses
- * command/args/env, remote uses url/headers, no `type` or `disabled` field;
- * needs the "Enable Project MCP" toggle), .trae/rules/*.md project rules,
- * and .trae/skills/ project skills.
+ * config file; the documented user-level files are global skills under
+ * ~/.trae/skills/ (Agent Skills standard) and global commands under
+ * ~/.trae/commands/ (~/.trae-cn/commands/ in the CN edition). Project scope
+ * is where the rest of Trae's files live: .trae/mcp.json (`mcpServers`,
+ * standard notation — stdio uses command/args/env, remote uses url/headers,
+ * no `type` or `disabled` field; needs the "Enable Project MCP" toggle),
+ * .trae/rules/*.md project rules, .trae/skills/ project skills, and
+ * .trae/commands/ project commands (nested up to 3 directory levels).
  */
 const SKILLS_REL = ".trae/skills";
+const COMMANDS_REL = ".trae/commands";
+const CN_COMMANDS_REL = ".trae-cn/commands";
+
+export const TRAE_COMMANDS_WARNING =
+  "commands: trae command frontmatter (name/description) and argument conventions from other clients are client-specific and copied as-is; review after import";
+
+export function warnTraeCommandDepth(
+  commands: { name: string }[],
+  warnings: string[],
+  rel: string,
+): void {
+  for (const c of commands) {
+    if (c.name.split("/").length > 4) {
+      warnings.push(
+        `commands:${c.name}: trae reads at most 3 nested directory levels under ${rel}; written but not recognized by trae`,
+      );
+    }
+  }
+}
 
 async function readJsonMap(file: string): Promise<Record<string, unknown>> {
   const raw = await readText(file);
@@ -96,7 +120,8 @@ export async function planTraeMcp(
 export const trae: ClientAdapter = {
   id: "trae",
   label: "Trae",
-  defaultPath: "~/.trae/skills (MCP/rules are project-scoped: .trae/mcp.json + .trae/rules)",
+  defaultPath: "~/.trae (skills/ + commands/; MCP/rules are project-scoped)",
+  supportsCommands: true,
 
   async detect(home) {
     return isDir(path.join(home, ".trae"));
@@ -108,6 +133,16 @@ export const trae: ClientAdapter = {
     bundle.manifest.exportedFrom = "trae";
 
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    const cnRoot = await readAgentsDirRecursive(path.join(home, CN_COMMANDS_REL), ".md");
+    bundle.commands = mergeAgentLists(
+      cnRoot,
+      await readAgentsDirRecursive(path.join(home, COMMANDS_REL), ".md"),
+    );
+    if (cnRoot.length) {
+      warnings.push(
+        "commands: ~/.trae-cn/commands/ (CN edition) files exported; ~/.trae/commands/ wins on name conflicts",
+      );
+    }
     warnings.push(
       "mcp: trae user-level MCP servers are app-managed (Settings > MCP) with no documented config file; use --project for .trae/mcp.json",
     );
@@ -135,6 +170,11 @@ export const trae: ClientAdapter = {
       warnings.push("memory: trae memories are app-managed; skipped (consider --mif)");
     }
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    if (bundle.commands.length) {
+      files.push(...planAgents(bundle.commands, COMMANDS_REL, ".md"));
+      warnings.push(TRAE_COMMANDS_WARNING);
+      warnTraeCommandDepth(bundle.commands, warnings, COMMANDS_REL);
+    }
     return { files, warnings };
   },
 };
