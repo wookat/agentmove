@@ -32,7 +32,10 @@ describe("opencode adapter", () => {
     expect(todo.files["SKILL.md"]).toContain("Keep a running todo list");
     expect(warnings).toEqual([
       "skills:todo: .agents/skills copy shadowed by the .config/opencode/skills version (opencode keeps one skill per name); the .config/opencode/skills version is exported",
+      'agents:build: .opencode/modes entry is an opencode primary mode (loaded with mode: "primary"); exported as a regular agent',
+      'agents:legacy-helper: .config/opencode/mode entry is an opencode primary mode (loaded with mode: "primary"); exported as a regular agent',
       "agents:reviewer: .config/opencode/agents copy shadowed by the .opencode/agent version (opencode keeps one agent per name); the .opencode/agent version is exported",
+      "agents:legacy-helper: .config/opencode/agent copy shadowed by the .config/opencode/mode version (opencode keeps one agent per name); the .config/opencode/mode version is exported",
       "commands:team/review: .config/opencode/commands copy shadowed by the .opencode/commands version (opencode keeps one command per name); the .opencode/commands version is exported",
     ]);
   });
@@ -146,12 +149,22 @@ describe("opencode adapter", () => {
     await fs.writeFile(path.join(dir, ".opencode/agent/solo.md"), "solo\n");
     await fs.mkdir(path.join(dir, ".opencode/command"), { recursive: true });
     await fs.writeFile(path.join(dir, ".opencode/command/lint.md"), "lint\n");
+    await fs.mkdir(path.join(dir, ".opencode/mode/sub"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".opencode/mode/solo.md"), "mode solo wins\n");
+    await fs.writeFile(path.join(dir, ".opencode/mode/sub/nested.md"), "nested mode decoy\n");
     const adapter = getProjectAdapter("opencode");
     const { bundle, warnings } = await adapter.exportProject(dir);
     expect(bundle.agents.map((a) => a.name)).toEqual(["solo", "team/helper"]);
     expect(bundle.agents.find((a) => a.name === "team/helper")!.content).toBe("plural helper\n");
+    expect(bundle.agents.find((a) => a.name === "solo")!.content).toBe("mode solo wins\n");
     expect(warnings).toContain(
       "agents:team/helper: .opencode/agent copy shadowed by the .opencode/agents version (opencode keeps one agent per name); the .opencode/agents version is exported",
+    );
+    expect(warnings).toContain(
+      'agents:solo: .opencode/mode entry is an opencode primary mode (loaded with mode: "primary"); exported as a regular agent',
+    );
+    expect(warnings).toContain(
+      "agents:solo: .opencode/agent copy shadowed by the .opencode/mode version (opencode keeps one agent per name); the .opencode/mode version is exported",
     );
     expect(bundle.commands.map((c) => c.name)).toEqual(["lint"]);
     expect(bundle.commands[0]!.content).toBe("lint\n");

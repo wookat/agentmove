@@ -19,6 +19,7 @@ import {
   parseCommonMcpEntry,
   planAgents,
   planSkills,
+  readAgentsDir,
   readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
@@ -48,6 +49,12 @@ import {
  * ~/.config/opencode; within one dir we deterministically prefer the plural
  * directory. Duplicate names emit a shadow warning. Imports write only the
  * native plural roots (~/.config/opencode/agents/ and commands/).
+ * Primary modes are top-level markdown files in {mode,modes}/ of the same
+ * config dirs (flat scan, no nesting); opencode merges them into the agent
+ * map after the agent dirs, so a mode beats a same-name agent within one
+ * config dir and runs with `mode: "primary"`. They are exported into the
+ * agents layer byte-faithfully with a per-entry warning; imports still write
+ * only agents/ and never synthesize mode files.
  */
 const CONFIG_DIR_REL = ".config/opencode";
 const CONFIG_REL = ".config/opencode/opencode.json";
@@ -62,14 +69,31 @@ const SKILLS_ROOTS = [
   ".agents/skills",
 ];
 const AGENTS_DIR_REL = ".config/opencode/agents";
-const AGENT_ROOTS = [
+
+/** One opencode agent/command discovery root. */
+export interface OpencodeEntryRoot {
+  rel: string;
+  /** Flat `*.md` scan (opencode's mode dirs load no nested files). */
+  flat?: boolean;
+  /** Entries are primary modes: opencode loads them with `mode: "primary"`. */
+  primaryMode?: boolean;
+}
+
+export const OPENCODE_MODE_ROOTS = (dir: string): OpencodeEntryRoot[] => [
+  { rel: `${dir}/modes`, flat: true, primaryMode: true },
+  { rel: `${dir}/mode`, flat: true, primaryMode: true },
+];
+
+const AGENT_ROOTS: (string | OpencodeEntryRoot)[] = [
+  ...OPENCODE_MODE_ROOTS(".opencode"),
   ".opencode/agents",
   ".opencode/agent",
+  ...OPENCODE_MODE_ROOTS(".config/opencode"),
   ".config/opencode/agents",
   ".config/opencode/agent",
 ];
 const COMMANDS_DIR_REL = ".config/opencode/commands";
-const COMMAND_ROOTS = [
+const COMMAND_ROOTS: (string | OpencodeEntryRoot)[] = [
   ".opencode/commands",
   ".opencode/command",
   ".config/opencode/commands",
@@ -160,24 +184,34 @@ export function toOpencodeEntry(s: McpServer, warnings: string[]): Record<string
 /** Merge opencode's agent/command roots in priority order; the first copy of a name wins. */
 export async function readOpencodeEntries(
   base: string,
-  roots: string[],
+  roots: (string | OpencodeEntryRoot)[],
   layer: "agents" | "commands",
   warnings: string[],
 ): Promise<AgentDef[]> {
   const singular = layer === "agents" ? "agent" : "command";
   const entries: AgentDef[] = [];
   const winner = new Map<string, string>();
-  for (const rootRel of roots) {
-    for (const entry of await readAgentsDirRecursive(path.join(base, rootRel), ".md")) {
+  for (const root of roots) {
+    const spec = typeof root === "string" ? { rel: root } : root;
+    const dir = path.join(base, spec.rel);
+    const found = spec.flat
+      ? await readAgentsDir(dir, ".md")
+      : await readAgentsDirRecursive(dir, ".md");
+    for (const entry of found) {
       const winnerRoot = winner.get(entry.name);
       if (winnerRoot !== undefined) {
         warnings.push(
-          `${layer}:${entry.name}: ${rootRel} copy shadowed by the ${winnerRoot} version (opencode keeps one ${singular} per name); the ${winnerRoot} version is exported`,
+          `${layer}:${entry.name}: ${spec.rel} copy shadowed by the ${winnerRoot} version (opencode keeps one ${singular} per name); the ${winnerRoot} version is exported`,
         );
         continue;
       }
-      winner.set(entry.name, rootRel);
+      winner.set(entry.name, spec.rel);
       entries.push(entry);
+      if (spec.primaryMode) {
+        warnings.push(
+          `${layer}:${entry.name}: ${spec.rel} entry is an opencode primary mode (loaded with mode: "primary"); exported as a regular agent`,
+        );
+      }
     }
   }
   entries.sort((a, b) => a.name.localeCompare(b.name));
