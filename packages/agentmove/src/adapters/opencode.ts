@@ -10,6 +10,7 @@ import {
   isRecord,
   McpServer,
   parseFile,
+  Skill,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
 import {
@@ -30,7 +31,15 @@ import {
  * servers use `type: "local"` with `command` as an argv array plus
  * `environment`, remote servers use `type: "remote"` + `url`; both take an
  * `enabled` boolean. Instructions are ~/.config/opencode/AGENTS.md and
- * skills are native SKILL.md directories under ~/.config/opencode/skills/.
+ * skills are native SKILL.md directories: opencode scans its config dirs
+ * (~/.config/opencode/ plus a ~/.opencode/ fallback) under both skills/ and
+ * the singular skill/, and also loads the generic shared root
+ * ~/.agents/skills/ (project: .opencode/{skills,skill}/ + .agents/skills/).
+ * Duplicate names keep the first copy in our root order below with a warning
+ * (opencode itself keys skills by frontmatter name and its duplicate pick is
+ * load-order dependent); imports write only ~/.config/opencode/skills/. The
+ * Claude-compatible root ~/.claude/skills/ that opencode also scans belongs
+ * to the claude adapters and is not read here.
  * Custom agents/subagents are markdown files under ~/.config/opencode/agents/
  * (legacy singular agent/ also read). Custom commands are markdown files
  * under ~/.config/opencode/commands/ (nested paths become `/team/review`).
@@ -40,6 +49,13 @@ const CONFIG_REL = ".config/opencode/opencode.json";
 const CONFIG_JSONC_REL = ".config/opencode/opencode.jsonc";
 const AGENTS_REL = ".config/opencode/AGENTS.md";
 const SKILLS_REL = ".config/opencode/skills";
+const SKILLS_ROOTS = [
+  ".config/opencode/skills",
+  ".config/opencode/skill",
+  ".opencode/skills",
+  ".opencode/skill",
+  ".agents/skills",
+];
 const AGENTS_DIR_REL = ".config/opencode/agents";
 const AGENT_DIR_LEGACY_REL = ".config/opencode/agent";
 const COMMANDS_DIR_REL = ".config/opencode/commands";
@@ -59,6 +75,31 @@ async function readConfig(
     return { config: isRecord(data) ? data : {}, rel };
   }
   return { config: {}, rel: CONFIG_REL };
+}
+
+/** Merge opencode's skill roots in priority order; the first copy of a name wins. */
+export async function readOpencodeSkills(
+  base: string,
+  roots: string[],
+  warnings: string[],
+): Promise<Skill[]> {
+  const skills: Skill[] = [];
+  const winner = new Map<string, string>();
+  for (const rootRel of roots) {
+    for (const skill of await readSkillsDir(path.join(base, rootRel), warnings)) {
+      const winnerRoot = winner.get(skill.name);
+      if (winnerRoot !== undefined) {
+        warnings.push(
+          `skills:${skill.name}: ${rootRel} copy shadowed by the ${winnerRoot} version (opencode keeps one skill per name); the ${winnerRoot} version is exported`,
+        );
+        continue;
+      }
+      winner.set(skill.name, rootRel);
+      skills.push(skill);
+    }
+  }
+  skills.sort((a, b) => a.name.localeCompare(b.name));
+  return skills;
 }
 
 /** Normalize an OpenCode entry into the common shape parseCommonMcpEntry understands. */
@@ -144,7 +185,7 @@ export const opencode: ClientAdapter = {
     bundle.mcpServers = servers;
 
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
-    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.skills = await readOpencodeSkills(home, SKILLS_ROOTS, warnings);
     bundle.agents = await readAgentsDirs(home);
     bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_DIR_REL), ".md");
     return { bundle, warnings };

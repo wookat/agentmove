@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { opencode } from "../src/adapters/opencode.js";
+import fs from "node:fs/promises";
+import os from "node:os";
+import { opencode, readOpencodeSkills } from "../src/adapters/opencode.js";
 import { getProjectAdapter } from "../src/project.js";
 import { emptyBundle } from "../src/model.js";
 
@@ -20,8 +22,39 @@ describe("opencode adapter", () => {
     expect(byName.jira!.url).toBe("https://jira.example.com/mcp");
     expect(byName.jira!.enabled).toBe(false);
     expect(bundle.instructions).toContain("TypeScript strict mode");
-    expect(bundle.skills.map((s) => s.name)).toEqual(["todo"]);
-    expect(warnings).toEqual([]);
+    expect(bundle.skills.map((s) => s.name)).toEqual([
+      "fallback-root",
+      "generic-only",
+      "singular-root",
+      "todo",
+    ]);
+    const todo = bundle.skills.find((s) => s.name === "todo")!;
+    expect(todo.files["SKILL.md"]).toContain("Keep a running todo list");
+    expect(warnings).toEqual([
+      "skills:todo: .agents/skills copy shadowed by the .config/opencode/skills version (opencode keeps one skill per name); the .config/opencode/skills version is exported",
+    ]);
+  });
+
+  it("merges skill roots in priority order with first-name-wins", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-oc-"));
+    await fs.mkdir(path.join(home, ".config/opencode/skill/dup"), { recursive: true });
+    await fs.writeFile(path.join(home, ".config/opencode/skill/dup/SKILL.md"), "singular dup\n");
+    await fs.mkdir(path.join(home, ".opencode/skills/dup"), { recursive: true });
+    await fs.writeFile(path.join(home, ".opencode/skills/dup/SKILL.md"), "fallback dup\n");
+    await fs.mkdir(path.join(home, ".agents/skills/extra"), { recursive: true });
+    await fs.writeFile(path.join(home, ".agents/skills/extra/SKILL.md"), "generic extra\n");
+    const warnings: string[] = [];
+    const skills = await readOpencodeSkills(
+      home,
+      [".config/opencode/skills", ".config/opencode/skill", ".opencode/skills", ".opencode/skill", ".agents/skills"],
+      warnings,
+    );
+    expect(skills.map((s) => s.name)).toEqual(["dup", "extra"]);
+    expect(skills[0]!.files["SKILL.md"]).toBe("singular dup\n");
+    expect(warnings).toEqual([
+      "skills:dup: .opencode/skills copy shadowed by the .config/opencode/skill version (opencode keeps one skill per name); the .config/opencode/skill version is exported",
+    ]);
+    await fs.rm(home, { recursive: true, force: true });
   });
 
   it("imports with OpenCode spellings (local/remote, argv command) and merge semantics", async () => {
@@ -51,6 +84,8 @@ describe("opencode adapter", () => {
     expect(config.mcp.jira).toBeDefined();
     expect(files.some((f) => f.path === ".config/opencode/AGENTS.md")).toBe(true);
     expect(files.some((f) => f.path === ".config/opencode/skills/sk/SKILL.md")).toBe(true);
+    expect(files.some((f) => f.path.startsWith(".agents/skills/"))).toBe(false);
+    expect(files.some((f) => f.path.startsWith(".opencode/"))).toBe(false);
     expect(warnings.some((w) => w.includes("no sse type"))).toBe(true);
   });
 
@@ -80,5 +115,23 @@ describe("opencode adapter", () => {
     expect(config.mcp.db!.command).toEqual(["npx", "db-mcp"]);
     expect(files.some((f) => f.path === "AGENTS.md")).toBe(true);
     expect(files.some((f) => f.path === ".opencode/skills/sk/SKILL.md")).toBe(true);
+  });
+
+  it("project scope: exports .opencode/{skills,skill} and .agents/skills with brand precedence", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-ocp-"));
+    await fs.mkdir(path.join(dir, ".opencode/skills/proj"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".opencode/skills/proj/SKILL.md"), "brand proj\n");
+    await fs.mkdir(path.join(dir, ".agents/skills/proj"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".agents/skills/proj/SKILL.md"), "generic proj\n");
+    await fs.mkdir(path.join(dir, ".agents/skills/proj-generic"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".agents/skills/proj-generic/SKILL.md"), "generic only\n");
+    const adapter = getProjectAdapter("opencode");
+    const { bundle, warnings } = await adapter.exportProject(dir);
+    expect(bundle.skills.map((s) => s.name)).toEqual(["proj", "proj-generic"]);
+    expect(bundle.skills[0]!.files["SKILL.md"]).toBe("brand proj\n");
+    expect(
+      warnings.some((w) => w.startsWith("skills:proj: .agents/skills copy shadowed")),
+    ).toBe(true);
+    await fs.rm(dir, { recursive: true, force: true });
   });
 });
