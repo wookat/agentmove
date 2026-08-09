@@ -67,14 +67,17 @@ describe("custom agents layer", () => {
     expect(warnings.some((w) => w.includes("experimental"))).toBe(true);
   });
 
-  it("opencode exports agents/ plus legacy agent/ (agents/ wins on name clashes)", async () => {
-    const { bundle } = await opencode.exportBundle(path.join(FIXTURES, "opencode-home"));
-    expect(bundle.agents.map((a) => a.name)).toEqual(["legacy-helper", "reviewer"]);
+  it("opencode merges {agent,agents}/ across ~/.opencode and ~/.config/opencode (fallback dir wins)", async () => {
+    const { bundle, warnings } = await opencode.exportBundle(path.join(FIXTURES, "opencode-home"));
+    expect(bundle.agents.map((a) => a.name)).toEqual(["legacy-helper", "reviewer", "team/planner"]);
     const raw = await fs.readFile(
-      path.join(FIXTURES, "opencode-home/.config/opencode/agents/reviewer.md"),
+      path.join(FIXTURES, "opencode-home/.opencode/agent/reviewer.md"),
       "utf8",
     );
     expect(bundle.agents.find((a) => a.name === "reviewer")!.content).toBe(raw);
+    expect(warnings).toContain(
+      "agents:reviewer: .config/opencode/agents copy shadowed by the .opencode/agent version (opencode keeps one agent per name); the .opencode/agent version is exported",
+    );
   });
 
   it("qwen exports ~/.qwen/agents/*.md byte-faithfully", async () => {

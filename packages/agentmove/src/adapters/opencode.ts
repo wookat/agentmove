@@ -1,6 +1,7 @@
 import path from "node:path";
 import JSON5 from "json5";
 import {
+  AgentDef,
   Bundle,
   ClientAdapter,
   emptyBundle,
@@ -18,7 +19,6 @@ import {
   parseCommonMcpEntry,
   planAgents,
   planSkills,
-  readAgentsDir,
   readAgentsDirRecursive,
   readSkillsDir,
   renderCommonMcpEntry,
@@ -40,9 +40,14 @@ import {
  * load-order dependent); imports write only ~/.config/opencode/skills/. The
  * Claude-compatible root ~/.claude/skills/ that opencode also scans belongs
  * to the claude adapters and is not read here.
- * Custom agents/subagents are markdown files under ~/.config/opencode/agents/
- * (legacy singular agent/ also read). Custom commands are markdown files
- * under ~/.config/opencode/commands/ (nested paths become `/team/review`).
+ * Custom agents/subagents and custom commands are markdown files discovered
+ * recursively in every config dir under both plural and singular directories
+ * ({agent,agents}/ and {command,commands}/; nested paths become part of the
+ * name, e.g. `team/review`). opencode merges config dirs in order and the
+ * last dir wins per name, so the ~/.opencode fallback overrides
+ * ~/.config/opencode; within one dir we deterministically prefer the plural
+ * directory. Duplicate names emit a shadow warning. Imports write only the
+ * native plural roots (~/.config/opencode/agents/ and commands/).
  */
 const CONFIG_DIR_REL = ".config/opencode";
 const CONFIG_REL = ".config/opencode/opencode.json";
@@ -57,8 +62,19 @@ const SKILLS_ROOTS = [
   ".agents/skills",
 ];
 const AGENTS_DIR_REL = ".config/opencode/agents";
-const AGENT_DIR_LEGACY_REL = ".config/opencode/agent";
+const AGENT_ROOTS = [
+  ".opencode/agents",
+  ".opencode/agent",
+  ".config/opencode/agents",
+  ".config/opencode/agent",
+];
 const COMMANDS_DIR_REL = ".config/opencode/commands";
+const COMMAND_ROOTS = [
+  ".opencode/commands",
+  ".opencode/command",
+  ".config/opencode/commands",
+  ".config/opencode/command",
+];
 
 async function readConfig(
   home: string,
@@ -141,14 +157,31 @@ export function toOpencodeEntry(s: McpServer, warnings: string[]): Record<string
   return out;
 }
 
-/** OpenCode loads agent markdown from both agents/ and the legacy agent/ directory. */
-async function readAgentsDirs(home: string) {
-  const agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
-  const names = new Set(agents.map((a) => a.name));
-  for (const a of await readAgentsDir(path.join(home, AGENT_DIR_LEGACY_REL), ".md")) {
-    if (!names.has(a.name)) agents.push(a);
+/** Merge opencode's agent/command roots in priority order; the first copy of a name wins. */
+export async function readOpencodeEntries(
+  base: string,
+  roots: string[],
+  layer: "agents" | "commands",
+  warnings: string[],
+): Promise<AgentDef[]> {
+  const singular = layer === "agents" ? "agent" : "command";
+  const entries: AgentDef[] = [];
+  const winner = new Map<string, string>();
+  for (const rootRel of roots) {
+    for (const entry of await readAgentsDirRecursive(path.join(base, rootRel), ".md")) {
+      const winnerRoot = winner.get(entry.name);
+      if (winnerRoot !== undefined) {
+        warnings.push(
+          `${layer}:${entry.name}: ${rootRel} copy shadowed by the ${winnerRoot} version (opencode keeps one ${singular} per name); the ${winnerRoot} version is exported`,
+        );
+        continue;
+      }
+      winner.set(entry.name, rootRel);
+      entries.push(entry);
+    }
   }
-  return agents.sort((a, b) => a.name.localeCompare(b.name));
+  entries.sort((a, b) => a.name.localeCompare(b.name));
+  return entries;
 }
 
 export const opencode: ClientAdapter = {
@@ -186,8 +219,8 @@ export const opencode: ClientAdapter = {
 
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
     bundle.skills = await readOpencodeSkills(home, SKILLS_ROOTS, warnings);
-    bundle.agents = await readAgentsDirs(home);
-    bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_DIR_REL), ".md");
+    bundle.agents = await readOpencodeEntries(home, AGENT_ROOTS, "agents", warnings);
+    bundle.commands = await readOpencodeEntries(home, COMMAND_ROOTS, "commands", warnings);
     return { bundle, warnings };
   },
 

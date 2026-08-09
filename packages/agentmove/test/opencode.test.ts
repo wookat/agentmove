@@ -32,6 +32,8 @@ describe("opencode adapter", () => {
     expect(todo.files["SKILL.md"]).toContain("Keep a running todo list");
     expect(warnings).toEqual([
       "skills:todo: .agents/skills copy shadowed by the .config/opencode/skills version (opencode keeps one skill per name); the .config/opencode/skills version is exported",
+      "agents:reviewer: .config/opencode/agents copy shadowed by the .opencode/agent version (opencode keeps one agent per name); the .opencode/agent version is exported",
+      "commands:team/review: .config/opencode/commands copy shadowed by the .opencode/commands version (opencode keeps one command per name); the .opencode/commands version is exported",
     ]);
   });
 
@@ -132,6 +134,27 @@ describe("opencode adapter", () => {
     expect(
       warnings.some((w) => w.startsWith("skills:proj: .agents/skills copy shadowed")),
     ).toBe(true);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("project scope: merges .opencode/{agents,agent} and {commands,command} with plural precedence", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-oca-"));
+    await fs.mkdir(path.join(dir, ".opencode/agents/team"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".opencode/agents/team/helper.md"), "plural helper\n");
+    await fs.mkdir(path.join(dir, ".opencode/agent/team"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".opencode/agent/team/helper.md"), "singular helper\n");
+    await fs.writeFile(path.join(dir, ".opencode/agent/solo.md"), "solo\n");
+    await fs.mkdir(path.join(dir, ".opencode/command"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".opencode/command/lint.md"), "lint\n");
+    const adapter = getProjectAdapter("opencode");
+    const { bundle, warnings } = await adapter.exportProject(dir);
+    expect(bundle.agents.map((a) => a.name)).toEqual(["solo", "team/helper"]);
+    expect(bundle.agents.find((a) => a.name === "team/helper")!.content).toBe("plural helper\n");
+    expect(warnings).toContain(
+      "agents:team/helper: .opencode/agent copy shadowed by the .opencode/agents version (opencode keeps one agent per name); the .opencode/agents version is exported",
+    );
+    expect(bundle.commands.map((c) => c.name)).toEqual(["lint"]);
+    expect(bundle.commands[0]!.content).toBe("lint\n");
     await fs.rm(dir, { recursive: true, force: true });
   });
 });

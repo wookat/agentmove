@@ -29,7 +29,12 @@ import {
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./adapters/shared.js";
-import { fromOpencodeEntry, readOpencodeSkills, toOpencodeEntry } from "./adapters/opencode.js";
+import {
+  fromOpencodeEntry,
+  readOpencodeEntries,
+  readOpencodeSkills,
+  toOpencodeEntry,
+} from "./adapters/opencode.js";
 import {
   CODEX_AGENTS_EXPORT_WARNING,
   CODEX_AGENTS_IMPORT_WARNING,
@@ -764,12 +769,18 @@ const opencodeProject: ProjectAdapter = {
       [".opencode/skills", ".opencode/skill", ".agents/skills"],
       warnings,
     );
-    bundle.agents = await readAgentsDir(path.join(dir, ".opencode/agents"), ".md");
-    for (const a of await readAgentsDir(path.join(dir, ".opencode/agent"), ".md")) {
-      if (!bundle.agents.some((b) => b.name === a.name)) bundle.agents.push(a);
-    }
-    bundle.agents.sort((a, b) => a.name.localeCompare(b.name));
-    bundle.commands = await readAgentsDirRecursive(path.join(dir, ".opencode/commands"), ".md");
+    bundle.agents = await readOpencodeEntries(
+      dir,
+      [".opencode/agents", ".opencode/agent"],
+      "agents",
+      warnings,
+    );
+    bundle.commands = await readOpencodeEntries(
+      dir,
+      [".opencode/commands", ".opencode/command"],
+      "commands",
+      warnings,
+    );
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {

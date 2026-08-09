@@ -315,14 +315,17 @@ describe("custom commands layer", () => {
     expect(warnings.some((w) => w.includes("deprecated in favor of skills"))).toBe(true);
   });
 
-  it("opencode exports ~/.config/opencode/commands recursively, byte-faithfully", async () => {
-    const { bundle } = await opencode.exportBundle(path.join(FIXTURES, "opencode-home"));
-    expect(bundle.commands.map((c) => c.name)).toEqual(["team/review"]);
+  it("opencode merges {command,commands}/ across ~/.opencode and ~/.config/opencode (fallback dir wins)", async () => {
+    const { bundle, warnings } = await opencode.exportBundle(path.join(FIXTURES, "opencode-home"));
+    expect(bundle.commands.map((c) => c.name)).toEqual(["lint", "team/review"]);
     const raw = await fs.readFile(
-      path.join(FIXTURES, "opencode-home/.config/opencode/commands/team/review.md"),
+      path.join(FIXTURES, "opencode-home/.opencode/commands/team/review.md"),
       "utf8",
     );
-    expect(bundle.commands[0]!.content).toBe(raw);
+    expect(bundle.commands.find((c) => c.name === "team/review")!.content).toBe(raw);
+    expect(warnings).toContain(
+      "commands:team/review: .config/opencode/commands copy shadowed by the .opencode/commands version (opencode keeps one command per name); the .opencode/commands version is exported",
+    );
   });
 
   it("qwen exports ~/.qwen/commands markdown and warns on deprecated TOML files", async () => {

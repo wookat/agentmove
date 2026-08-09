@@ -131,8 +131,10 @@ persona, and a later export won't recover it as a separate `persona.md`.
   Claude Code (`~/.claude/agents/`, project `.claude/agents/`), GitHub
   Copilot CLI (`~/.copilot/agents/*.agent.md`, project `.github/agents/`),
   Gemini CLI (`~/.gemini/agents/`, project `.gemini/agents/`), OpenCode
-  (`~/.config/opencode/agents/`, legacy `agent/` also read, project
-  `.opencode/agents/`), Qwen Code (`~/.qwen/agents/`, project
+  (`{agent,agents}/` in `~/.config/opencode/` and the `~/.opencode/` fallback,
+  recursive with nested names; the fallback dir wins duplicates with a warning;
+  project `.opencode/{agents,agent}/`; imports write `~/.config/opencode/agents/`),
+  Qwen Code (`~/.qwen/agents/`, project
   `.qwen/agents/`), Cursor (`~/.cursor/agents/`, project
   `.cursor/agents/`), Kiro (`~/.kiro/agents/`, project
   `.kiro/agents/`), Droid (`~/.factory/droids/`, project
@@ -286,8 +288,10 @@ persona, and a later export won't recover it as a separate `persona.md`.
   subdirectories become namespaced command names and are preserved),
   Cursor (`~/.cursor/commands/`, project `.cursor/commands/`),
   Codex CLI (`~/.codex/prompts/`, user scope only, invoked as
-  `/prompts:<name>`), OpenCode (`~/.config/opencode/commands/`, project
-  `.opencode/commands/`; subdirectories preserved), Qwen Code
+  `/prompts:<name>`), OpenCode (`{command,commands}/` in `~/.config/opencode/` and the
+  `~/.opencode/` fallback; subdirectories preserved; the fallback dir wins
+  duplicates with a warning; project `.opencode/{commands,command}/`; imports
+  write `~/.config/opencode/commands/`), Qwen Code
   (`~/.qwen/commands/`, project `.qwen/commands/`; subdirectories
   preserved and shown as `/git:commit`-style namespaced names),
   Windsurf (workflows: `~/.codeium/windsurf/global_workflows/`, project
