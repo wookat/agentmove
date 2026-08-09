@@ -99,8 +99,11 @@ persona, and a later export won't recover it as a separate `persona.md`.
   project skills in `.kilo/skills/` migrate with `--project`.
 - Kimi Code CLI global skills live in `~/.kimi-code/skills/` and migrate natively;
   project skills in `.kimi-code/skills/` migrate with `--project`.
-- Grok CLI global skills live in `~/.grok/skills/` and migrate natively;
-  project skills in `.grok/skills/` migrate with `--project`.
+- Grok CLI loads Agent Skills from `~/.agents/skills/` (user) and
+  `.agents/skills/` (project) — it never loads `~/.grok/skills/`. That
+  legacy root (written by older agentmove versions) is still read on
+  export with a warning, `~/.agents/skills/` winning duplicate names;
+  imports write only `~/.agents/skills/` (project: `.agents/skills/`).
 - Vibe Code CLI global skills live in `~/.vibe/skills/` and migrate natively;
   project skills in `.vibe/skills/` migrate with `--project`.
 - Binary assets inside skill directories are currently skipped with a warning.
@@ -241,6 +244,21 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `auto-approve`, `explore`, `lean`) overrides it (warned). Extra
   `agent_paths` directories configured in `config.toml` are **not**
   read.
+- Grok CLI custom sub-agents are `subAgents` entries (`{name, model,
+  instruction}`) in `~/.grok/user-settings.json`, not files — a
+  documented conversion. Only `instruction` is portable: it exports as
+  the agent body (no frontmatter), and the per-agent `model` is dropped
+  with a warning. Entries grok itself ignores — reserved built-in names
+  (`general`, `explore`, `vision`, `verify`, `verify-detect`,
+  `verify-manifest`, `computer`), case-insensitive duplicates, and
+  entries without a name or instruction — are warned and not migrated.
+  Imports merge into `subAgents` (other user-settings keys and existing
+  entries are preserved; same-name entries are overwritten, warned)
+  and assign grok's default model, since grok drops entries without a
+  valid model id; nested agent names are flattened to plain strings
+  (warned), reserved names are skipped (warned), and frontmatter is
+  kept verbatim inside the instruction (warned). Sub-agents are
+  user-level only — there is no project scope.
 - Every other client has no custom agents directory — imported agents are
   **skipped** with a warning.
 

@@ -1,0 +1,31 @@
+{
+  "apiKey": "test-not-a-real-token",
+  "defaultModel": "grok-4.3",
+  "recapsEnabled": true,
+  "subAgents": [
+    {
+      "name": "reviewer",
+      "model": "grok-4.3",
+      "instruction": "Review the code carefully and report issues.\n"
+    },
+    {
+      "name": "explore",
+      "model": "grok-4.3",
+      "instruction": "Shadows a built-in; grok ignores this entry."
+    },
+    {
+      "name": "Reviewer",
+      "model": "grok-3-mini",
+      "instruction": "Duplicate of reviewer; grok keeps the first."
+    },
+    {
+      "name": "blank",
+      "model": "grok-4.3",
+      "instruction": "   "
+    },
+    {
+      "model": "grok-4.3",
+      "instruction": "Entry without a name."
+    }
+  ]
+}

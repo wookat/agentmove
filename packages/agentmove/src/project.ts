@@ -140,7 +140,7 @@ import {
   readKimiMcp,
 } from "./adapters/kimi.js";
 import { parseCortexServers, planCortexMcp, readCortexMcp } from "./adapters/cortex.js";
-import { parseGrokServers, planGrokMcp, readGrokConfig } from "./adapters/grok.js";
+import { parseGrokServers, planGrokMcp, readGrokConfig, readGrokSkills } from "./adapters/grok.js";
 import {
   parseVibeServers,
   planVibeAgents,
@@ -1935,7 +1935,11 @@ const grokProject: ProjectAdapter = {
     const config = await readGrokConfig(path.join(dir, ".grok/config.toml"));
     bundle.mcpServers = parseGrokServers(config, warnings);
     bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
-    bundle.skills = await readSkillsDir(path.join(dir, ".grok/skills"), warnings);
+    bundle.skills = await readGrokSkills(
+      path.join(dir, ".agents/skills"),
+      path.join(dir, ".grok/skills"),
+      warnings,
+    );
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1961,7 +1965,7 @@ const grokProject: ProjectAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: grok has no project-scoped memory store; skipped");
     }
-    files.push(...planSkills(bundle.skills, ".grok/skills"));
+    files.push(...planSkills(bundle.skills, ".agents/skills"));
     return { files, warnings };
   },
 };
