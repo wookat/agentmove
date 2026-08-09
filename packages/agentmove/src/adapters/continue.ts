@@ -162,9 +162,26 @@ export function continueInlineRuleToSection(
 }
 
 /**
- * Read `.continue/<sub>/*.yaml` local block files (continue loads YAML block
- * files from every block-type directory, both ~/.continue and workspace
- * .continue) and return their `prompts:`/`rules:` arrays with source labels.
+ * Recursively list files under a continue block directory, sorted by relative
+ * path (continue walkDirs its block-type directories, skipping ignored dirs).
+ */
+async function listContinueBlockFiles(root: string, prefix = ""): Promise<string[]> {
+  const out: string[] = [];
+  for (const name of (await listDir(root)).sort()) {
+    if (name.startsWith(".") || name === "node_modules") continue;
+    const full = path.join(root, name);
+    const rel = prefix ? `${prefix}/${name}` : name;
+    if (await isDir(full)) out.push(...(await listContinueBlockFiles(full, rel)));
+    else out.push(rel);
+  }
+  return out;
+}
+
+/**
+ * Read `.continue/<sub>/**.yaml` local block files (continue loads YAML block
+ * files recursively from every block-type directory, both ~/.continue and
+ * workspace .continue) and return their `prompts:`/`rules:` arrays with
+ * source labels.
  */
 export async function readContinueYamlBlocks(
   root: string,
@@ -173,7 +190,7 @@ export async function readContinueYamlBlocks(
 ): Promise<{ rel: string; entries: unknown[] }[]> {
   const out: { rel: string; entries: unknown[] }[] = [];
   if (!(await isDir(root))) return out;
-  for (const f of (await listDir(root)).sort()) {
+  for (const f of await listContinueBlockFiles(root)) {
     if (!f.endsWith(".yaml") && !f.endsWith(".yml")) continue;
     const file = path.join(root, f);
     const raw = await readText(file);
@@ -286,7 +303,7 @@ export async function readContinueMcpBlockServers(
 ): Promise<McpServer[]> {
   const servers: McpServer[] = [];
   if (!(await isDir(root))) return servers;
-  for (const f of (await listDir(root)).sort()) {
+  for (const f of await listContinueBlockFiles(root)) {
     const file = path.join(root, f);
     const raw = await readText(file);
     if (raw === undefined) continue;
@@ -297,7 +314,12 @@ export async function readContinueMcpBlockServers(
       const data = parseFile<unknown>(file, raw, (t) => JSON5.parse(t) as unknown);
       if (data === undefined) continue;
       servers.push(
-        ...parseContinueJsonBlock(data, f.replace(/\.json$/, ""), `${rootRel}/${f}`, warnings),
+        ...parseContinueJsonBlock(
+          data,
+          path.basename(f).replace(/\.json$/, ""),
+          `${rootRel}/${f}`,
+          warnings,
+        ),
       );
     }
   }

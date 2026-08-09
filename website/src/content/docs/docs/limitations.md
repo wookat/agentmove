@@ -467,8 +467,10 @@ Near-lossless, with these edges:
   CLI, goose, Kilo Code, and Kimi Code CLI keep the
   flag natively; CodeBuddy keeps it via its top-level `disabledMcpServers`
   name list.)
-- Continue MCP block files (`~/.continue/mcpServers/*.yaml|json`, project
-  `.continue/mcpServers/`) are read on export — YAML `mcpServers:` lists plus
+- Continue MCP block files (`~/.continue/mcpServers/**`, project
+  `.continue/mcpServers/`, walked recursively like Continue's own loader —
+  nested prompts/rules YAML blocks are discovered too) are read on export —
+  YAML `mcpServers:` lists plus
   the full JSON loader matrix (JSONC comments, claude-style maps, claude-code
   `projects` nesting, single-server files named after the file); `config.yaml`
   entries win duplicate names (warned), stdio `envFile` is warned and dropped
