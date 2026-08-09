@@ -26,8 +26,29 @@ describe("kimi adapter", () => {
       Authorization: "Bearer test-not-a-real-token",
     });
     expect(bundle.instructions).toContain("Always write tests first");
-    expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper"]);
-    expect(warnings).toEqual([]);
+    expect(bundle.skills.map((s) => s.name)).toEqual(["deploy-helper", "generic-only"]);
+    const deploy = bundle.skills.find((s) => s.name === "deploy-helper")!;
+    expect(deploy.files["SKILL.md"]).toContain("Helps with deployment tasks."); // brand root wins
+    expect(warnings).toEqual([
+      "skills:deploy-helper: .agents/skills copy shadowed by the .kimi-code/skills version (kimi loads the brand root first); the .kimi-code/skills version is exported",
+    ]);
+  });
+
+  it("merges generic ~/.agents/skills with brand root winning duplicates case-insensitively", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "kimi-skills-"));
+    await fs.mkdir(path.join(home, ".kimi-code/skills/Alpha"), { recursive: true });
+    await fs.writeFile(path.join(home, ".kimi-code/skills/Alpha/SKILL.md"), "brand alpha\n");
+    await fs.mkdir(path.join(home, ".agents/skills/alpha"), { recursive: true });
+    await fs.writeFile(path.join(home, ".agents/skills/alpha/SKILL.md"), "generic alpha\n");
+    await fs.mkdir(path.join(home, ".agents/skills/beta"), { recursive: true });
+    await fs.writeFile(path.join(home, ".agents/skills/beta/SKILL.md"), "generic beta\n");
+    const { bundle, warnings } = await kimi.exportBundle(home);
+    expect(bundle.skills.map((s) => s.name)).toEqual(["Alpha", "beta"]);
+    expect(bundle.skills[0]!.files["SKILL.md"]).toBe("brand alpha\n");
+    expect(
+      warnings.some((w) => w.startsWith("skills:alpha: .agents/skills copy shadowed")),
+    ).toBe(true);
+    await fs.rm(home, { recursive: true, force: true });
   });
 
   it("round-trips enabled:false, sse transport, and warns for client-specific fields", async () => {
@@ -87,7 +108,8 @@ describe("kimi adapter", () => {
     const agents = files.find((f) => f.path === ".kimi-code/AGENTS.md")!;
     expect(agents.content).toContain("Do good work.");
     expect(agents.content).toContain("You are helpful.");
-    expect(files.some((f) => f.path === ".kimi-code/skills/sk/SKILL.md")).toBe(true);
+    expect(files.some((f) => f.path === ".kimi-code/skills/sk/SKILL.md")).toBe(true); // imports write only the brand root
+    expect(files.some((f) => f.path.startsWith(".agents/skills/"))).toBe(false);
     expect(warnings.some((w) => w.includes("no durable memory store"))).toBe(true);
     expect(warnings.some((w) => w.includes("persona"))).toBe(true);
   });
@@ -128,9 +150,12 @@ describe("kimi adapter", () => {
     expect(warnings).toEqual([]);
 
     await fs.writeFile(path.join(dir, "AGENTS.md"), "# Team notes\n");
+    await fs.mkdir(path.join(dir, ".agents/skills/proj-generic"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".agents/skills/proj-generic/SKILL.md"), "pg\n");
     const { bundle: exported, warnings: expWarnings } = await adapter.exportProject(dir);
     expect(exported.mcpServers.map((s) => s.name)).toEqual(["existing"]);
     expect(exported.instructions).toContain("Team notes");
+    expect(exported.skills.map((s) => s.name)).toEqual(["proj-generic"]);
     expect(expWarnings).toEqual([]);
     await fs.rm(dir, { recursive: true, force: true });
   });

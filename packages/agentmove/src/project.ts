@@ -138,6 +138,7 @@ import {
   parseKimiServers,
   planKimiMcp,
   readKimiMcp,
+  readKimiSkills,
 } from "./adapters/kimi.js";
 import { parseCortexServers, planCortexMcp, readCortexMcp } from "./adapters/cortex.js";
 import { parseGrokServers, planGrokMcp, readGrokConfig, readGrokSkills } from "./adapters/grok.js";
@@ -1801,7 +1802,11 @@ const kimiProject: ProjectAdapter = {
     const config = await readKimiMcp(path.join(dir, ".kimi-code/mcp.json"));
     bundle.mcpServers = parseKimiServers(config, warnings);
     bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
-    bundle.skills = await readSkillsDir(path.join(dir, ".kimi-code/skills"), warnings);
+    bundle.skills = await readKimiSkills(
+      path.join(dir, ".kimi-code/skills"),
+      path.join(dir, ".agents/skills"),
+      warnings,
+    );
     bundle.agents = mergeAgentLists(
       await readAgentsDirRecursive(path.join(dir, ".agents/agents"), ".md"),
       await readAgentsDirRecursive(path.join(dir, ".kimi-code/agents"), ".md"),

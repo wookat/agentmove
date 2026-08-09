@@ -97,8 +97,14 @@ persona, and a later export won't recover it as a separate `persona.md`.
   project skills in `.augment/skills/` migrate with `--project`.
 - Kilo Code global skills live in `~/.kilo/skills/` and migrate natively;
   project skills in `.kilo/skills/` migrate with `--project`.
-- Kimi Code CLI global skills live in `~/.kimi-code/skills/` and migrate natively;
-  project skills in `.kimi-code/skills/` migrate with `--project`.
+- Kimi Code CLI loads Agent Skills from both the brand root
+  `~/.kimi-code/skills/` and the generic shared root `~/.agents/skills/`
+  (project: `.kimi-code/skills/` + `.agents/skills/`); exports merge both,
+  with the brand copy winning duplicate names (compared case-insensitively,
+  warned) to match kimi's brand-then-generic scanner priority. Imports write
+  only the brand root. Kimi's flat single-file `<name>.md` skills (a `.md`
+  directly at a skills root without a `SKILL.md` bundle) and `$KIMI_CODE_HOME`
+  relocations are not migrated.
 - Grok CLI loads Agent Skills from `~/.agents/skills/` (user) and
   `.agents/skills/` (project) — it never loads `~/.grok/skills/`. That
   legacy root (written by older agentmove versions) is still read on

@@ -9,6 +9,7 @@ import {
   isRecord,
   McpServer,
   parseFile,
+  Skill,
 } from "../model.js";
 import { isDir, readText } from "../fsutil.js";
 import {
@@ -31,8 +32,11 @@ import {
  * a native `enabled` flag plus client-specific fields (bearerTokenEnvVar,
  * startupTimeoutMs, toolTimeoutMs, enabledTools, disabledTools). Global
  * instructions are ~/.kimi-code/AGENTS.md and user skills follow the Agent
- * Skills standard under ~/.kimi-code/skills/. Custom agents are markdown
- * files with YAML frontmatter, discovered recursively under
+ * Skills standard under ~/.kimi-code/skills/ plus the generic shared root
+ * ~/.agents/skills/ (project: .kimi-code/skills/ + .agents/skills/); on a
+ * duplicate normalized (lowercased) name the brand root wins (upstream
+ * scanner priority is first-wins in brand-then-generic order). Custom agents
+ * are markdown files with YAML frontmatter, discovered recursively under
  * ~/.kimi-code/agents/ and the generic shared root ~/.agents/agents/ (user)
  * plus .kimi-code/agents/ and .agents/agents/ (project); imports write only
  * the brand-native directory to avoid double-ownership of the shared root.
@@ -41,6 +45,7 @@ const CONFIG_DIR_REL = ".kimi-code";
 const MCP_REL = ".kimi-code/mcp.json";
 const AGENTS_REL = ".kimi-code/AGENTS.md";
 const SKILLS_REL = ".kimi-code/skills";
+const GENERIC_SKILLS_REL = ".agents/skills";
 const AGENTS_DIR_REL = ".kimi-code/agents";
 const SHARED_AGENTS_DIR_REL = ".agents/agents";
 
@@ -54,6 +59,28 @@ const CLIENT_SPECIFIC_FIELDS = [
   "enabledTools",
   "disabledTools",
 ] as const;
+
+export async function readKimiSkills(
+  brandRoot: string,
+  genericRoot: string,
+  warnings: string[],
+): Promise<Skill[]> {
+  const skills = await readSkillsDir(brandRoot, warnings);
+  const names = new Set(skills.map((s) => s.name.toLowerCase()));
+  for (const skill of await readSkillsDir(genericRoot, warnings)) {
+    const key = skill.name.toLowerCase();
+    if (names.has(key)) {
+      warnings.push(
+        `skills:${skill.name}: .agents/skills copy shadowed by the .kimi-code/skills version (kimi loads the brand root first); the .kimi-code/skills version is exported`,
+      );
+      continue;
+    }
+    names.add(key);
+    skills.push(skill);
+  }
+  skills.sort((a, b) => a.name.localeCompare(b.name));
+  return skills;
+}
 
 export async function readKimiMcp(file: string): Promise<Record<string, unknown>> {
   const raw = await readText(file);
@@ -125,7 +152,7 @@ export async function planKimiMcp(
 export const kimi: ClientAdapter = {
   id: "kimi",
   label: "Kimi Code CLI",
-  defaultPath: "~/.kimi-code (mcp.json + AGENTS.md + skills/ + agents/)",
+  defaultPath: "~/.kimi-code (mcp.json + AGENTS.md + skills/ + agents/) + ~/.agents/skills",
   supportsAgents: true,
 
   async detect(home) {
@@ -141,7 +168,11 @@ export const kimi: ClientAdapter = {
     bundle.config.raw = config;
     bundle.mcpServers = parseKimiServers(config, warnings);
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
-    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.skills = await readKimiSkills(
+      path.join(home, SKILLS_REL),
+      path.join(home, GENERIC_SKILLS_REL),
+      warnings,
+    );
     bundle.agents = mergeAgentLists(
       await readAgentsDirRecursive(path.join(home, SHARED_AGENTS_DIR_REL), ".md"),
       await readAgentsDirRecursive(path.join(home, AGENTS_DIR_REL), ".md"),
