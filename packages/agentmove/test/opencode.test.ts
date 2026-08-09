@@ -170,4 +170,41 @@ describe("opencode adapter", () => {
     expect(bundle.commands[0]!.content).toBe("lint\n");
     await fs.rm(dir, { recursive: true, force: true });
   });
+
+  it("project scope: exports inline entries from opencode.json(c) (.opencode config wins)", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agentmove-oci-"));
+    await fs.mkdir(path.join(dir, ".opencode/modes"), { recursive: true });
+    await fs.writeFile(path.join(dir, ".opencode/modes/plan.md"), "md plan mode\n");
+    await fs.writeFile(
+      path.join(dir, "opencode.json"),
+      JSON.stringify({
+        agent: { helper: { prompt: "root helper" } },
+        mode: { plan: { prompt: "inline plan mode" } },
+        command: { deploy: { template: "deploy now" } },
+      }),
+    );
+    await fs.writeFile(
+      path.join(dir, ".opencode/opencode.json"),
+      JSON.stringify({ agent: { helper: { prompt: "dir helper", model: "openai/gpt-5" } } }),
+    );
+    const adapter = getProjectAdapter("opencode");
+    const { bundle, warnings } = await adapter.exportProject(dir);
+    expect(bundle.agents.map((a) => a.name)).toEqual(["helper", "plan"]);
+    expect(bundle.agents.find((a) => a.name === "plan")!.content).toBe("inline plan mode\n");
+    expect(bundle.agents.find((a) => a.name === "helper")!.content).toBe(
+      "---\nmodel: openai/gpt-5\n---\n\ndir helper\n",
+    );
+    expect(warnings).toContain(
+      "agents:plan: defined inline under the mode key of opencode.json; exported as a markdown agent with synthesized frontmatter",
+    );
+    expect(warnings).toContain(
+      "agents:plan: .opencode/modes copy shadowed by the opencode.json version (opencode keeps one agent per name); the opencode.json version is exported",
+    );
+    expect(warnings).toContain(
+      "agents:helper: opencode.json copy shadowed by the .opencode/opencode.json version (opencode keeps one agent per name); the .opencode/opencode.json version is exported",
+    );
+    expect(bundle.commands.map((c) => c.name)).toEqual(["deploy"]);
+    expect(bundle.commands[0]!.content).toBe("deploy now\n");
+    await fs.rm(dir, { recursive: true, force: true });
+  });
 });

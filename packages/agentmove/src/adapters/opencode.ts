@@ -13,6 +13,7 @@ import {
   parseFile,
   Skill,
 } from "../model.js";
+import { stringify as stringifyYaml } from "yaml";
 import { exists, isDir, readText } from "../fsutil.js";
 import {
   mergeMcpRecords,
@@ -55,6 +56,15 @@ import {
  * config dir and runs with `mode: "primary"`. They are exported into the
  * agents layer byte-faithfully with a per-entry warning; imports still write
  * only agents/ and never synthesize mode files.
+ * Agents, commands and modes can also be defined inline under the `agent`,
+ * `command` and `mode` keys of opencode.json/opencode.jsonc (both the global
+ * config dir and the ~/.opencode fallback). opencode merges config sources in
+ * order (json then jsonc within a dir, ~/.opencode after the global dir) and
+ * markdown files merge on top of the inline `agent`/`command` maps, while the
+ * inline `mode` map merges last and always wins with `mode: "primary"`.
+ * Inline entries are exported as synthesized markdown (frontmatter from the
+ * remaining fields, body from `prompt`/`template`) with per-entry warnings;
+ * imports never write inline config entries.
  */
 const CONFIG_DIR_REL = ".config/opencode";
 const CONFIG_REL = ".config/opencode/opencode.json";
@@ -77,6 +87,8 @@ export interface OpencodeEntryRoot {
   flat?: boolean;
   /** Entries are primary modes: opencode loads them with `mode: "primary"`. */
   primaryMode?: boolean;
+  /** Inline entries under this key of the opencode.json(c) file at `rel`. */
+  inline?: "agent" | "command" | "mode";
 }
 
 export const OPENCODE_MODE_ROOTS = (dir: string): OpencodeEntryRoot[] => [
@@ -84,20 +96,44 @@ export const OPENCODE_MODE_ROOTS = (dir: string): OpencodeEntryRoot[] => [
   { rel: `${dir}/mode`, flat: true, primaryMode: true },
 ];
 
+/** Inline roots for one key, highest priority first (jsonc merges after json). */
+export const OPENCODE_INLINE_ROOTS = (
+  configFiles: string[],
+  inline: "agent" | "command" | "mode",
+): OpencodeEntryRoot[] =>
+  configFiles.map((rel) => ({ rel, inline, primaryMode: inline === "mode" }));
+
+/**
+ * opencode.json(c) sources for user scope, highest priority first: within a
+ * dir jsonc merges after json (so it wins), and the ~/.opencode fallback dir
+ * merges after the global config dir.
+ */
+const USER_CONFIG_FILES = [
+  ".opencode/opencode.jsonc",
+  ".opencode/opencode.json",
+  ".config/opencode/opencode.jsonc",
+  ".config/opencode/opencode.json",
+];
+
 const AGENT_ROOTS: (string | OpencodeEntryRoot)[] = [
+  ...OPENCODE_INLINE_ROOTS(USER_CONFIG_FILES, "mode"),
   ...OPENCODE_MODE_ROOTS(".opencode"),
   ".opencode/agents",
   ".opencode/agent",
+  ...OPENCODE_INLINE_ROOTS(USER_CONFIG_FILES.slice(0, 2), "agent"),
   ...OPENCODE_MODE_ROOTS(".config/opencode"),
   ".config/opencode/agents",
   ".config/opencode/agent",
+  ...OPENCODE_INLINE_ROOTS(USER_CONFIG_FILES.slice(2), "agent"),
 ];
 const COMMANDS_DIR_REL = ".config/opencode/commands";
 const COMMAND_ROOTS: (string | OpencodeEntryRoot)[] = [
   ".opencode/commands",
   ".opencode/command",
+  ...OPENCODE_INLINE_ROOTS(USER_CONFIG_FILES.slice(0, 2), "command"),
   ".config/opencode/commands",
   ".config/opencode/command",
+  ...OPENCODE_INLINE_ROOTS(USER_CONFIG_FILES.slice(2), "command"),
 ];
 
 async function readConfig(
@@ -181,6 +217,83 @@ export function toOpencodeEntry(s: McpServer, warnings: string[]): Record<string
   return out;
 }
 
+/** Synthesize a markdown agent/command from an inline opencode.json(c) entry. */
+export function opencodeInlineEntryToAgent(
+  name: string,
+  entry: unknown,
+  rel: string,
+  key: "agent" | "command" | "mode",
+  layer: "agents" | "commands",
+  warnings: string[],
+  winnerWarnings?: WeakMap<AgentDef, string[]>,
+): AgentDef | undefined {
+  if (!isRecord(entry)) {
+    warnings.push(`${layer}:${name}: inline ${key} entry in ${rel} is not an object; skipped`);
+    return undefined;
+  }
+  if (entry.disable === true) {
+    warnings.push(`${layer}:${name}: inline ${key} entry in ${rel} has disable: true; skipped`);
+    return undefined;
+  }
+  const bodyKey = key === "command" ? "template" : "prompt";
+  const body = entry[bodyKey];
+  if (key === "command" && typeof body !== "string") {
+    warnings.push(
+      `${layer}:${name}: inline command entry in ${rel} has no string template (required by opencode); skipped`,
+    );
+    return undefined;
+  }
+  const fields: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(entry)) {
+    if (k !== bodyKey && k !== "name") fields[k] = v;
+  }
+  const bodyText = typeof body === "string" ? body : "";
+  const frontmatter = Object.keys(fields).length ? `---\n${stringifyYaml(fields)}---\n\n` : "";
+  const def: AgentDef = {
+    name,
+    content: frontmatter + bodyText + (bodyText.endsWith("\n") ? "" : "\n"),
+  };
+  const deferred: string[] = [
+    `${layer}:${name}: defined inline under the ${key} key of ${rel}; exported as a markdown ${
+      layer === "agents" ? "agent" : "command"
+    } with synthesized frontmatter`,
+  ];
+  if (/\{(file|env):[^}]+\}/.test(bodyText)) {
+    deferred.push(
+      `${layer}:${name}: contains {file:...}/{env:...} placeholders that opencode substitutes at load time relative to ${rel}; copied as-is`,
+    );
+  }
+  if (winnerWarnings) winnerWarnings.set(def, deferred);
+  else warnings.push(...deferred);
+  return def;
+}
+
+/** Read the inline entries under one key of a single opencode.json(c) file. */
+async function readOpencodeInlineEntries(
+  base: string,
+  spec: OpencodeEntryRoot,
+  layer: "agents" | "commands",
+  warnings: string[],
+  winnerWarnings: WeakMap<AgentDef, string[]>,
+): Promise<AgentDef[]> {
+  const key = spec.inline!;
+  const raw = await readText(path.join(base, spec.rel));
+  if (raw === undefined) return [];
+  let data: unknown;
+  try {
+    data = JSON5.parse(raw) as unknown;
+  } catch {
+    return [];
+  }
+  if (!isRecord(data) || !isRecord(data[key])) return [];
+  const out: AgentDef[] = [];
+  for (const [name, entry] of Object.entries(data[key]).sort(([a], [b]) => a.localeCompare(b))) {
+    const def = opencodeInlineEntryToAgent(name, entry, spec.rel, key, layer, warnings, winnerWarnings);
+    if (def) out.push(def);
+  }
+  return out;
+}
+
 /** Merge opencode's agent/command roots in priority order; the first copy of a name wins. */
 export async function readOpencodeEntries(
   base: string,
@@ -191,12 +304,15 @@ export async function readOpencodeEntries(
   const singular = layer === "agents" ? "agent" : "command";
   const entries: AgentDef[] = [];
   const winner = new Map<string, string>();
+  const winnerWarnings = new WeakMap<AgentDef, string[]>();
   for (const root of roots) {
-    const spec = typeof root === "string" ? { rel: root } : root;
+    const spec = typeof root === "string" ? ({ rel: root } as OpencodeEntryRoot) : root;
     const dir = path.join(base, spec.rel);
-    const found = spec.flat
-      ? await readAgentsDir(dir, ".md")
-      : await readAgentsDirRecursive(dir, ".md");
+    const found = spec.inline
+      ? await readOpencodeInlineEntries(base, spec, layer, warnings, winnerWarnings)
+      : spec.flat
+        ? await readAgentsDir(dir, ".md")
+        : await readAgentsDirRecursive(dir, ".md");
     for (const entry of found) {
       const winnerRoot = winner.get(entry.name);
       if (winnerRoot !== undefined) {
@@ -207,6 +323,7 @@ export async function readOpencodeEntries(
       }
       winner.set(entry.name, spec.rel);
       entries.push(entry);
+      warnings.push(...(winnerWarnings.get(entry) ?? []));
       if (spec.primaryMode) {
         warnings.push(
           `${layer}:${entry.name}: ${spec.rel} entry is an opencode primary mode (loaded with mode: "primary"); exported as a regular agent`,
