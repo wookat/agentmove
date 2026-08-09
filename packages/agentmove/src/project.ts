@@ -49,6 +49,7 @@ import {
   readGeminiCommands,
 } from "./adapters/gemini.js";
 import { renderAmpEntry } from "./adapters/amp.js";
+import { readOpenhandsSkills } from "./adapters/openhands.js";
 import {
   parseVscodeServers,
   planVscodePrompts,
@@ -612,7 +613,11 @@ const openhandsProject: ProjectAdapter = {
         warnings.push("openhands repo microagents concatenated into instructions");
       }
     }
-    bundle.skills = await readSkillsDir(path.join(dir, ".openhands/skills"), warnings);
+    bundle.skills = await readOpenhandsSkills(
+      path.join(dir, ".agents/skills"),
+      path.join(dir, ".openhands/skills"),
+      warnings,
+    );
     warnings.push("openhands has no project-scoped MCP config; MCP servers stay user-scoped");
     return { bundle, warnings };
   },
@@ -635,7 +640,7 @@ const openhandsProject: ProjectAdapter = {
       files.push({ path: ".openhands/microagents/agentmove-imported.md", content: body });
       if (bundle.persona) warnings.push("persona: appended to a repo microagent (approximated)");
     }
-    files.push(...planSkills(bundle.skills, ".openhands/skills"));
+    files.push(...planSkills(bundle.skills, ".agents/skills"));
     if (bundle.memory.length) {
       warnings.push("memory: openhands has no project-scoped memory store; skipped");
     }

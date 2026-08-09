@@ -11,10 +11,11 @@ import {
   isRecord,
   McpServer,
   parseFile,
+  Skill,
   stringArgs,
 } from "../model.js";
 import { exists, isDir, listDir, readText } from "../fsutil.js";
-import { mergeMcpRecords, touchesMcpConfig } from "./shared.js";
+import { mergeMcpRecords, planSkills, readSkillsDir, touchesMcpConfig } from "./shared.js";
 
 /**
  * OpenHands. MCP servers live under the `[mcp]` section of
@@ -22,9 +23,47 @@ import { mergeMcpRecords, touchesMcpConfig } from "./shared.js";
  * `stdio_servers` ({name, command, args, env}), `shttp_servers` and
  * `sse_servers` (string URL or {url, api_key, timeout}). Personal
  * instructions are user microagents in ~/.openhands/microagents/*.md.
+ * Agent Skills load from ~/.agents/skills/ and the legacy
+ * ~/.openhands/skills/, with ~/.agents/skills/ winning duplicate names.
  */
 const CONFIG_REL = ".openhands/config.toml";
 const MICROAGENTS_REL = ".openhands/microagents";
+const SKILLS_REL = ".agents/skills";
+const LEGACY_SKILLS_REL = ".openhands/skills";
+
+/**
+ * Read Agent Skills from the preferred root and the legacy root, merging by
+ * skill name with the preferred root winning (openhands USER_SKILLS_DIRS /
+ * project search order). `skip` names (e.g. the managed installed/ store
+ * under ~/.openhands/skills/) are excluded from the legacy root.
+ */
+export async function readOpenhandsSkills(
+  preferredRoot: string,
+  legacyRoot: string,
+  warnings: string[],
+  skip: string[] = [],
+): Promise<Skill[]> {
+  const skills = await readSkillsDir(preferredRoot, warnings);
+  const names = new Set(skills.map((s) => s.name));
+  for (const skill of await readSkillsDir(legacyRoot, warnings)) {
+    if (skip.includes(skill.name)) {
+      warnings.push(
+        `skills:${skill.name}: openhands-managed installed-skills store; not exported`,
+      );
+      continue;
+    }
+    if (names.has(skill.name)) {
+      warnings.push(
+        `skills:${skill.name}: legacy .openhands/skills copy shadowed by .agents/skills; the .agents/skills version is exported`,
+      );
+      continue;
+    }
+    names.add(skill.name);
+    skills.push(skill);
+  }
+  skills.sort((a, b) => a.name.localeCompare(b.name));
+  return skills;
+}
 
 async function readConfig(home: string): Promise<Record<string, unknown>> {
   const file = path.join(home, CONFIG_REL);
@@ -93,7 +132,7 @@ export async function readMicroagents(dir: string): Promise<string | undefined> 
 export const openhands: ClientAdapter = {
   id: "openhands",
   label: "OpenHands",
-  defaultPath: "~/.openhands/config.toml ([mcp]) + ~/.openhands/microagents",
+  defaultPath: "~/.openhands/config.toml ([mcp]) + ~/.openhands/microagents + ~/.agents/skills",
 
   async detect(home) {
     return (
@@ -135,6 +174,12 @@ export const openhands: ClientAdapter = {
     servers.push(...parseRemoteList(mcp.sse_servers, "sse", "sse_servers", warnings));
     bundle.mcpServers = servers;
 
+    bundle.skills = await readOpenhandsSkills(
+      path.join(home, SKILLS_REL),
+      path.join(home, LEGACY_SKILLS_REL),
+      warnings,
+      ["installed"],
+    );
     bundle.instructions = await readMicroagents(path.join(home, MICROAGENTS_REL));
     warnings.push(
       "openhands conversation history and app state are managed by the client and not exported; " +
@@ -235,11 +280,7 @@ export const openhands: ClientAdapter = {
     if (bundle.memory.length) {
       warnings.push("memory: openhands has no durable memory store; skipped (consider --mif)");
     }
-    if (bundle.skills.length) {
-      warnings.push(
-        "skills: openhands skills live in repositories (.openhands/skills); use --project to migrate them",
-      );
-    }
+    files.push(...planSkills(bundle.skills, SKILLS_REL));
     return { files, warnings };
   },
 };

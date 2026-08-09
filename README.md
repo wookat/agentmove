@@ -94,8 +94,11 @@ config snapshot kept in the bundle — unless you pass `--include-secrets`.
   `settings.json` are not preserved on rewrite (warned).
 - **OpenHands remote MCP servers** only support `api_key` auth — non-Bearer
   headers are dropped with a warning; per-server `timeout` has no portable
-  equivalent. User-level skills have no OpenHands home — they live in repos
-  (`--project` migrates `.openhands/skills`).
+  equivalent. Skills migrate natively from `~/.agents/skills/` plus the
+  legacy `~/.openhands/skills/` (`.agents/skills` wins duplicate names;
+  project `.agents/skills/` + `.openhands/skills/` with `--project`);
+  imports write `.agents/skills/`. The managed `~/.openhands/skills/installed/`
+  store is not exported (warned).
 
 Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 
@@ -113,7 +116,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json`, `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/`, `~/.codeium/windsurf/global_workflows/` (workflows as commands) |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json`, `~/Documents/Cline/Rules/`, `~/.cline/skills/`, `~/Documents/Cline/Workflows/` (workflow slash commands) |
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`), `~/.config/zed/AGENTS.md`, `~/.agents/skills/` |
-| OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]`), `~/.openhands/microagents/` |
+| OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]`), `~/.openhands/microagents/`, `~/.agents/skills/` (+ legacy `~/.openhands/skills/`) |
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json`, `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/`, `~/.copilot/skills/`, `~/.copilot/agents/*.agent.md` (project scope adds `.claude/commands/`) |
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/`, `~/.config/opencode/agents/` (custom agents), `~/.config/opencode/commands/` (custom commands) |
 | Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`), `~/.qwen/QWEN.md` (incl. "Qwen Added Memories"), `~/.qwen/skills/`, `~/.qwen/agents/` (custom subagents), `~/.qwen/commands/` (custom commands; markdown only) |
