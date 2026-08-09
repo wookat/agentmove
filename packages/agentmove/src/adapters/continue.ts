@@ -1,6 +1,7 @@
 import path from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import {
+  AgentDef,
   Bundle,
   ClientAdapter,
   emptyBundle,
@@ -62,6 +63,120 @@ export async function warnContinueLegacyPromptFiles(
 }
 
 const CLIENT_KEYS = ["requestOptions", "connectionTimeout"] as const;
+
+/**
+ * Inline `prompts:` blocks (config.yaml or a `.continue/prompts/*.yaml` block
+ * file) are unconditionally registered as slash commands by continue; export
+ * each as a markdown prompt with `invokable: true` so the imported file stays
+ * a slash command. Hub `uses:` references are not migrated.
+ */
+export function continueInlinePromptToCommand(
+  entry: unknown,
+  rel: string,
+  warnings: string[],
+): AgentDef | undefined {
+  if (isRecord(entry) && typeof entry.uses === "string") {
+    warnings.push(
+      `commands: hub block reference (uses: ${entry.uses}) in ${rel} is not migrated; install it from the Continue hub on the target`,
+    );
+    return undefined;
+  }
+  if (!isRecord(entry) || typeof entry.name !== "string" || typeof entry.prompt !== "string") {
+    warnings.push(`commands: inline prompt entry in ${rel} has no string name/prompt; skipped`);
+    return undefined;
+  }
+  const { name, prompt, ...rest } = entry;
+  const front: Record<string, unknown> = { ...rest, invokable: true };
+  const body = prompt.endsWith("\n") ? prompt : `${prompt}\n`;
+  return { name, content: `---\n${stringifyYaml(front)}---\n\n${body}` };
+}
+
+/** Merge inline prompts into the command list; markdown prompt files win duplicates. */
+export function mergeContinueInlinePrompts(
+  commands: AgentDef[],
+  entries: unknown[],
+  rel: string,
+  warnings: string[],
+): void {
+  for (const entry of entries) {
+    const cmd = continueInlinePromptToCommand(entry, rel, warnings);
+    if (!cmd) continue;
+    if (commands.some((c) => c.name === cmd.name)) {
+      warnings.push(
+        `commands:${cmd.name}: inline prompt in ${rel} shadowed by an existing prompt with the same name; skipped`,
+      );
+      continue;
+    }
+    warnings.push(
+      `commands:${cmd.name}: defined inline in ${rel}; exported as a markdown prompt with synthesized frontmatter`,
+    );
+    commands.push(cmd);
+  }
+}
+
+const RULE_META_KEYS = ["globs", "regex", "alwaysApply", "invokable"] as const;
+
+/**
+ * Inline `rules:` entries (a string, or an object whose `rule` text carries
+ * name/globs/regex/alwaysApply/invokable metadata). Exported into the merged
+ * instructions document; scoping metadata cannot be expressed there.
+ */
+export function continueInlineRuleToSection(
+  entry: unknown,
+  rel: string,
+  index: number,
+  warnings: string[],
+): string | undefined {
+  if (typeof entry === "string") {
+    if (!entry.trim()) return undefined;
+    warnings.push(`instructions: inline rule #${index + 1} in ${rel} merged into the instructions document`);
+    return `<!-- rule: ${rel}#${index + 1} -->\n${entry.trim()}`;
+  }
+  if (isRecord(entry) && typeof entry.uses === "string") {
+    warnings.push(
+      `instructions: hub block reference (uses: ${entry.uses}) in ${rel} is not migrated; install it from the Continue hub on the target`,
+    );
+    return undefined;
+  }
+  if (!isRecord(entry) || typeof entry.rule !== "string") {
+    warnings.push(`instructions: inline rule entry in ${rel} has no rule text; skipped`);
+    return undefined;
+  }
+  const label = typeof entry.name === "string" ? entry.name : `#${index + 1}`;
+  warnings.push(`instructions: inline rule ${label} in ${rel} merged into the instructions document`);
+  const dropped = RULE_META_KEYS.filter((k) => entry[k] !== undefined);
+  if (dropped.length) {
+    warnings.push(
+      `instructions:${label}: continue rule metadata (${dropped.join(", ")}) cannot be expressed in the merged instructions document; dropped`,
+    );
+  }
+  return `<!-- rule: ${rel} ${label} -->\n${entry.rule.trim()}`;
+}
+
+/**
+ * Read `.continue/<sub>/*.yaml` local block files (continue loads YAML block
+ * files from every block-type directory, both ~/.continue and workspace
+ * .continue) and return their `prompts:`/`rules:` arrays with source labels.
+ */
+export async function readContinueYamlBlocks(
+  root: string,
+  rootRel: string,
+  key: "prompts" | "rules",
+): Promise<{ rel: string; entries: unknown[] }[]> {
+  const out: { rel: string; entries: unknown[] }[] = [];
+  if (!(await isDir(root))) return out;
+  for (const f of (await listDir(root)).sort()) {
+    if (!f.endsWith(".yaml") && !f.endsWith(".yml")) continue;
+    const file = path.join(root, f);
+    const raw = await readText(file);
+    if (raw === undefined) continue;
+    const data = parseFile<unknown>(file, raw, (t) => parseYaml(t) as unknown);
+    if (isRecord(data) && Array.isArray(data[key])) {
+      out.push({ rel: `${rootRel}/${f}`, entries: data[key] });
+    }
+  }
+  return out;
+}
 
 async function readConfig(file: string): Promise<Record<string, unknown>> {
   const raw = await readText(file);
@@ -190,9 +305,32 @@ const continueAdapter: ClientAdapter = {
     const config = await readConfig(path.join(home, CONFIG_REL));
     bundle.config.raw = config;
     bundle.mcpServers = parseContinueServers(config, warnings);
-    bundle.instructions = await readRulesDir(path.join(home, RULES_REL), warnings, "global");
+
+    const ruleSections: string[] = [];
+    const rulesDoc = await readRulesDir(path.join(home, RULES_REL), warnings, "global");
+    if (rulesDoc) ruleSections.push(rulesDoc.trimEnd());
+    for (const block of await readContinueYamlBlocks(path.join(home, RULES_REL), RULES_REL, "rules")) {
+      block.entries.forEach((entry, i) => {
+        const section = continueInlineRuleToSection(entry, block.rel, i, warnings);
+        if (section) ruleSections.push(section);
+      });
+    }
+    if (Array.isArray(config.rules)) {
+      config.rules.forEach((entry, i) => {
+        const section = continueInlineRuleToSection(entry, CONFIG_REL, i, warnings);
+        if (section) ruleSections.push(section);
+      });
+    }
+    bundle.instructions = ruleSections.length ? ruleSections.join("\n\n") + "\n" : undefined;
+
     bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
     bundle.commands = await readAgentsDirRecursive(path.join(home, COMMANDS_REL), ".md");
+    for (const block of await readContinueYamlBlocks(path.join(home, COMMANDS_REL), COMMANDS_REL, "prompts")) {
+      mergeContinueInlinePrompts(bundle.commands, block.entries, block.rel, warnings);
+    }
+    if (Array.isArray(config.prompts)) {
+      mergeContinueInlinePrompts(bundle.commands, config.prompts, CONFIG_REL, warnings);
+    }
     await warnContinueLegacyPromptFiles(path.join(home, COMMANDS_REL), warnings);
     return { bundle, warnings };
   },
