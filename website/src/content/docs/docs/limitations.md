@@ -68,6 +68,13 @@ persona, and a later export won't recover it as a separate `persona.md`.
   `.agents/skills/` with `--project`, also reading legacy `.openhands/skills/`).
   The managed `~/.openhands/skills/installed/` store is client-owned and not
   exported (warned).
+- Amp user skills load from `~/.config/agents/skills/`, `~/.agents/skills/`,
+  and `~/.config/amp/skills/` in priority order — the first skill of a given
+  name wins (shadowed copies warned) and all three roots export; imports write
+  `~/.agents/skills/` (a warning flags any same-name skill already in
+  `~/.config/agents/skills/`, which amp prefers). Amp's Claude-compatible
+  roots (`~/.claude/skills/`, plugin cache) and skill repositories are covered
+  by the claude adapters / not exported.
 - Continue skills live in `~/.continue/skills/` (project `.continue/skills/`
   with `--project`) and migrate natively.
 - Cline skills live in `~/.cline/skills/` (project `.cline/skills/` with

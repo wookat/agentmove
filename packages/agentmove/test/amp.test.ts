@@ -19,8 +19,15 @@ describe("amp adapter", () => {
     expect(byName.linear!.url).toBe("https://mcp.linear.app/sse");
     expect(byName.linear!.headers).toEqual({ Authorization: "token test-not-a-real-token" });
     expect(bundle.instructions).toContain("Prefer concise answers.");
-    expect(bundle.skills.map((s) => s.name)).toEqual(["todo"]);
-    expect(warnings).toEqual([]);
+    expect(bundle.skills.map((s) => s.name)).toEqual(["amp-only", "dup", "global-only", "todo"]);
+    expect(bundle.skills.find((s) => s.name === "dup")!.files["SKILL.md"]).toContain("Global body.");
+    expect(warnings).toContain(
+      "skills:dup: ~/.agents/skills copy shadowed by ~/.config/agents/skills; the higher-priority version is exported",
+    );
+    expect(warnings).toContain(
+      "skills:dup: ~/.config/amp/skills copy shadowed by ~/.config/agents/skills; the higher-priority version is exported",
+    );
+    expect(warnings.filter((w) => !w.startsWith("skills:"))).toEqual([]);
   });
 
   it("imports into settings.json (merge), instructions with persona/memory approximation, skills", async () => {
@@ -51,6 +58,21 @@ describe("amp adapter", () => {
     expect(files.some((f) => f.path === ".agents/skills/sk/SKILL.md")).toBe(true);
     expect(warnings.some((w) => w.includes("persona"))).toBe(true);
     expect(warnings.some((w) => w.includes("no disabled flag"))).toBe(true);
+  });
+
+  it("warns when an existing ~/.config/agents/skills copy will shadow an imported skill", async () => {
+    const bundle = emptyBundle();
+    bundle.skills = [
+      { name: "dup", files: { "SKILL.md": "incoming" } },
+      { name: "fresh", files: { "SKILL.md": "incoming" } },
+    ];
+    const { files, warnings } = await amp.planImport(bundle, HOME, {});
+    expect(files.some((f) => f.path === ".agents/skills/dup/SKILL.md")).toBe(true);
+    expect(files.some((f) => f.path === ".agents/skills/fresh/SKILL.md")).toBe(true);
+    expect(warnings).toContain(
+      "skills:dup: an existing ~/.config/agents/skills copy has higher priority in amp and will shadow the imported ~/.agents/skills version",
+    );
+    expect(warnings.some((w) => w.startsWith("skills:fresh"))).toBe(false);
   });
 
   it("project scope: .amp/settings.json workspace servers + AGENTS.md + .agents/skills", async () => {

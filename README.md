@@ -120,7 +120,7 @@ Full details: [Limitations](https://agentmove.zalize.com/docs/limitations/).
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json`, `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/`, `~/.copilot/skills/`, `~/.copilot/agents/*.agent.md` (project scope adds `.claude/commands/`) |
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/`, `~/.config/opencode/agents/` (custom agents), `~/.config/opencode/commands/` (custom commands) |
 | Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`), `~/.qwen/QWEN.md` (incl. "Qwen Added Memories"), `~/.qwen/skills/`, `~/.qwen/agents/` (custom subagents), `~/.qwen/commands/` (custom commands; markdown only) |
-| Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`), `~/.config/amp/AGENTS.md`, `~/.agents/skills/` |
+| Amp | `amp` | `~/.config/amp/settings.json` (`amp.mcpServers`), `~/.config/amp/AGENTS.md`, `~/.config/agents/skills/` + `~/.agents/skills/` + `~/.config/amp/skills/` |
 | VS Code | `vscode` | user-profile `mcp.json` (`servers`; Linux `~/.config/Code/User`, macOS `~/Library/Application Support/Code/User`, Windows `%APPDATA%\Code\User`) + `~/.agents/skills/` + default-profile `User/prompts/*.prompt.md` |
 | Kiro | `kiro` | `~/.kiro/settings/mcp.json` (`mcpServers`), `~/.kiro/steering/`, `~/.kiro/skills/`, `~/.kiro/agents/` (markdown custom agents; JSON configs warned), `~/.kiro/prompts/` (saved prompts as commands) |
 | Roo Code | `roo` | VS Code globalStorage `mcp_settings.json` (`mcpServers`) + `custom_modes.yaml` (custom modes), `~/.roo/rules/`, `~/.roo/skills/` |
