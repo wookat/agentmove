@@ -128,7 +128,7 @@ describe("nanocoder adapter", () => {
 
   it("exports flat custom agents byte-faithfully", async () => {
     const { bundle } = await nanocoder.exportBundle(HOME);
-    expect(bundle.agents.map((a) => a.name)).toEqual(["code-reviewer"]);
+    expect(bundle.agents.map((a) => a.name)).toEqual(["code-reviewer", "pr-agent"]);
     expect(bundle.agents[0]!.content).toContain("name: code-reviewer");
     expect(bundle.agents[0]!.content).toContain("You are a code review specialist.");
   });
@@ -202,6 +202,77 @@ describe("nanocoder adapter", () => {
       "---\nname: helper\ndescription: Helps here\n---\nProject helper.\n",
     );
     expect(warnings.some((w) => w.includes("client-specific and copied as-is"))).toBe(true);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("exports skill-bundle commands and subagent with warnings for tools and manifest extras", async () => {
+    const { bundle, warnings } = await nanocoder.exportBundle(HOME);
+    const review = bundle.commands.find((c) => c.name === "pr-reviewer/review")!;
+    expect(review.content).toBe("Review the current PR for $ARGUMENTS.\n");
+    const solo = bundle.commands.find((c) => c.name === "solo")!;
+    expect(solo.content).toBe("Solo command body.\n");
+    const agent = bundle.agents.find((a) => a.name === "pr-agent")!;
+    expect(agent.content).toBe(
+      "---\nname: pr-agent\ndescription: PR review subagent\n---\nYou review PRs carefully.\n",
+    );
+    expect(warnings).toContain(
+      "agents:pr-agent: extracted from skill bundle pr-reviewer; bundle scoping and sibling tools are not migrated",
+    );
+    expect(warnings).toContain(
+      "skills:pr-reviewer: bundle tools/ are nanocoder shell tools (client-specific); not migrated",
+    );
+    expect(warnings).toContain(
+      "skills:pr-reviewer: skill.yaml version/tags/tools_visibility settings are nanocoder-specific; not migrated",
+    );
+    expect(warnings).toContain("skills:broken: skill.yaml is not valid YAML; bundle skipped");
+  });
+
+  it("skill bundles: flat names win on collision, one subagent per bundle", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "nanocoder-skills-"));
+    const root = path.join(home, ".config/nanocoder");
+    await fs.mkdir(path.join(root, "commands"), { recursive: true });
+    await fs.writeFile(path.join(root, "commands/dup.md"), "Flat dup.\n");
+    const bundleDir = path.join(root, "skills/dup");
+    await fs.mkdir(path.join(bundleDir, "commands"), { recursive: true });
+    await fs.mkdir(path.join(bundleDir, "agents"), { recursive: true });
+    await fs.writeFile(
+      path.join(bundleDir, "skill.yaml"),
+      "name: dup\ndescription: duplicate test\n",
+    );
+    await fs.writeFile(path.join(bundleDir, "commands/dup.md"), "Bundle dup.\n");
+    await fs.writeFile(
+      path.join(bundleDir, "agents/a.md"),
+      "---\nname: a\ndescription: first\n---\nA.\n",
+    );
+    await fs.writeFile(
+      path.join(bundleDir, "agents/b.md"),
+      "---\nname: b\ndescription: second\n---\nB.\n",
+    );
+    const { bundle, warnings } = await nanocoder.exportBundle(home);
+    expect(bundle.commands.find((c) => c.name === "dup")!.content).toBe("Flat dup.\n");
+    expect(warnings).toContain(
+      "commands:dup: bundle dup command collides with an existing command; skipped",
+    );
+    expect(bundle.agents.map((a) => a.name)).toEqual(["a"]);
+    expect(warnings).toContain(
+      "skills:dup: nanocoder loads only one subagent per bundle; ignoring b.md",
+    );
+    await fs.rm(home, { recursive: true, force: true });
+  });
+
+  it("project scope: .nanocoder/skills bundles export", async () => {
+    const adapter = getProjectAdapter("nanocoder");
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "nanocoder-skills-proj-"));
+    const bundleDir = path.join(dir, ".nanocoder/skills/docs");
+    await fs.mkdir(path.join(bundleDir, "commands"), { recursive: true });
+    await fs.writeFile(
+      path.join(bundleDir, "skill.yaml"),
+      "name: docs\ndescription: docs helper\n",
+    );
+    await fs.writeFile(path.join(bundleDir, "commands/build.md"), "Build docs.\n");
+    const { bundle } = await adapter.exportProject(dir);
+    expect(bundle.commands.map((c) => c.name)).toEqual(["docs/build"]);
+    expect(bundle.commands[0]!.content).toBe("Build docs.\n");
     await fs.rm(dir, { recursive: true, force: true });
   });
 });

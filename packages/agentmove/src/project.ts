@@ -149,6 +149,7 @@ import {
   planNanocoderMcp,
   readNanocoderCommandsDir,
   readNanocoderMcp,
+  readNanocoderSkillBundles,
 } from "./adapters/nanocoder.js";
 import { parseLibrechatServers, planLibrechatMcp, readLibrechatConfig } from "./adapters/librechat.js";
 import {
@@ -2006,6 +2007,12 @@ const nanocoderProject: ProjectAdapter = {
       warnings,
     );
     bundle.agents = await readAgentsDir(path.join(dir, ".nanocoder/agents"), ".md");
+    await readNanocoderSkillBundles(
+      path.join(dir, ".nanocoder/skills"),
+      bundle.commands,
+      bundle.agents,
+      warnings,
+    );
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {

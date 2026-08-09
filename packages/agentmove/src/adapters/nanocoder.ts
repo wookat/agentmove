@@ -1,4 +1,5 @@
 import path from "node:path";
+import { parse as parseYaml } from "yaml";
 import {
   AgentDef,
   asStringRecord,
@@ -40,6 +41,7 @@ import { mergeMcpRecords, planAgents, readAgentsDir, touchesMcpConfig } from "./
 const MCP_REL = ".config/nanocoder/.mcp.json";
 const COMMANDS_DIR_REL = ".config/nanocoder/commands";
 const AGENTS_DIR_REL = ".config/nanocoder/agents";
+const SKILLS_DIR_REL = ".config/nanocoder/skills";
 
 export const NANOCODER_COMMANDS_WARNING =
   "commands: frontmatter fields (description/aliases/triggers/tags) and {{parameter}} placeholders are client-specific and copied as-is; review after import";
@@ -156,6 +158,116 @@ export async function readNanocoderCommandsDir(
     }
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const SKILL_NAME_REGEX = /^[a-z][a-z0-9-]*$/;
+const SKILL_CLIENT_KEYS = ["version", "author", "tags", "subscribe", "tools_visibility"] as const;
+
+/**
+ * Read skill bundles (`<root>/<dir>/skill.yaml` + optional commands/ and
+ * agents/ subdirs) and fan their portable members into the commands/agents
+ * arrays. Bundle commands map to nested names (`<bundle>/<file>`, or bare
+ * `<bundle>` when the file is named after the bundle) mirroring nanocoder's
+ * `/<bundle>:<file>` invocation; the single subagent keeps its file basename.
+ * Bundle tools are nanocoder shell tools and are not migrated. Names already
+ * taken by the flat directories win.
+ */
+export async function readNanocoderSkillBundles(
+  root: string,
+  commands: AgentDef[],
+  agents: AgentDef[],
+  warnings: string[],
+): Promise<void> {
+  if (!(await isDir(root))) return;
+  const commandNames = new Set(commands.map((c) => c.name));
+  const agentNames = new Set(agents.map((a) => a.name));
+  for (const entry of (await listDir(root)).sort()) {
+    if (entry.startsWith(".")) continue;
+    const bundleDir = path.join(root, entry);
+    if (!(await isDir(bundleDir))) continue;
+    const manifestRaw = await readText(path.join(bundleDir, "skill.yaml"));
+    if (manifestRaw === undefined) continue;
+    let manifest: unknown;
+    try {
+      manifest = parseYaml(manifestRaw);
+    } catch {
+      warnings.push(`skills:${entry}: skill.yaml is not valid YAML; bundle skipped`);
+      continue;
+    }
+    if (!isRecord(manifest)) {
+      warnings.push(`skills:${entry}: skill.yaml is not a YAML mapping; bundle skipped`);
+      continue;
+    }
+    const name = manifest.name;
+    if (typeof name !== "string" || !SKILL_NAME_REGEX.test(name)) {
+      warnings.push(`skills:${entry}: skill.yaml has an invalid or missing name; bundle skipped`);
+      continue;
+    }
+    if (typeof manifest.description !== "string" || !manifest.description.trim()) {
+      warnings.push(`skills:${entry}: skill.yaml has a missing or empty description; bundle skipped`);
+      continue;
+    }
+    const clientKeys = SKILL_CLIENT_KEYS.filter((k) => manifest[k] !== undefined);
+    if (clientKeys.length) {
+      warnings.push(
+        `skills:${name}: skill.yaml ${clientKeys.join("/")} settings are nanocoder-specific; not migrated`,
+      );
+    }
+    const commandsDir = path.join(bundleDir, "commands");
+    if (await isDir(commandsDir)) {
+      for (const file of (await listDir(commandsDir)).sort()) {
+        if (!file.endsWith(".md")) continue;
+        const content = await readText(path.join(commandsDir, file));
+        if (content === undefined) continue;
+        const base = file.slice(0, -3);
+        const cmdName = base === name ? name : `${name}/${base}`;
+        if (commandNames.has(cmdName)) {
+          warnings.push(
+            `commands:${cmdName}: bundle ${name} command collides with an existing command; skipped`,
+          );
+          continue;
+        }
+        commandNames.add(cmdName);
+        commands.push({ name: cmdName, content });
+      }
+    }
+    const agentsDir = path.join(bundleDir, "agents");
+    if (await isDir(agentsDir)) {
+      const mdFiles = (await listDir(agentsDir)).filter((f) => f.endsWith(".md")).sort();
+      if (mdFiles.length > 1) {
+        warnings.push(
+          `skills:${name}: nanocoder loads only one subagent per bundle; ignoring ${mdFiles
+            .slice(1)
+            .join(", ")}`,
+        );
+      }
+      const first = mdFiles[0];
+      if (first !== undefined) {
+        const content = await readText(path.join(agentsDir, first));
+        if (content !== undefined) {
+          const agentName = first.slice(0, -3);
+          if (agentNames.has(agentName)) {
+            warnings.push(
+              `agents:${agentName}: bundle ${name} subagent collides with an existing agent; skipped`,
+            );
+          } else {
+            agentNames.add(agentName);
+            agents.push({ name: agentName, content });
+            warnings.push(
+              `agents:${agentName}: extracted from skill bundle ${name}; bundle scoping and sibling tools are not migrated`,
+            );
+          }
+        }
+      }
+    }
+    if (await isDir(path.join(bundleDir, "tools"))) {
+      warnings.push(
+        `skills:${name}: bundle tools/ are nanocoder shell tools (client-specific); not migrated`,
+      );
+    }
+  }
+  commands.sort((a, b) => a.name.localeCompare(b.name));
+  agents.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 const CLIENT_KEYS = ["timeout", "alwaysAllow", "description", "tags"] as const;
@@ -295,6 +407,12 @@ export const nanocoder: ClientAdapter = {
       warnings,
     );
     bundle.agents = await readAgentsDir(path.join(home, AGENTS_DIR_REL), ".md");
+    await readNanocoderSkillBundles(
+      path.join(home, SKILLS_DIR_REL),
+      bundle.commands,
+      bundle.agents,
+      warnings,
+    );
     return { bundle, warnings };
   },
 

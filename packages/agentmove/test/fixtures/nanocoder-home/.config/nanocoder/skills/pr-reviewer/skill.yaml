@@ -1,0 +1,6 @@
+name: pr-reviewer
+description: Review pull requests
+version: 1.0.0
+tags: [git]
+tools_visibility:
+  default: scoped
