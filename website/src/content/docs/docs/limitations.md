@@ -467,6 +467,11 @@ Near-lossless, with these edges:
   CLI, goose, Kilo Code, and Kimi Code CLI keep the
   flag natively; CodeBuddy keeps it via its top-level `disabledMcpServers`
   name list.)
+- Continue MCP block files (`~/.continue/mcpServers/*.yaml|json`, project
+  `.continue/mcpServers/`) are read on export — YAML `mcpServers:` lists plus
+  claude-style JSON maps; `config.yaml` entries win duplicate names (warned).
+  Imports write only `config.yaml` (project: `.continue/mcpServers/agentmove.yaml`),
+  never the original block files.
 - goose builtin/platform extensions are goose-internal — not exported;
   `available_tools` filters and keyring `env_keys` are not portable (warned).
 - JSON5/JSONC comments (`openclaw.json`, Zed `settings.json`,

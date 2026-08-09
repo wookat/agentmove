@@ -27,7 +27,11 @@ import {
  * Continue (continue.dev, IDE extensions + `cn` CLI). MCP servers live in the
  * `mcpServers` list (not map) of ~/.continue/config.yaml; each entry carries
  * its own `name` and remote entries use `type: sse`/`streamable-http` + `url`.
- * Global rules are markdown files under ~/.continue/rules/.
+ * Continue also loads MCP block files from ~/.continue/mcpServers/ (workspace
+ * scope: .continue/mcpServers/): YAML files with an `mcpServers:` list plus
+ * claude-style JSON maps. config.yaml entries win duplicate names on export;
+ * imports keep writing config.yaml only. Global rules are markdown files
+ * under ~/.continue/rules/.
  *
  * Prompt files (slash commands) are markdown files under ~/.continue/prompts/
  * (workspace scope: .continue/prompts/), discovered recursively; a file is
@@ -35,6 +39,7 @@ import {
  * Legacy `.prompt` files use the v1 prompt-file format and are not migrated.
  */
 const CONFIG_REL = ".continue/config.yaml";
+const MCP_BLOCKS_REL = ".continue/mcpServers";
 const RULES_REL = ".continue/rules";
 const SKILLS_REL = ".continue/skills";
 const COMMANDS_REL = ".continue/prompts";
@@ -210,6 +215,55 @@ export function parseContinueServers(
   return servers;
 }
 
+/**
+ * Read MCP servers from local block files in a .continue/mcpServers directory:
+ * YAML block files carry an `mcpServers:` list (config.yaml schema) and JSON
+ * files carry a claude-style `mcpServers` name-keyed map.
+ */
+export async function readContinueMcpBlockServers(
+  root: string,
+  warnings: string[],
+): Promise<McpServer[]> {
+  const servers: McpServer[] = [];
+  if (!(await isDir(root))) return servers;
+  for (const f of (await listDir(root)).sort()) {
+    const file = path.join(root, f);
+    const raw = await readText(file);
+    if (raw === undefined) continue;
+    if (f.endsWith(".yaml") || f.endsWith(".yml")) {
+      const data = parseFile<unknown>(file, raw, (t) => parseYaml(t) as unknown);
+      if (isRecord(data)) servers.push(...parseContinueServers(data, warnings));
+    } else if (f.endsWith(".json")) {
+      const data = parseFile<unknown>(file, raw, JSON.parse);
+      if (isRecord(data) && isRecord(data.mcpServers)) {
+        for (const [name, entry] of Object.entries(data.mcpServers)) {
+          const s = parseCommonMcpEntry(name, entry, warnings);
+          if (s) servers.push(s);
+        }
+      }
+    }
+  }
+  return servers;
+}
+
+/** Append servers, first-wins on duplicate names, warning for each shadowed entry. */
+export function mergeContinueMcpServers(
+  servers: McpServer[],
+  extra: McpServer[],
+  rel: string,
+  warnings: string[],
+): void {
+  for (const s of extra) {
+    if (servers.some((e) => e.name === s.name)) {
+      warnings.push(
+        `mcp:${s.name}: entry in ${rel} shadowed by an existing server with the same name; skipped`,
+      );
+      continue;
+    }
+    servers.push(s);
+  }
+}
+
 export function renderContinueServers(
   bundle: Bundle,
   warnings: string[],
@@ -305,6 +359,12 @@ const continueAdapter: ClientAdapter = {
     const config = await readConfig(path.join(home, CONFIG_REL));
     bundle.config.raw = config;
     bundle.mcpServers = parseContinueServers(config, warnings);
+    mergeContinueMcpServers(
+      bundle.mcpServers,
+      await readContinueMcpBlockServers(path.join(home, MCP_BLOCKS_REL), warnings),
+      MCP_BLOCKS_REL,
+      warnings,
+    );
 
     const ruleSections: string[] = [];
     const rulesDoc = await readRulesDir(path.join(home, RULES_REL), warnings, "global");
