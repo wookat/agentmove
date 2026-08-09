@@ -222,6 +222,25 @@ persona, and a later export won't recover it as a separate `persona.md`.
   kept verbatim inside `developer_instructions`, warned); nested agent
   names are flattened. Roles declared inline under `[agents.<name>]` in
   `config.toml` and the Xcode-bundled Codex root are **not** migrated.
+- Vibe Code CLI custom agents are **TOML config-override profiles**
+  (`~/.vibe/agents/*.toml`, project `.vibe/agents/`; flat, name = file
+  stem) — a documented conversion, not a byte-for-byte copy. The profile
+  itself carries no prompt text: when its `system_prompt_id` override
+  resolves to a custom prompt markdown file in `~/.vibe/prompts/`
+  (project `.vibe/prompts/`), that prompt exports as the agent body;
+  builtin or missing prompt ids are warned and export no body.
+  `description` maps to frontmatter; `display_name`, `safety`,
+  `agent_type`, and every other config override (tools, permissions,
+  model, …) are vibe-specific and dropped with per-field warnings.
+  Profiles with neither a description nor a custom prompt are **not**
+  migrated (warned). Imports write a `description` profile TOML plus,
+  when the agent has a body, a `~/.vibe/prompts/<name>.md` prompt wired
+  up via `system_prompt_id`; vibe requires bare prompt filenames, so
+  nested agent names are flattened (warned), and a custom profile named
+  after a vibe builtin agent (`default`, `plan`, `accept-edits`,
+  `auto-approve`, `explore`, `lean`) overrides it (warned). Extra
+  `agent_paths` directories configured in `config.toml` are **not**
+  read.
 - Every other client has no custom agents directory — imported agents are
   **skipped** with a warning.
 

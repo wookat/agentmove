@@ -133,4 +133,86 @@ describe("vibe adapter", () => {
     expect(expWarnings).toEqual([]);
     await fs.rm(dir, { recursive: true, force: true });
   });
+
+  it("exports agent profiles with custom prompt bodies and per-field warnings", async () => {
+    const { bundle, warnings } = await vibe.exportBundle(HOME);
+    expect(bundle.agents.map((a) => a.name)).toEqual(["ghost", "lite", "reviewer"]);
+    const reviewer = bundle.agents.find((a) => a.name === "reviewer")!;
+    expect(reviewer.content).toContain('description: "Thorough code reviewer"');
+    expect(reviewer.content).toContain("Review the code carefully and report issues.");
+    const lite = bundle.agents.find((a) => a.name === "lite")!;
+    expect(lite.content).toBe('---\ndescription: "Minimal profile"\n---\n');
+    expect(warnings).toContain("agents:reviewer: vibe display_name has no portable equivalent; dropped");
+    expect(warnings).toContain(
+      'agents:reviewer: vibe safety level "safe" has no portable equivalent; dropped',
+    );
+    expect(warnings).toContain(
+      'agents:reviewer: vibe agent_type "subagent" has no portable equivalent; dropped',
+    );
+    expect(warnings).toContain(
+      'agents:reviewer: vibe config override "disabled_tools" has no portable equivalent; dropped',
+    );
+    expect(warnings).toContain(
+      'agents:ghost: system_prompt_id "lean" does not resolve to a custom prompt markdown file (builtin or missing); body not exported',
+    );
+    expect(warnings).toContain("agents:broken.toml: invalid TOML; not migrated");
+  });
+
+  it("imports agents as profile TOML + prompt file wired via system_prompt_id", async () => {
+    const bundle = emptyBundle();
+    bundle.agents = [
+      { name: "helper", content: '---\ndescription: "Helps out"\n---\nBe helpful.\n' },
+      { name: "team/planner", content: "Plan the work.\n" },
+      { name: "plan", content: '---\ndescription: "Custom plan"\n---\nPlan differently.\n' },
+      { name: "desc-only", content: '---\ndescription: "No body"\n---\n' },
+    ];
+    const { files, warnings } = await vibe.planImport(bundle, HOME, {});
+    const helper = parseToml(
+      files.find((f) => f.path === ".vibe/agents/helper.toml")!.content,
+    ) as Record<string, unknown>;
+    expect(helper.description).toBe("Helps out");
+    expect(helper.system_prompt_id).toBe("helper");
+    expect(files.find((f) => f.path === ".vibe/prompts/helper.md")!.content).toBe("Be helpful.\n");
+    expect(files.some((f) => f.path === ".vibe/agents/team-planner.toml")).toBe(true);
+    expect(files.some((f) => f.path === ".vibe/prompts/team-planner.md")).toBe(true);
+    expect(warnings).toContain(
+      "agents:team/planner: vibe agent and prompt names must be bare filenames; imported as team-planner",
+    );
+    expect(warnings).toContain(
+      'agents:plan: a custom profile with this name overrides vibe\'s builtin "plan" agent',
+    );
+    const descOnly = parseToml(
+      files.find((f) => f.path === ".vibe/agents/desc-only.toml")!.content,
+    ) as Record<string, unknown>;
+    expect(descOnly.system_prompt_id).toBeUndefined();
+    expect(files.some((f) => f.path === ".vibe/prompts/desc-only.md")).toBe(false);
+  });
+
+  it("project scope: .vibe/agents + .vibe/prompts round-trip", async () => {
+    const adapter = getProjectAdapter("vibe");
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vibe-agents-proj-"));
+    await fs.mkdir(path.join(dir, ".vibe/agents"), { recursive: true });
+    await fs.mkdir(path.join(dir, ".vibe/prompts"), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, ".vibe/agents/tester.toml"),
+      'description = "Runs tests"\nsystem_prompt_id = "tester"\n',
+    );
+    await fs.writeFile(path.join(dir, ".vibe/prompts/tester.md"), "Run all tests.\n");
+    const { bundle: exported } = await adapter.exportProject(dir);
+    expect(exported.agents.map((a) => a.name)).toEqual(["tester"]);
+    expect(exported.agents[0]!.content).toContain("Run all tests.");
+
+    const target = await fs.mkdtemp(path.join(os.tmpdir(), "vibe-agents-proj2-"));
+    const { files } = await adapter.planImport(exported, target, {});
+    expect(files.find((f) => f.path === ".vibe/prompts/tester.md")!.content).toBe(
+      "Run all tests.\n",
+    );
+    const tester = parseToml(
+      files.find((f) => f.path === ".vibe/agents/tester.toml")!.content,
+    ) as Record<string, unknown>;
+    expect(tester.description).toBe("Runs tests");
+    expect(tester.system_prompt_id).toBe("tester");
+    await fs.rm(dir, { recursive: true, force: true });
+    await fs.rm(target, { recursive: true, force: true });
+  });
 });

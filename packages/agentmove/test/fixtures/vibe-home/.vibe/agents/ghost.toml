@@ -1,0 +1,2 @@
+description = "References a builtin prompt"
+system_prompt_id = "lean"
