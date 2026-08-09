@@ -141,7 +141,15 @@ import {
 } from "./adapters/kimi.js";
 import { parseCortexServers, planCortexMcp, readCortexMcp } from "./adapters/cortex.js";
 import { parseGrokServers, planGrokMcp, readGrokConfig } from "./adapters/grok.js";
-import { parseVibeServers, planVibeMcp, readVibeConfig } from "./adapters/vibe.js";
+import {
+  parseVibeServers,
+  planVibeAgents,
+  planVibeMcp,
+  readVibeAgents,
+  readVibeConfig,
+  VIBE_AGENTS_EXPORT_WARNING,
+  VIBE_AGENTS_IMPORT_WARNING,
+} from "./adapters/vibe.js";
 import {
   NANOCODER_AGENTS_WARNING,
   NANOCODER_COMMANDS_WARNING,
@@ -1959,6 +1967,7 @@ const grokProject: ProjectAdapter = {
 };
 
 const vibeProject: ProjectAdapter = {
+  supportsAgents: true,
   async exportProject(dir) {
     const warnings: string[] = [];
     const bundle = emptyBundle();
@@ -1967,6 +1976,12 @@ const vibeProject: ProjectAdapter = {
     bundle.mcpServers = parseVibeServers(config, warnings);
     bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
     bundle.skills = await readSkillsDir(path.join(dir, ".vibe/skills"), warnings);
+    bundle.agents = await readVibeAgents(
+      path.join(dir, ".vibe/agents"),
+      path.join(dir, ".vibe/prompts"),
+      warnings,
+    );
+    if (bundle.agents.length) warnings.push(VIBE_AGENTS_EXPORT_WARNING);
     return { bundle, warnings };
   },
   async planImport(bundle, dir, opts) {
@@ -1993,6 +2008,10 @@ const vibeProject: ProjectAdapter = {
       warnings.push("memory: vibe has no project-scoped memory store; skipped");
     }
     files.push(...planSkills(bundle.skills, ".vibe/skills"));
+    if (bundle.agents.length) {
+      files.push(...planVibeAgents(bundle.agents, ".vibe/agents", ".vibe/prompts", warnings));
+      warnings.push(VIBE_AGENTS_IMPORT_WARNING);
+    }
     return { files, warnings };
   },
 };

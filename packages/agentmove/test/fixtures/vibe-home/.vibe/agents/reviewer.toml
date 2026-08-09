@@ -1,0 +1,6 @@
+display_name = "Code Reviewer"
+description = "Thorough code reviewer"
+safety = "safe"
+agent_type = "subagent"
+system_prompt_id = "reviewer"
+disabled_tools = ["write_file"]
