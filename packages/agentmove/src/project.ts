@@ -79,8 +79,9 @@ import {
   CONTINUE_COMMANDS_WARNING,
   continueInlineRuleToSection,
   mergeContinueInlinePrompts,
+  mergeContinueMcpServers,
   mergeContinueServers,
-  parseContinueServers,
+  readContinueMcpBlockServers,
   readContinueYamlBlocks,
   readRulesDir as readContinueRulesDir,
   renderContinueServers,
@@ -1178,28 +1179,13 @@ const continueProject: ProjectAdapter = {
     const warnings: string[] = [];
     const bundle = emptyBundle();
     bundle.manifest.exportedFrom = "continue";
-    const blocksDir = path.join(dir, ".continue/mcpServers");
-    const servers = [];
-    if (await isDir(blocksDir)) {
-      for (const f of (await listDir(blocksDir)).sort()) {
-        const file = path.join(blocksDir, f);
-        const raw = await readText(file);
-        if (raw === undefined) continue;
-        let data: unknown;
-        if (f.endsWith(".yaml") || f.endsWith(".yml")) {
-          data = parseFile<unknown>(file, raw, (t) => parseYaml(t) as unknown);
-          if (isRecord(data)) servers.push(...parseContinueServers(data, warnings));
-        } else if (f.endsWith(".json")) {
-          data = parseFile<unknown>(file, raw, JSON.parse);
-          if (isRecord(data) && isRecord(data.mcpServers)) {
-            for (const [name, entry] of Object.entries(data.mcpServers)) {
-              const s = parseCommonMcpEntry(name, entry, warnings);
-              if (s) servers.push(s);
-            }
-          }
-        }
-      }
-    }
+    const servers: McpServer[] = [];
+    mergeContinueMcpServers(
+      servers,
+      await readContinueMcpBlockServers(path.join(dir, ".continue/mcpServers"), warnings),
+      ".continue/mcpServers",
+      warnings,
+    );
     bundle.mcpServers = servers;
     const ruleSections: string[] = [];
     const rulesDoc = await readContinueRulesDir(

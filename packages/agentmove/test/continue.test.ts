@@ -220,4 +220,50 @@ describe("continue adapter", () => {
     expect(block.mcpServers[0]!.type).toBe("streamable-http");
     expect(files.some((f) => f.path === ".continue/rules/agentmove.md")).toBe(true);
   });
+
+  it("exports user-level mcpServers block files (yaml + json), config.yaml wins duplicates", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "am-cont-mcpblocks-"));
+    await fs.mkdir(path.join(home, ".continue/mcpServers"), { recursive: true });
+    await fs.writeFile(
+      path.join(home, ".continue/config.yaml"),
+      [
+        "name: Local Config",
+        "mcpServers:",
+        "  - name: sqlite",
+        "    command: uvx",
+        "    args: [mcp-server-sqlite]",
+        "",
+      ].join("\n"),
+    );
+    await fs.writeFile(
+      path.join(home, ".continue/mcpServers/block.yaml"),
+      [
+        "name: blocks",
+        "mcpServers:",
+        "  - name: docs",
+        "    type: streamable-http",
+        "    url: https://docs.example.com/mcp",
+        "  - name: sqlite",
+        "    command: other",
+        "",
+      ].join("\n"),
+    );
+    await fs.writeFile(
+      path.join(home, ".continue/mcpServers/claude-style.json"),
+      JSON.stringify({
+        mcpServers: { jsonsrv: { command: "npx", args: ["json-mcp"], env: { K: "${K}" } } },
+      }),
+    );
+
+    const { bundle, warnings } = await continueAdapter.exportBundle(home);
+    const byName = Object.fromEntries(bundle.mcpServers.map((s) => [s.name, s]));
+    expect(Object.keys(byName).sort()).toEqual(["docs", "jsonsrv", "sqlite"]);
+    expect(byName.sqlite!.command).toBe("uvx"); // config.yaml wins the duplicate
+    expect(byName.docs!.transport).toBe("http"); // streamable-http normalized
+    expect(byName.jsonsrv!.transport).toBe("stdio");
+    expect(warnings).toContain(
+      "mcp:sqlite: entry in .continue/mcpServers shadowed by an existing server with the same name; skipped",
+    );
+    await fs.rm(home, { recursive: true, force: true });
+  });
 });
