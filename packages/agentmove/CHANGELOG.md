@@ -1,5 +1,11 @@
 # agentmove-cli
 
+## 0.105.0
+
+### Minor Changes
+
+- 97fe2a9: Continue JSON MCP block files now support the full upstream loader matrix: JSONC comments, claude-code style files with `projects` nesting, and single-server files (server name = filename), in both `~/.continue/mcpServers/` and project `.continue/mcpServers/`. `envFile` on stdio entries emits a not-migrated warning and unsupported file shapes are skipped with an explicit warning instead of being silently ignored.
+
 ## 0.104.0
 
 ### Minor Changes
