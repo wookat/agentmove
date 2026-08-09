@@ -331,7 +331,11 @@ persona, and a later export won't recover it as a separate `persona.md`.
   Nanocoder (`~/.config/nanocoder/commands/`, project
   `.nanocoder/commands/`; subdirectories preserved as `:`-separated
   namespaces), Continue (prompt files: `~/.continue/prompts/`, project
-  `.continue/prompts/`; subdirectories preserved), VS Code (Copilot
+  `.continue/prompts/`; subdirectories preserved; inline `prompts:`
+  blocks in `~/.continue/config.yaml` and in `.continue/prompts/*.yaml`
+  block files are exported as synthesized markdown prompts with
+  `invokable: true`, markdown files winning name duplicates — imports
+  still write only prompt files), VS Code (Copilot
   prompt files: default-profile `User/prompts/*.prompt.md`, project
   `.github/prompts/*.prompt.md`; flat), Gemini CLI
   (`~/.gemini/commands/**/*.toml`, project `.gemini/commands/`;
@@ -388,8 +392,15 @@ persona, and a later export won't recover it as a separate `persona.md`.
 - Continue only lists a prompt file as a slash command when its
   frontmatter sets `invokable: true` — imports copy frontmatter as-is
   with a warning. Legacy v1 `.prompt` files are **not** migrated (warned
-  per file); Hub prompt blocks (`uses: owner/slug` in `config.yaml`) are
-  remote references and are not migrated either.
+  per file); Hub prompt blocks (`uses: owner/slug` in `config.yaml` or a
+  YAML block file) are remote references and are not migrated either
+  (warned per entry).
+- Continue inline `rules:` entries (in `~/.continue/config.yaml` or
+  `.continue/rules/*.yaml` block files) are merged into the exported
+  instructions document alongside the rules markdown files; rule
+  scoping metadata (`globs`, `regex`, `alwaysApply`, `invokable`) cannot
+  be expressed there and is dropped with a warning. Imports still write
+  only `~/.continue/rules/agentmove.md`, never inline config entries.
 - Gemini CLI commands are **TOML files** (`prompt` required,
   `description` optional), so migration is a format conversion, not a
   byte-faithful copy: on export the `prompt` string becomes the markdown

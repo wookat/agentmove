@@ -77,8 +77,11 @@ import {
 } from "./adapters/roo.js";
 import {
   CONTINUE_COMMANDS_WARNING,
+  continueInlineRuleToSection,
+  mergeContinueInlinePrompts,
   mergeContinueServers,
   parseContinueServers,
+  readContinueYamlBlocks,
   readRulesDir as readContinueRulesDir,
   renderContinueServers,
   warnContinueLegacyPromptFiles,
@@ -1198,13 +1201,33 @@ const continueProject: ProjectAdapter = {
       }
     }
     bundle.mcpServers = servers;
-    bundle.instructions = await readContinueRulesDir(
+    const ruleSections: string[] = [];
+    const rulesDoc = await readContinueRulesDir(
       path.join(dir, ".continue/rules"),
       warnings,
       "project",
     );
+    if (rulesDoc) ruleSections.push(rulesDoc.trimEnd());
+    for (const block of await readContinueYamlBlocks(
+      path.join(dir, ".continue/rules"),
+      ".continue/rules",
+      "rules",
+    )) {
+      block.entries.forEach((entry, i) => {
+        const section = continueInlineRuleToSection(entry, block.rel, i, warnings);
+        if (section) ruleSections.push(section);
+      });
+    }
+    bundle.instructions = ruleSections.length ? ruleSections.join("\n\n") + "\n" : undefined;
     bundle.skills = await readSkillsDir(path.join(dir, ".continue/skills"), warnings);
     bundle.commands = await readAgentsDirRecursive(path.join(dir, ".continue/prompts"), ".md");
+    for (const block of await readContinueYamlBlocks(
+      path.join(dir, ".continue/prompts"),
+      ".continue/prompts",
+      "prompts",
+    )) {
+      mergeContinueInlinePrompts(bundle.commands, block.entries, block.rel, warnings);
+    }
     await warnContinueLegacyPromptFiles(path.join(dir, ".continue/prompts"), warnings);
     return { bundle, warnings };
   },

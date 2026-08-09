@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
@@ -89,6 +91,116 @@ describe("continue adapter", () => {
     ) as ContinueConfig;
     expect(config.mcpServers.map((e) => e.name)).toEqual(["only"]);
     expect(replaced.warnings.some((w) => w.includes("removed by --replace-mcp"))).toBe(true);
+  });
+
+  it("exports inline prompts and rules from config.yaml and yaml block files", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "am-cont-inline-"));
+    await fs.mkdir(path.join(home, ".continue/prompts"), { recursive: true });
+    await fs.mkdir(path.join(home, ".continue/rules"), { recursive: true });
+    await fs.writeFile(path.join(home, ".continue/prompts/dup.md"), "md dup prompt\n");
+    await fs.writeFile(
+      path.join(home, ".continue/prompts/extra.yaml"),
+      [
+        "name: block",
+        "version: 0.0.1",
+        "prompts:",
+        "  - name: block-prompt",
+        "    prompt: from block file",
+        "",
+      ].join("\n"),
+    );
+    await fs.writeFile(path.join(home, ".continue/rules/01-md.md"), "Use pnpm.\n");
+    await fs.writeFile(
+      path.join(home, ".continue/rules/team.yaml"),
+      ["rules:", "  - Never push to main.", ""].join("\n"),
+    );
+    await fs.writeFile(
+      path.join(home, ".continue/config.yaml"),
+      [
+        "name: Local Config",
+        "prompts:",
+        "  - name: tests",
+        "    description: unit tests",
+        "    prompt: Write tests",
+        "  - name: dup",
+        "    prompt: inline dup",
+        "  - uses: owner/hub-prompt",
+        "  - prompt: nameless",
+        "rules:",
+        "  - Be concise.",
+        "  - name: scoped",
+        "    rule: Use strict TS.",
+        "    globs: \"**/*.ts\"",
+        "    invokable: true",
+        "  - uses: owner/hub-rule",
+        "",
+      ].join("\n"),
+    );
+
+    const { bundle, warnings } = await continueAdapter.exportBundle(home);
+    const byName = Object.fromEntries(bundle.commands.map((c) => [c.name, c.content]));
+    expect(byName.tests).toBe("---\ndescription: unit tests\ninvokable: true\n---\n\nWrite tests\n");
+    expect(byName["block-prompt"]).toBe("---\ninvokable: true\n---\n\nfrom block file\n");
+    expect(byName.dup).toBe("md dup prompt\n"); // markdown file wins
+    expect(warnings).toContain(
+      "commands:tests: defined inline in .continue/config.yaml; exported as a markdown prompt with synthesized frontmatter",
+    );
+    expect(warnings).toContain(
+      "commands:block-prompt: defined inline in .continue/prompts/extra.yaml; exported as a markdown prompt with synthesized frontmatter",
+    );
+    expect(warnings).toContain(
+      "commands:dup: inline prompt in .continue/config.yaml shadowed by an existing prompt with the same name; skipped",
+    );
+    expect(warnings).toContain(
+      "commands: hub block reference (uses: owner/hub-prompt) in .continue/config.yaml is not migrated; install it from the Continue hub on the target",
+    );
+    expect(warnings).toContain(
+      "commands: inline prompt entry in .continue/config.yaml has no string name/prompt; skipped",
+    );
+
+    expect(bundle.instructions).toContain("<!-- rule: 01-md.md -->\nUse pnpm.");
+    expect(bundle.instructions).toContain(
+      "<!-- rule: .continue/rules/team.yaml#1 -->\nNever push to main.",
+    );
+    expect(bundle.instructions).toContain(
+      "<!-- rule: .continue/config.yaml#1 -->\nBe concise.",
+    );
+    expect(bundle.instructions).toContain(
+      "<!-- rule: .continue/config.yaml scoped -->\nUse strict TS.",
+    );
+    expect(warnings).toContain(
+      "instructions: inline rule scoped in .continue/config.yaml merged into the instructions document",
+    );
+    expect(warnings).toContain(
+      "instructions:scoped: continue rule metadata (globs, invokable) cannot be expressed in the merged instructions document; dropped",
+    );
+    expect(warnings).toContain(
+      "instructions: hub block reference (uses: owner/hub-rule) in .continue/config.yaml is not migrated; install it from the Continue hub on the target",
+    );
+  });
+
+  it("project scope: exports inline prompts/rules from .continue yaml block files", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "am-cont-proj-inline-"));
+    await fs.mkdir(path.join(dir, ".continue/prompts"), { recursive: true });
+    await fs.mkdir(path.join(dir, ".continue/rules"), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, ".continue/prompts/team.yaml"),
+      ["prompts:", "  - name: deploy", "    prompt: Deploy checklist", ""].join("\n"),
+    );
+    await fs.writeFile(
+      path.join(dir, ".continue/rules/team.yaml"),
+      ["rules:", "  - Project rule.", ""].join("\n"),
+    );
+    const adapter = getProjectAdapter("continue");
+    const { bundle, warnings } = await adapter.exportProject(dir);
+    expect(bundle.commands.map((c) => c.name)).toEqual(["deploy"]);
+    expect(bundle.commands[0]!.content).toBe("---\ninvokable: true\n---\n\nDeploy checklist\n");
+    expect(bundle.instructions).toContain(
+      "<!-- rule: .continue/rules/team.yaml#1 -->\nProject rule.",
+    );
+    expect(warnings).toContain(
+      "commands:deploy: defined inline in .continue/prompts/team.yaml; exported as a markdown prompt with synthesized frontmatter",
+    );
   });
 
   it("project scope: .continue/mcpServers blocks + rules", async () => {
