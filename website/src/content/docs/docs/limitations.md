@@ -133,7 +133,11 @@ persona, and a later export won't recover it as a separate `persona.md`.
   Gemini CLI (`~/.gemini/agents/`, project `.gemini/agents/`), OpenCode
   (`{agent,agents}/` in `~/.config/opencode/` and the `~/.opencode/` fallback,
   recursive with nested names; the fallback dir wins duplicates with a warning;
-  project `.opencode/{agents,agent}/`; imports write `~/.config/opencode/agents/`),
+  primary modes from `{mode,modes}/*.md` in the same config dirs are exported
+  into this layer too — flat scan, a mode beats a same-name agent within its
+  config dir, and each mode entry gets a warning since opencode loads it with
+  `mode: "primary"`; imports never synthesize mode files;
+  project `.opencode/{agents,agent}/` + `.opencode/{mode,modes}/`; imports write `~/.config/opencode/agents/`),
   Qwen Code (`~/.qwen/agents/`, project
   `.qwen/agents/`), Cursor (`~/.cursor/agents/`, project
   `.cursor/agents/`), Kiro (`~/.kiro/agents/`, project

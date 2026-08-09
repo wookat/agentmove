@@ -31,6 +31,7 @@ import {
 } from "./adapters/shared.js";
 import {
   fromOpencodeEntry,
+  OPENCODE_MODE_ROOTS,
   readOpencodeEntries,
   readOpencodeSkills,
   toOpencodeEntry,
@@ -771,7 +772,7 @@ const opencodeProject: ProjectAdapter = {
     );
     bundle.agents = await readOpencodeEntries(
       dir,
-      [".opencode/agents", ".opencode/agent"],
+      [...OPENCODE_MODE_ROOTS(".opencode"), ".opencode/agents", ".opencode/agent"],
       "agents",
       warnings,
     );

@@ -69,7 +69,12 @@ describe("custom agents layer", () => {
 
   it("opencode merges {agent,agents}/ across ~/.opencode and ~/.config/opencode (fallback dir wins)", async () => {
     const { bundle, warnings } = await opencode.exportBundle(path.join(FIXTURES, "opencode-home"));
-    expect(bundle.agents.map((a) => a.name)).toEqual(["legacy-helper", "reviewer", "team/planner"]);
+    expect(bundle.agents.map((a) => a.name)).toEqual([
+      "build",
+      "legacy-helper",
+      "reviewer",
+      "team/planner",
+    ]);
     const raw = await fs.readFile(
       path.join(FIXTURES, "opencode-home/.opencode/agent/reviewer.md"),
       "utf8",
@@ -77,6 +82,27 @@ describe("custom agents layer", () => {
     expect(bundle.agents.find((a) => a.name === "reviewer")!.content).toBe(raw);
     expect(warnings).toContain(
       "agents:reviewer: .config/opencode/agents copy shadowed by the .opencode/agent version (opencode keeps one agent per name); the .opencode/agent version is exported",
+    );
+  });
+
+  it("opencode exports {mode,modes}/*.md primary modes into the agents layer (flat, mode beats agent)", async () => {
+    const { bundle, warnings } = await opencode.exportBundle(path.join(FIXTURES, "opencode-home"));
+    const build = await fs.readFile(
+      path.join(FIXTURES, "opencode-home/.opencode/modes/build.md"),
+      "utf8",
+    );
+    expect(bundle.agents.find((a) => a.name === "build")!.content).toBe(build);
+    expect(bundle.agents.some((a) => a.name.includes("deep"))).toBe(false);
+    const legacy = await fs.readFile(
+      path.join(FIXTURES, "opencode-home/.config/opencode/mode/legacy-helper.md"),
+      "utf8",
+    );
+    expect(bundle.agents.find((a) => a.name === "legacy-helper")!.content).toBe(legacy);
+    expect(warnings).toContain(
+      'agents:build: .opencode/modes entry is an opencode primary mode (loaded with mode: "primary"); exported as a regular agent',
+    );
+    expect(warnings).toContain(
+      "agents:legacy-helper: .config/opencode/agent copy shadowed by the .config/opencode/mode version (opencode keeps one agent per name); the .config/opencode/mode version is exported",
     );
   });
 
