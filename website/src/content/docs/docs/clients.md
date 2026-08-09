@@ -15,7 +15,7 @@ description: What AgentMove reads and writes for each client.
 | Windsurf | `windsurf` | `~/.codeium/windsurf/mcp_config.json` (`mcpServers`, remote servers use `serverUrl`), `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/`, `~/.codeium/windsurf/global_workflows/` (workflows as commands, flat `*.md`; project scope: `.windsurf/workflows/`) |
 | Cline | `cline` | `~/.cline/data/settings/cline_mcp_settings.json` (`mcpServers`, remote servers use `type: streamableHttp`/`sse` + `url`), `~/Documents/Cline/Rules/*.md`, `~/.cline/skills/`, `~/Documents/Cline/Workflows/` (workflow slash commands, flat `*.md`, invoked as `/name.md`; non-markdown workflow files are warned, not migrated; project scope: `.clinerules/workflows/`) |
 | Zed | `zed` | `~/.config/zed/settings.json` (`context_servers`; JSONC, stdio servers require `args`), `~/.config/zed/AGENTS.md`, `~/.agents/skills/` |
-| OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]` with `stdio_servers`/`shttp_servers`/`sse_servers`), `~/.openhands/microagents/*.md` |
+| OpenHands | `openhands` | `~/.openhands/config.toml` (`[mcp]` with `stdio_servers`/`shttp_servers`/`sse_servers`), `~/.openhands/microagents/*.md`, `~/.agents/skills/` (+ legacy `~/.openhands/skills/`) |
 | GitHub Copilot CLI | `copilot` | `~/.copilot/mcp-config.json` (`mcpServers`, stdio servers use `type: local`), `~/.copilot/copilot-instructions.md` + `~/.copilot/instructions/*.instructions.md`, `~/.copilot/skills/`, `~/.copilot/agents/*.agent.md` (custom agents; project scope adds `.github/agents/`); project scope also reads/writes Claude-compatible `.claude/commands/` single-file commands |
 | OpenCode | `opencode` | `~/.config/opencode/opencode.json` (`mcp`; local servers use `type: local` with an argv `command` array + `environment`, remote use `type: remote`), `~/.config/opencode/AGENTS.md`, `~/.config/opencode/skills/`, `~/.config/opencode/agents/` (custom agents; legacy `agent/` also read; project scope adds `.opencode/agents/`), `~/.config/opencode/commands/` (custom commands, subdirectories preserved; project scope adds `.opencode/commands/`) |
 | Qwen Code | `qwen` | `~/.qwen/settings.json` (`mcpServers`; remote servers use `url` or `httpUrl`), `~/.qwen/QWEN.md` (including the "Qwen Added Memories" section), `~/.qwen/skills/`, `~/.qwen/agents/` (custom subagents; project scope adds `.qwen/agents/`), `~/.qwen/commands/` (custom commands, subdirectories preserved; markdown only — deprecated TOML commands are warned, not migrated; project scope adds `.qwen/commands/`) |
@@ -84,7 +84,11 @@ description: What AgentMove reads and writes for each client.
   rewrite (warned).
 - **OpenHands** remote MCP servers only support `api_key` auth — non-Bearer
   headers are dropped with a warning; per-server `timeout` is not portable.
-  Skills live in repositories (`.openhands/skills`, via `--project`).
+  Skills migrate natively from `~/.agents/skills/` plus the legacy
+  `~/.openhands/skills/` (`.agents/skills` wins duplicate names; project
+  `.agents/skills/` + `.openhands/skills/` with `--project`); imports write
+  `.agents/skills/`, and the managed `~/.openhands/skills/installed/` store
+  is not exported (warned).
 - **GitHub Copilot CLI** per-server `tools` allowlists are client-specific and
   reported on export; there is no disabled flag, so disabled servers are
   emitted as enabled with a warning. Skills migrate natively via

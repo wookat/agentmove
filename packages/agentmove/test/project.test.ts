@@ -117,7 +117,7 @@ describe("project-scoped adapters", () => {
     const { files, warnings } = await getProjectAdapter("openhands").planImport(bundle, project);
     const paths = files.map((f) => f.path);
     expect(paths).toContain(".openhands/microagents/agentmove-imported.md");
-    expect(paths).toContain(".openhands/skills/review/SKILL.md");
+    expect(paths).toContain(".agents/skills/review/SKILL.md");
     expect(warnings.some((w) => w.includes("no project-scoped MCP config"))).toBe(true);
     // export side: nothing project-scoped for openhands in the fixture
     const back = await getProjectAdapter("openhands").exportProject(project);
