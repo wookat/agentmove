@@ -1182,7 +1182,11 @@ const continueProject: ProjectAdapter = {
     const servers: McpServer[] = [];
     mergeContinueMcpServers(
       servers,
-      await readContinueMcpBlockServers(path.join(dir, ".continue/mcpServers"), warnings),
+      await readContinueMcpBlockServers(
+        path.join(dir, ".continue/mcpServers"),
+        ".continue/mcpServers",
+        warnings,
+      ),
       ".continue/mcpServers",
       warnings,
     );
