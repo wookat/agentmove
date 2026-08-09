@@ -302,4 +302,30 @@ describe("continue adapter", () => {
     );
     await fs.rm(home, { recursive: true, force: true });
   });
+
+  it("discovers block files recursively in nested subdirectories", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "am-cont-nested-"));
+    await fs.mkdir(path.join(home, ".continue/mcpServers/team/db"), { recursive: true });
+    await fs.mkdir(path.join(home, ".continue/prompts/team"), { recursive: true });
+    await fs.writeFile(path.join(home, ".continue/config.yaml"), "name: Local Config\n");
+    await fs.writeFile(
+      path.join(home, ".continue/mcpServers/team/nested.yaml"),
+      "name: nested\nmcpServers:\n  - name: nestedsrv\n    command: uvx\n",
+    );
+    await fs.writeFile(
+      path.join(home, ".continue/mcpServers/team/db/deep.json"),
+      JSON.stringify({ command: "npx", args: ["deep-mcp"] }),
+    );
+    await fs.writeFile(
+      path.join(home, ".continue/prompts/team/blocks.yaml"),
+      "name: team\nprompts:\n  - name: nestedprompt\n    prompt: do the thing\n",
+    );
+
+    const { bundle, warnings } = await continueAdapter.exportBundle(home);
+    const names = bundle.mcpServers.map((s) => s.name).sort();
+    expect(names).toEqual(["deep", "nestedsrv"]); // single-server name = basename
+    expect(bundle.commands.some((c) => c.name === "nestedprompt")).toBe(true);
+    expect(warnings.filter((w) => w.includes("does not match"))).toEqual([]);
+    await fs.rm(home, { recursive: true, force: true });
+  });
 });
