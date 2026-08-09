@@ -9,6 +9,7 @@ import {
   isRecord,
   McpServer,
   parseFile,
+  Skill,
 } from "../model.js";
 import { exists, isDir, readText } from "../fsutil.js";
 import {
@@ -25,13 +26,38 @@ import {
  * Amp (Sourcegraph). User settings live in ~/.config/amp/settings.json; MCP
  * servers sit under the flat `"amp.mcpServers"` key with the common
  * command/args/env (local) or url/headers (remote) fields. Global
- * instructions are ~/.config/amp/AGENTS.md, and user-wide skills follow the
- * ~/.agents/skills/ standard.
+ * instructions are ~/.config/amp/AGENTS.md. User-wide skills load from three
+ * roots in priority order — ~/.config/agents/skills/, ~/.agents/skills/, then
+ * ~/.config/amp/skills/ — with the first skill of a given name winning.
+ * Claude-compatible roots (~/.claude/skills/, plugin cache) that amp also
+ * scans belong to the claude adapters and are not read here.
  */
 const SETTINGS_REL = ".config/amp/settings.json";
 const AGENTS_REL = ".config/amp/AGENTS.md";
 const SKILLS_REL = ".agents/skills";
+const SKILLS_ROOTS = [".config/agents/skills", ".agents/skills", ".config/amp/skills"];
 const MCP_KEY = "amp.mcpServers";
+
+/** Merge amp's user skill roots in priority order; first name wins. */
+export async function readAmpSkills(home: string, warnings: string[]): Promise<Skill[]> {
+  const skills: Skill[] = [];
+  const winner = new Map<string, string>();
+  for (const rootRel of SKILLS_ROOTS) {
+    for (const skill of await readSkillsDir(path.join(home, rootRel), warnings)) {
+      const winnerRoot = winner.get(skill.name);
+      if (winnerRoot !== undefined) {
+        warnings.push(
+          `skills:${skill.name}: ~/${rootRel} copy shadowed by ~/${winnerRoot}; the higher-priority version is exported`,
+        );
+        continue;
+      }
+      winner.set(skill.name, rootRel);
+      skills.push(skill);
+    }
+  }
+  skills.sort((a, b) => a.name.localeCompare(b.name));
+  return skills;
+}
 
 async function readSettings(home: string): Promise<Record<string, unknown>> {
   const file = path.join(home, SETTINGS_REL);
@@ -55,7 +81,8 @@ export function renderAmpEntry(s: McpServer, warnings: string[]): Record<string,
 export const amp: ClientAdapter = {
   id: "amp",
   label: "Amp",
-  defaultPath: "~/.config/amp (settings.json + AGENTS.md)",
+  defaultPath:
+    "~/.config/amp (settings.json + AGENTS.md) + ~/.config/agents/skills + ~/.agents/skills + ~/.config/amp/skills",
 
   async detect(home) {
     return (
@@ -80,7 +107,7 @@ export const amp: ClientAdapter = {
     bundle.mcpServers = servers;
 
     bundle.instructions = await readText(path.join(home, AGENTS_REL));
-    bundle.skills = await readSkillsDir(path.join(home, SKILLS_REL), warnings);
+    bundle.skills = await readAmpSkills(home, warnings);
 
     return { bundle, warnings };
   },
@@ -126,6 +153,13 @@ export const amp: ClientAdapter = {
     }
 
     files.push(...planSkills(bundle.skills, SKILLS_REL));
+    for (const skill of bundle.skills) {
+      if (await isDir(path.join(home, ".config/agents/skills", skill.name))) {
+        warnings.push(
+          `skills:${skill.name}: an existing ~/.config/agents/skills copy has higher priority in amp and will shadow the imported ~/${SKILLS_REL} version`,
+        );
+      }
+    }
 
     return { files, warnings };
   },
