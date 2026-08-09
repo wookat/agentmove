@@ -515,7 +515,14 @@ describe("custom commands layer", () => {
     const { bundle, warnings } = await nanocoder.exportBundle(
       path.join(FIXTURES, "nanocoder-home"),
     );
-    expect(bundle.commands.map((c) => c.name)).toEqual(["deploy", "git/commit", "test"]);
+    expect(bundle.commands.map((c) => c.name)).toEqual([
+      "deploy",
+      "git/commit",
+      "pr-reviewer/review",
+      "pr-reviewer/status",
+      "solo",
+      "test",
+    ]);
     const raw = await fs.readFile(
       path.join(FIXTURES, "nanocoder-home/.config/nanocoder/commands/test.md"),
       "utf8",

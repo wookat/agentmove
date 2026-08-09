@@ -169,7 +169,20 @@ persona, and a later export won't recover it as a separate `persona.md`.
   collisions after flattening are skipped with a warning), and
   nanocoder-specific frontmatter (`provider`, `model`, `contextWindow`,
   `tools`, `disallowedTools`, `subscribe`) is copied as-is — review
-  after import.
+  after import. Nanocoder **skill bundles**
+  (`~/.config/nanocoder/skills/<bundle>/`, project `.nanocoder/skills/`)
+  also export their portable members: `commands/*.md` become
+  `<bundle>/<name>` commands (bare `<bundle>` when the file is named after
+  the bundle, mirroring nanocoder's `/<bundle>:<name>` invocation) and the
+  single `agents/*.md` subagent exports by file name (extras beyond the
+  first are ignored with a warning, matching nanocoder's loader). Bundle
+  `tools/` are nanocoder shell tools and `skill.yaml` extras
+  (`version`/`author`/`tags`/`subscribe`/`tools_visibility`) are
+  nanocoder-specific — both warned, not migrated; names already taken by
+  the flat `commands/`/`agents/` directories win on collision (warned).
+  Imports keep writing the flat directories — nanocoder invokes a command
+  imported at `commands/<bundle>/<name>.md` as `/<bundle>:<name>`, so the
+  invocation round-trips; bundles themselves are not synthesized.
 - Auggie CLI subagents live in `~/.augment/agents/` (project
   `.augment/agents/`), scanned recursively with nested names preserved.
   The loader also accepts `.txt` agent files — those are exported with a
