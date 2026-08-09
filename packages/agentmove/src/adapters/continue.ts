@@ -1,4 +1,5 @@
 import path from "node:path";
+import JSON5 from "json5";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import {
   AgentDef,
@@ -29,9 +30,11 @@ import {
  * its own `name` and remote entries use `type: sse`/`streamable-http` + `url`.
  * Continue also loads MCP block files from ~/.continue/mcpServers/ (workspace
  * scope: .continue/mcpServers/): YAML files with an `mcpServers:` list plus
- * claude-style JSON maps. config.yaml entries win duplicate names on export;
- * imports keep writing config.yaml only. Global rules are markdown files
- * under ~/.continue/rules/.
+ * JSON/JSONC files in every format continue's own JSON loader accepts —
+ * claude-style `mcpServers` maps, claude-code style files with `projects`
+ * nesting, and single-server files (name = filename). config.yaml entries win
+ * duplicate names on export; imports keep writing config.yaml only. Global
+ * rules are markdown files under ~/.continue/rules/.
  *
  * Prompt files (slash commands) are markdown files under ~/.continue/prompts/
  * (workspace scope: .continue/prompts/), discovered recursively; a file is
@@ -215,13 +218,70 @@ export function parseContinueServers(
   return servers;
 }
 
+/** Parse one claude-style MCP entry from a JSON block file, warning on envFile. */
+function parseContinueJsonEntry(
+  name: string,
+  entry: unknown,
+  warnings: string[],
+): McpServer | undefined {
+  const s = parseCommonMcpEntry(name, entry, warnings);
+  if (s && isRecord(entry) && entry.envFile !== undefined) {
+    warnings.push(`mcp:${name}: envFile is not supported by continue; not migrated`);
+  }
+  return s;
+}
+
+/**
+ * Parse one JSON/JSONC MCP block file the way continue's own JSON loader
+ * does: claude-style `mcpServers` name-keyed maps, claude-code style files
+ * with `projects` nesting, and single-server files named after the file.
+ */
+export function parseContinueJsonBlock(
+  data: unknown,
+  fileBase: string,
+  rel: string,
+  warnings: string[],
+): McpServer[] {
+  const servers: McpServer[] = [];
+  if (!isRecord(data)) {
+    warnings.push(`mcp: ${rel} does not match a supported MCP JSON configuration format; skipped`);
+    return servers;
+  }
+  if (isRecord(data.mcpServers) || isRecord(data.projects)) {
+    if (isRecord(data.mcpServers)) {
+      for (const [name, entry] of Object.entries(data.mcpServers)) {
+        const s = parseContinueJsonEntry(name, entry, warnings);
+        if (s) servers.push(s);
+      }
+    }
+    if (isRecord(data.projects)) {
+      for (const project of Object.values(data.projects)) {
+        if (!isRecord(project) || !isRecord(project.mcpServers)) continue;
+        for (const [name, entry] of Object.entries(project.mcpServers)) {
+          const s = parseContinueJsonEntry(name, entry, warnings);
+          if (s) servers.push(s);
+        }
+      }
+    }
+    return servers;
+  }
+  if (typeof data.command === "string" || typeof data.url === "string") {
+    const s = parseContinueJsonEntry(fileBase, data, warnings);
+    if (s) servers.push(s);
+    return servers;
+  }
+  warnings.push(`mcp: ${rel} does not match a supported MCP JSON configuration format; skipped`);
+  return servers;
+}
+
 /**
  * Read MCP servers from local block files in a .continue/mcpServers directory:
- * YAML block files carry an `mcpServers:` list (config.yaml schema) and JSON
- * files carry a claude-style `mcpServers` name-keyed map.
+ * YAML block files carry an `mcpServers:` list (config.yaml schema) and
+ * JSON/JSONC files carry any of continue's supported JSON formats.
  */
 export async function readContinueMcpBlockServers(
   root: string,
+  rootRel: string,
   warnings: string[],
 ): Promise<McpServer[]> {
   const servers: McpServer[] = [];
@@ -234,13 +294,11 @@ export async function readContinueMcpBlockServers(
       const data = parseFile<unknown>(file, raw, (t) => parseYaml(t) as unknown);
       if (isRecord(data)) servers.push(...parseContinueServers(data, warnings));
     } else if (f.endsWith(".json")) {
-      const data = parseFile<unknown>(file, raw, JSON.parse);
-      if (isRecord(data) && isRecord(data.mcpServers)) {
-        for (const [name, entry] of Object.entries(data.mcpServers)) {
-          const s = parseCommonMcpEntry(name, entry, warnings);
-          if (s) servers.push(s);
-        }
-      }
+      const data = parseFile<unknown>(file, raw, (t) => JSON5.parse(t) as unknown);
+      if (data === undefined) continue;
+      servers.push(
+        ...parseContinueJsonBlock(data, f.replace(/\.json$/, ""), `${rootRel}/${f}`, warnings),
+      );
     }
   }
   return servers;
@@ -361,7 +419,7 @@ const continueAdapter: ClientAdapter = {
     bundle.mcpServers = parseContinueServers(config, warnings);
     mergeContinueMcpServers(
       bundle.mcpServers,
-      await readContinueMcpBlockServers(path.join(home, MCP_BLOCKS_REL), warnings),
+      await readContinueMcpBlockServers(path.join(home, MCP_BLOCKS_REL), MCP_BLOCKS_REL, warnings),
       MCP_BLOCKS_REL,
       warnings,
     );

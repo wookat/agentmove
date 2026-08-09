@@ -266,4 +266,40 @@ describe("continue adapter", () => {
     );
     await fs.rm(home, { recursive: true, force: true });
   });
+
+  it("parses claude-code projects nesting, single-server files, jsonc, and unsupported formats", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "am-cont-jsonfmt-"));
+    await fs.mkdir(path.join(home, ".continue/mcpServers"), { recursive: true });
+    await fs.writeFile(path.join(home, ".continue/config.yaml"), "name: Local Config\n");
+    await fs.writeFile(
+      path.join(home, ".continue/mcpServers/claude-code.json"),
+      JSON.stringify({
+        mcpServers: { topsrv: { command: "npx", args: ["top-mcp"] } },
+        projects: {
+          "/home/u/proj": {
+            mcpServers: { projsrv: { type: "http", url: "https://proj.example.com/mcp" } },
+          },
+        },
+      }),
+    );
+    await fs.writeFile(
+      path.join(home, ".continue/mcpServers/solo.json"),
+      '{\n  // single-server file, name from filename\n  "command": "uvx",\n  "args": ["solo-mcp"],\n  "envFile": ".env"\n}\n',
+    );
+    await fs.writeFile(
+      path.join(home, ".continue/mcpServers/bogus.json"),
+      JSON.stringify({ notMcp: true }),
+    );
+
+    const { bundle, warnings } = await continueAdapter.exportBundle(home);
+    const byName = Object.fromEntries(bundle.mcpServers.map((s) => [s.name, s]));
+    expect(Object.keys(byName).sort()).toEqual(["projsrv", "solo", "topsrv"]);
+    expect(byName.projsrv!.transport).toBe("http");
+    expect(byName.solo!.command).toBe("uvx"); // name = filename, jsonc comment tolerated
+    expect(warnings).toContain("mcp:solo: envFile is not supported by continue; not migrated");
+    expect(warnings).toContain(
+      "mcp: .continue/mcpServers/bogus.json does not match a supported MCP JSON configuration format; skipped",
+    );
+    await fs.rm(home, { recursive: true, force: true });
+  });
 });
