@@ -29,7 +29,7 @@ import {
   renderCommonMcpEntry,
   touchesMcpConfig,
 } from "./adapters/shared.js";
-import { fromOpencodeEntry, toOpencodeEntry } from "./adapters/opencode.js";
+import { fromOpencodeEntry, readOpencodeSkills, toOpencodeEntry } from "./adapters/opencode.js";
 import {
   CODEX_AGENTS_EXPORT_WARNING,
   CODEX_AGENTS_IMPORT_WARNING,
@@ -759,7 +759,11 @@ const opencodeProject: ProjectAdapter = {
       }
     }
     bundle.instructions = await readText(path.join(dir, "AGENTS.md"));
-    bundle.skills = await readSkillsDir(path.join(dir, ".opencode/skills"), warnings);
+    bundle.skills = await readOpencodeSkills(
+      dir,
+      [".opencode/skills", ".opencode/skill", ".agents/skills"],
+      warnings,
+    );
     bundle.agents = await readAgentsDir(path.join(dir, ".opencode/agents"), ".md");
     for (const a of await readAgentsDir(path.join(dir, ".opencode/agent"), ".md")) {
       if (!bundle.agents.some((b) => b.name === a.name)) bundle.agents.push(a);

@@ -105,6 +105,17 @@ persona, and a later export won't recover it as a separate `persona.md`.
   only the brand root. Kimi's flat single-file `<name>.md` skills (a `.md`
   directly at a skills root without a `SKILL.md` bundle) and `$KIMI_CODE_HOME`
   relocations are not migrated.
+- OpenCode scans skills from its config dirs — `~/.config/opencode/` plus a
+  `~/.opencode/` fallback, each under both `skills/` and the singular
+  `skill/` — and from the generic shared root `~/.agents/skills/` (project:
+  `.opencode/{skills,skill}/` + `.agents/skills/`). Exports merge all roots;
+  on duplicate names the first root in that order wins with a warning
+  (opencode itself keeps one skill per name and its pick is load-order
+  dependent). Imports write only `~/.config/opencode/skills/` (project:
+  `.opencode/skills/`). The Claude-compatible `~/.claude/skills/` root that
+  opencode also scans belongs to the claude adapters and is not read here;
+  nested skill directories, configured `skills.path` entries, and skill URLs
+  are not migrated.
 - Grok CLI loads Agent Skills from `~/.agents/skills/` (user) and
   `.agents/skills/` (project) — it never loads `~/.grok/skills/`. That
   legacy root (written by older agentmove versions) is still read on
