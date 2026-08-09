@@ -31,6 +31,7 @@ import {
 } from "./adapters/shared.js";
 import {
   fromOpencodeEntry,
+  OPENCODE_INLINE_ROOTS,
   OPENCODE_MODE_ROOTS,
   readOpencodeEntries,
   readOpencodeSkills,
@@ -770,15 +771,34 @@ const opencodeProject: ProjectAdapter = {
       [".opencode/skills", ".opencode/skill", ".agents/skills"],
       warnings,
     );
+    // Project opencode.json(c) sources, highest priority first: the .opencode
+    // config dir merges after the project-root config files, and jsonc merges
+    // after json within one location.
+    const projectConfigFiles = [
+      ".opencode/opencode.jsonc",
+      ".opencode/opencode.json",
+      "opencode.jsonc",
+      "opencode.json",
+    ];
     bundle.agents = await readOpencodeEntries(
       dir,
-      [...OPENCODE_MODE_ROOTS(".opencode"), ".opencode/agents", ".opencode/agent"],
+      [
+        ...OPENCODE_INLINE_ROOTS(projectConfigFiles, "mode"),
+        ...OPENCODE_MODE_ROOTS(".opencode"),
+        ".opencode/agents",
+        ".opencode/agent",
+        ...OPENCODE_INLINE_ROOTS(projectConfigFiles, "agent"),
+      ],
       "agents",
       warnings,
     );
     bundle.commands = await readOpencodeEntries(
       dir,
-      [".opencode/commands", ".opencode/command"],
+      [
+        ".opencode/commands",
+        ".opencode/command",
+        ...OPENCODE_INLINE_ROOTS(projectConfigFiles, "command"),
+      ],
       "commands",
       warnings,
     );

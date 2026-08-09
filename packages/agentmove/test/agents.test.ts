@@ -106,6 +106,71 @@ describe("custom agents layer", () => {
     );
   });
 
+  it("opencode exports inline agent/command/mode entries from opencode.json(c)", async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), "am-oc-inline-"));
+    await fs.mkdir(path.join(home, ".config/opencode/agents"), { recursive: true });
+    await fs.mkdir(path.join(home, ".opencode/modes"), { recursive: true });
+    await fs.writeFile(path.join(home, ".config/opencode/agents/helper.md"), "md helper\n");
+    await fs.writeFile(path.join(home, ".opencode/modes/build.md"), "md build mode\n");
+    await fs.writeFile(
+      path.join(home, ".config/opencode/opencode.json"),
+      JSON.stringify({
+        agent: {
+          helper: { description: "config helper", prompt: "config helper prompt" },
+          disabled: { disable: true, prompt: "never" },
+        },
+        command: {
+          ship: { template: "ship it {env:USER}", description: "ship" },
+          broken: { description: "no template" },
+        },
+        mode: { build: { prompt: "inline build mode" } },
+      }),
+    );
+    await fs.writeFile(
+      path.join(home, ".opencode/opencode.jsonc"),
+      '{\n  // fallback dir config\n  agent: { helper: { prompt: "fallback helper" } },\n}\n',
+    );
+    const { bundle, warnings } = await opencode.exportBundle(home);
+
+    // Inline mode entries merge last and win over the markdown mode file.
+    expect(bundle.agents.find((a) => a.name === "build")!.content).toBe("inline build mode\n");
+    expect(warnings).toContain(
+      "agents:build: defined inline under the mode key of .config/opencode/opencode.json; exported as a markdown agent with synthesized frontmatter",
+    );
+    expect(warnings).toContain(
+      'agents:build: .config/opencode/opencode.json entry is an opencode primary mode (loaded with mode: "primary"); exported as a regular agent',
+    );
+    expect(warnings).toContain(
+      "agents:build: .opencode/modes copy shadowed by the .config/opencode/opencode.json version (opencode keeps one agent per name); the .config/opencode/opencode.json version is exported",
+    );
+
+    // The ~/.opencode inline agent merges after the ~/.config markdown agent.
+    expect(bundle.agents.find((a) => a.name === "helper")!.content).toBe("fallback helper\n");
+    expect(warnings).toContain(
+      "agents:helper: defined inline under the agent key of .opencode/opencode.jsonc; exported as a markdown agent with synthesized frontmatter",
+    );
+    expect(warnings).toContain(
+      "agents:helper: .config/opencode/agents copy shadowed by the .opencode/opencode.jsonc version (opencode keeps one agent per name); the .opencode/opencode.jsonc version is exported",
+    );
+
+    expect(bundle.agents.some((a) => a.name === "disabled")).toBe(false);
+    expect(warnings).toContain(
+      "agents:disabled: inline agent entry in .config/opencode/opencode.json has disable: true; skipped",
+    );
+
+    expect(bundle.commands.map((c) => c.name)).toEqual(["ship"]);
+    expect(bundle.commands[0]!.content).toBe("---\ndescription: ship\n---\n\nship it {env:USER}\n");
+    expect(warnings).toContain(
+      "commands:ship: defined inline under the command key of .config/opencode/opencode.json; exported as a markdown command with synthesized frontmatter",
+    );
+    expect(warnings).toContain(
+      "commands:ship: contains {file:...}/{env:...} placeholders that opencode substitutes at load time relative to .config/opencode/opencode.json; copied as-is",
+    );
+    expect(warnings).toContain(
+      "commands:broken: inline command entry in .config/opencode/opencode.json has no string template (required by opencode); skipped",
+    );
+  });
+
   it("qwen exports ~/.qwen/agents/*.md byte-faithfully", async () => {
     const { bundle } = await qwen.exportBundle(path.join(FIXTURES, "qwen-home"));
     expect(bundle.agents.map((a) => a.name)).toEqual(["test-writer"]);

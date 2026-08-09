@@ -137,7 +137,11 @@ persona, and a later export won't recover it as a separate `persona.md`.
   into this layer too — flat scan, a mode beats a same-name agent within its
   config dir, and each mode entry gets a warning since opencode loads it with
   `mode: "primary"`; imports never synthesize mode files;
-  project `.opencode/{agents,agent}/` + `.opencode/{mode,modes}/`; imports write `~/.config/opencode/agents/`),
+  inline `agent`/`mode` entries in `opencode.json`/`opencode.jsonc` are also
+  exported as synthesized markdown with per-entry warnings — the inline `mode`
+  map merges last and wins duplicates, while markdown files beat inline `agent`
+  entries from the same config dir; imports never write inline config entries;
+  project `.opencode/{agents,agent}/` + `.opencode/{mode,modes}/` + inline entries from the project `opencode.json(c)` files; imports write `~/.config/opencode/agents/`),
   Qwen Code (`~/.qwen/agents/`, project
   `.qwen/agents/`), Cursor (`~/.cursor/agents/`, project
   `.cursor/agents/`), Kiro (`~/.kiro/agents/`, project
@@ -294,7 +298,11 @@ persona, and a later export won't recover it as a separate `persona.md`.
   Codex CLI (`~/.codex/prompts/`, user scope only, invoked as
   `/prompts:<name>`), OpenCode (`{command,commands}/` in `~/.config/opencode/` and the
   `~/.opencode/` fallback; subdirectories preserved; the fallback dir wins
-  duplicates with a warning; project `.opencode/{commands,command}/`; imports
+  duplicates with a warning; inline `command` entries in
+  `opencode.json`/`opencode.jsonc` are also exported as synthesized markdown
+  with per-entry warnings — markdown files beat inline entries from the same
+  config dir; project `.opencode/{commands,command}/` plus inline entries from
+  the project `opencode.json(c)` files; imports
   write `~/.config/opencode/commands/`), Qwen Code
   (`~/.qwen/commands/`, project `.qwen/commands/`; subdirectories
   preserved and shown as `/git:commit`-style namespaced names),
