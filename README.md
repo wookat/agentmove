@@ -1,6 +1,8 @@
 # agentmove
 
-**Move your AI agent between clients.** The pandoc of agent ecosystems: migrate
+**Move your AI agent between clients — the pandoc of agent ecosystems, so switching tools never means losing your agent's brain.**
+
+For anyone switching or mixing agent clients: migrate
 **config + MCP servers + skills + memory + persona/instructions** between
 forty-seven clients — OpenClaw, Hermes Agent, Claude Code, Codex CLI, Cursor,
 Gemini CLI, VS Code, Cline, Continue, and more (see the full table below) — in
