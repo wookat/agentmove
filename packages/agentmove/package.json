@@ -45,7 +45,7 @@
     "commander": "^15.0.0",
     "json5": "^2.2.3",
     "smol-toml": "^1.8.0",
-    "yaml": "^2.8.2"
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
